@@ -249,6 +249,18 @@
       "deliverable": "หน้า UI พร้อมสอบและภาพประกอบ",
       "acceptance": "จอ projector อ่านได้, responsive, status ชัด, screenshot แสดงจริงไม่ใช่ mock",
       "prompt": "ตรวจและเก็บงาน UI ของ SENTINEL AI สำหรับพรีเซ็น: hierarchy, contrast, projector readability, responsive, empty/error/waiting states จับภาพหน้าจอจาก backend จริงของ flow เดโม จัดสรุปหน้าที่แต่ละหน้ากับภาพสำหรับสไลด์ ไม่เพิ่ม feature P2"
+    },
+    {
+      "id": "F06",
+      "track": "frontend",
+      "phase": 4,
+      "title": "Deploy เว็บจริงและทดสอบผ่าน HTTPS",
+      "depends_on": [
+        "F04"
+      ],
+      "deliverable": "docs/deployment.md, production config, URL ที่เปิดใช้จริง และผล smoke test",
+      "acceptance": "มี URL HTTPS; API/WSS จริงผ่าน; login จำกัดสิทธิ์; Docker/volume/Ollama ผ่าน; ไม่มี secret ในเว็บ; มี rollback และผลเทสจาก URLจริง",
+      "prompt": "อ่าน docs/deployment-plan.md เตรียม deploy React/Vite โดยแนะนำ Vercel Hobby สำหรับโปรเจกต์ส่วนตัวนี้ ใช้ frontend เป็น root directory, npm run build และ dist ออกแบบ API origin/WebSocket URL สำหรับ production โดยไม่ hardcode localhost หรือฝัง admin key ใน VITE_* ประสาน Obeto เรื่อง CORS, login/access control และ backend ที่เชื่อม Qwen บนเครื่อง RTX 4060 ผ่าน protected tunnel ตรวจว่า frontend URL ไม่ได้เปิดแค่ mock และ API/WSS ใช้งานจากอุปกรณ์อื่นได้จริง ไม่เปิด backend ปัจจุบันออก internet ก่อนมี access control ครอบคลุม HTTP/WS ทดสอบ HTTPS, authenticated API/WSS, reload/reconnect, responsive, Ollama/backend offline และ flow หลักจาก URL deploy บันทึกวิธีตั้งค่า environment, URLจริง, deployment version, smoke-test evidence และ rollback ใน docs/deployment.md หากยังไม่มีบัญชี/สิทธิ์ hosting/domain ให้เตรียม config และรายงานสิ่งที่ต้องรอ ห้ามอ้างว่า deploy แล้วถ้ายังไม่มี URL ที่ตรวจผ่าน ห้ามสมัครบริการเสียเงินหรืออัปเกรดแผนโดยไม่ได้รับอนุญาต เพิ่ม Dockerfile/Compose ร่วมกับ Obeto สำหรับ FastAPI และ SQLite persistent volume ใน Docker Desktop โดยเชื่อม Ollama บน Windows host ผ่าน host.docker.internal ทดสอบ build/start/stop/recreate, healthcheck, database persistence และ GPU model connection จริง เขียนลำดับเปิด Docker/Ollama/tunnel และข้อจำกัดเมื่อเครื่องปิด"
     }
   ]
 }

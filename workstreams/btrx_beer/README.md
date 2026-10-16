@@ -9,7 +9,7 @@
 - [Phase 1 · Observe & Detect](phase-1.md): F01
 - [Phase 2 · Investigate & Plan](phase-2.md): F02, M01
 - [Phase 3 · Approve & Defend](phase-3.md): F03
-- [Phase 4 · Integrate & Present](phase-4.md): F04, F05
+- [Phase 4 · Integrate & Present](phase-4.md): F04, F05, F06
 
 ## รับงานแทนเพื่อน
 

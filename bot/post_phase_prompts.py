@@ -15,6 +15,8 @@ LEDGER = ROOT / "data" / "phase_messages.json"
 def main():
     parser = argparse.ArgumentParser(description="Check or publish the team's phase prompts")
     parser.add_argument("--publish", action="store_true", help="Send/update the messages on Discord")
+    parser.add_argument("--member", choices=["obeto", "beer"], help="Limit to one member")
+    parser.add_argument("--phase", type=int, choices=range(5), help="Update just one phase without the introduction")
     args = parser.parse_args()
     team = read_json(ROOT / "config" / "team.json")["members"]
     prompts = ROOT.parent / "prompts" / "phases"
@@ -30,16 +32,21 @@ def main():
     jobs = []
     for member in team:
         slug = "obeto" if member["key"] == "backend" else "beer"
+        if args.member and args.member != slug:
+            continue
         if not member.get("channel_id"):
             raise SystemExit(f"Missing channel for {slug}")
-        jobs.append((f"{slug}:intro", member["channel_id"], intro))
+        if args.phase is None:
+            jobs.append((f"{slug}:intro", member["channel_id"], intro))
         for phase in range(5):
+            if args.phase is not None and args.phase != phase:
+                continue
             prompt = (prompts / f"phase-{phase}-{slug}.md").read_text(encoding="utf-8")
             content = f"**Phase {phase} — {member['name']}**\nคัดลอกทั้งกรอบให้ผู้ช่วยทำเฟสนี้:\n```text\n{prompt}```"
             if len(content) > 2000:
                 raise SystemExit(f"Message too long: phase {phase} {slug}")
             jobs.append((f"{slug}:{phase}", member["channel_id"], content))
-    print(f"Validated {len(jobs)} Discord messages for two configured channels")
+    print(f"Validated {len(jobs)} Discord messages for {len({job[1] for job in jobs})} configured channels")
     if not args.publish:
         return
     env = {}

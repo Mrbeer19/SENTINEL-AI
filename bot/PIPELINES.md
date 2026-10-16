@@ -6,7 +6,7 @@
 | 1 · Observe & Detect | รับ log และเห็น incident | B01 ingestion/SQLite → B02 detection → B03 demo สองเครื่อง | F01 dashboard/incident จาก mock contract |
 | 2 · Investigate & Plan | AI อ่านหลักฐานจริง | B04 เชื่อมโมเดลของ Beer → B05 tool calling/trace | F02 workflow/evidence viewer และ M01 prompt tuning/fine-tune ถ้าทรัพยากรพอ |
 | 3 · Approve & Defend | อนุมัติและพิสูจน์ผล | B06 policy/approval/firewall → B07 verification/WebSocket | F03 approval/firewall/simulator UI |
-| 4 · Integrate & Present | เชื่อมจริงและซ้อมสอบ | B08 metrics/report → B09 ซ้อมสองเครื่อง | F04 real API/WebSocket/report → F05 UI polish/หลักฐานสไลด์ |
+| 4 · Integrate & Present | เชื่อมจริงและซ้อมสอบ | B08 metrics/report → B09 ซ้อมสองเครื่อง | F04 real API/WebSocket/report → F05 UI polish; F06 deployment/HTTPS/Docker |
 
 งานที่มีลูกศรต้องรอ dependency เป็น `done` ตาม [tasks.json](config/tasks.json) งานในคนละ pipeline ที่ไม่พึ่งกันทำพร้อมกันได้
 

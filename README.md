@@ -46,7 +46,7 @@ SSH scenario เป็น synthetic log replay และแสดงชนิด
 | `backend/` | FastAPI, SQLite, detection, tools, approval, verification | Obeto |
 | `frontend/` | React dashboard 6 หน้า | Beer |
 | `prompts/phases/` | Prompt คัดลอกใช้แยกคนและเฟส | ทั้งคู่ |
-| `prompts/tasks/` | Prompt ย่อย 18 งาน | ทั้งคู่ |
+| `prompts/tasks/` | Prompt ย่อย 19 งาน รวม deployment | ทั้งคู่ |
 | `workstreams/` | ลำดับงานและเกณฑ์ผ่าน | ทั้งคู่ |
 | `bot/` | Discord task dispatcher | ทั้งคู่ |
 | `docs/` | แผน, API contract, runbook และผลทดสอบ | ทั้งคู่ |
@@ -62,6 +62,7 @@ Beer รับผิดชอบโมเดลด้วย: baseline, prompt tu
 - [Prompt แยกเฟส — เริ่ม Phase 0](prompts/README.md)
 - [API contract ของ MVP](docs/api-contract.md)
 - [วิธีซ้อมเดโมและแก้ปัญหา](docs/demo-runbook.md)
+- [แผน deploy เว็บจริง — งาน F06 ของ Beer](docs/deployment-plan.md)
 - [สถานะการตรวจสอบ](docs/test-results.md)
 - [ตั้ง Discord bot](bot/README.md)
 

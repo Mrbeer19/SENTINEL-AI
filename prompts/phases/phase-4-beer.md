@@ -6,6 +6,7 @@ SENTINEL AI | Phase 4 | Beer | Integrate & Present
 งานที่ต้องทำ:
 - F04 Real API/WebSocket integration และ Reports: ไม่มี fake state ใน demo หลัก; refresh/reconnect ยังถูกต้อง; report และ timeline มาจาก records
 - F05 UI polish และสไลด์หลักฐานการทำงาน: จอ projector อ่านได้, responsive, status ชัด, screenshot แสดงจริงไม่ใช่ mock
+- F06 Deploy เว็บจริงและทดสอบผ่าน HTTPS: มี URL HTTPS; API/WSS จริงผ่าน; login จำกัดสิทธิ์; Docker/volume/Ollama ผ่าน; ไม่มี secret ในเว็บ; มี rollback และผลเทสจาก URLจริง
 
 Qwen หลัก = qwen3.5:4b ผ่าน Ollama; Beer ดูแลโมเดล Obeto เชื่อม backend HTTP demo กับ SSH log replay ต้องระบุให้ตรง Firewall เป็น app-level simulator และต้องรอคนอนุมัติ
 อ่าน dependency จากแผน ทำส่วนที่พร้อมก่อน ถ้าติดงานเพื่อนให้ระบุสิ่งที่ต้องรอ ไม่สร้างข้อมูลหรือผลทดสอบทดแทน

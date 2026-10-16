@@ -8,7 +8,7 @@
 | 1 | Ingestion, detection, dashboard | [B01–B03](phases/phase-1-obeto.md) | [F01](phases/phase-1-beer.md) |
 | 2 | Investigation, tools, model evaluation | [B04–B05](phases/phase-2-obeto.md) | [F02 + M01](phases/phase-2-beer.md) |
 | 3 | Approval, defense, verification | [B06–B07](phases/phase-3-obeto.md) | [F03](phases/phase-3-beer.md) |
-| 4 | Integration, metrics, rehearsal | [B08–B09](phases/phase-4-obeto.md) | [F04–F05](phases/phase-4-beer.md) |
+| 4 | Integration, metrics, rehearsal, deployment | [B08–B09](phases/phase-4-obeto.md) | [F04–F06](phases/phase-4-beer.md) |
 
 โค้ดใน repository เป็นจุดเริ่มต้น: ให้ตรวจของเดิมเทียบ acceptance ก่อนแก้ อย่าเขียนทับทั้งหมดหรืออ้างว่า task ผ่านเพราะเห็นไฟล์อยู่แล้ว
 

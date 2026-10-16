@@ -66,6 +66,8 @@ Obeto ทำ B06 policy/approval/rule expiry และ B07 WebSocket/verificatio
 
 Obeto ทำ B08 dataset/metrics/report และ B09 ซ้อม LAN Beer ทำ F04 API/WebSocket integration และ F05 UI polish/หลักฐานสไลด์
 
+Beer เพิ่ม F06 deployment ตาม `docs/deployment-plan.md`: URL HTTPS จริง, production API/WSS configuration, access control ร่วมกับ Obeto, smoke test จากเครื่องอื่น และคู่มือ rollback แนะนำ Vercel Hobby สำหรับ frontend และ local GPU backend ผ่าน protected tunnel ยังไม่นับว่า deploy แล้วจนทดสอบ URL จริงผ่าน
+
 เตรียม normal/attack labeled cases ที่แยกจากการพัฒนา วัด TP/FP/FN/TN, precision, recall, F1, false-positive rate และ AI JSON/tool validity/latency เก็บจำนวนตัวอย่าง วิธีสร้างข้อมูล hardware/model tag และคำสั่งทำซ้ำ สถิติ IP ของหน้า Reports ใน MVP เป็นเพียง exploratory snapshot
 
 ทดสอบ reload/reconnect, restart, offline, Ollama timeout, rejected action, rule expiry และสถานการณ์ใหม่หลังเดโมรอบแรก ถ่ายภาพจากระบบจริงและทำสไลด์ไม่เกิน 10 หน้า: problem, objectives, system, local AI, workflow, dashboard, demo, testing, limitations, conclusion
