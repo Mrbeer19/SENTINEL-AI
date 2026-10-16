@@ -1,48 +1,41 @@
-"""Create copy-ready prompts for each person's project phase."""
+"""Create one copyable Discord message for each person's project phase."""
 
 from pathlib import Path
 
-from core import Board, task_prompt
+from core import PLAN_PATH, read_json
 
 
 def main() -> None:
-    board = Board()
+    plan = read_json(PLAN_PATH)
     output = Path(__file__).resolve().parent.parent / "prompts" / "phases"
     output.mkdir(parents=True, exist_ok=True)
-    members = {"backend": ("obeto", "@obeto."), "frontend": ("beer", "@btrx_beer")}
-    for phase in board.plan["phases"]:
+    members = {"backend": ("obeto", "Obeto"), "frontend": ("beer", "Beer")}
+    for phase in plan["phases"]:
         for track, (slug, name) in members.items():
-            tasks = [task for task in board.plan["tasks"] if task["phase"] == phase["id"] and task["track"] == track]
+            tasks = [task for task in plan["tasks"] if task["phase"] == phase["id"] and task["track"] == track]
             sections = [
-                f"# SENTINEL AI — Phase {phase['id']}: {phase['name']} — {name}",
+                f"SENTINEL AI | Phase {phase['id']} | {name} | {phase['name']}",
                 "",
-                "คุณเป็น coding assistant ของสมาชิกทีมคนนี้ ทำงานใน checkout ของ repository SENTINEL-AI ที่เปิดอยู่เท่านั้น อ่าน SENTINEL AI.txt, docs/api-contract.md (ถ้ามี) และโค้ดปัจจุบันก่อนแก้ไข",
-                f"เป้าหมายเฟส: {phase['goal']}",
+                "ลงมือทำเฟสนี้ใน checkout ของ SENTINEL-AI ที่เปิดอยู่ ให้คุณวางแผน แก้โค้ด รันทดสอบ แก้จนผ่าน และเขียนรายงาน คนในทีมจะอ่านภาพรวมกับตรวจผล ไม่ต้องใช้คำสั่งบอตจัดการงาน",
+                "อ่าน README.md, docs/api-contract.md, รายงานเฟสก่อน และรายละเอียดงานตาม ID ใน bot/config/tasks.json ก่อน ตรวจของเดิมและต่อเติมเฉพาะส่วนที่ขาด เก็บงานของคนอื่นไว้",
                 "",
-                "กติกา: ทำงานทีละ task ตามลำดับ dependency; หาก dependency ยังไม่มีหรือยังไม่ผ่านการตรวจรับ ให้รายงานสิ่งที่ขาดและทำเฉพาะส่วนที่ไม่พึ่งพาก่อน อย่าสร้างผลทดสอบหรือผลโมเดลขึ้นเอง",
-                "รักษาเส้นแบ่ง HTTP_AUTH_BRUTE_FORCE กับ SSH_BRUTE_FORCE ให้ตรงกับแหล่ง log; firewall ของ MVP เป็น app-level simulator; ทุก action ที่บล็อกต้องรอคนอนุมัติ",
-                "ใช้ Qwen 3.5 4B ผ่าน Ollama เป็นโมเดลหลัก วัดการทำงานจริงบน RTX 4060 8GB; Beer เป็นเจ้าของงานเลือก/ปรับ/ประเมินโมเดล และทดลอง fine-tune เฉพาะเมื่อทรัพยากรพอ",
-                "",
-                "## งานในเฟสนี้",
-                "",
+                "งานที่ต้องทำ:",
             ]
             for task in tasks:
-                sections.extend([task_prompt(task), ""])
+                sections.append(f"- {task['id']} {task['title']}: {task['acceptance']}")
             sections.extend([
-                "## รายงานก่อนส่งให้คนตรวจ",
                 "",
-                "1. ไฟล์ที่สร้างหรือแก้ และเหตุผลของการแก้",
-                "2. คำสั่งรันและทดสอบจริง พร้อมผลที่ได้ (ถ้าไม่ได้รันให้ระบุชัด)",
-                "3. หลักฐานตามเกณฑ์ผ่านของแต่ละ task และผลลัพธ์ที่ยังไม่ผ่าน",
-                "4. API/ไฟล์ที่อีก pipeline ต้องใช้ รวมถึงข้อขัดแย้งของ contract",
-                "5. ข้อจำกัดและงานค้าง ห้ามอ้างว่าเสร็จหรือผ่านโดยไม่มีหลักฐาน",
-                "",
-                "ผู้สั่ง AI ต้องอ่าน diff และทดสอบเองก่อนกด /submit และ /selfcheck ใน Discord; ถ้าทำแทน pipeline เพื่อน เจ้าของ pipeline ต้อง /approve อีกครั้ง",
-                "",
+                "Qwen หลัก = qwen3.5:4b ผ่าน Ollama; Beer ดูแลโมเดล Obeto เชื่อม backend HTTP demo กับ SSH log replay ต้องระบุให้ตรง Firewall เป็น app-level simulator และต้องรอคนอนุมัติ",
+                "อ่าน dependency จากแผน ทำส่วนที่พร้อมก่อน ถ้าติดงานเพื่อนให้ระบุสิ่งที่ต้องรอ ไม่สร้างข้อมูลหรือผลทดสอบทดแทน",
+                "รันทดสอบตามเกณฑ์ข้างต้นจริง หากไม่ผ่านให้แก้และรันซ้ำ ห้ามอ้างว่าผ่านถ้าไม่ได้รัน",
+                f"เขียน reports/phase-{phase['id']}-{slug}.md: ทำอะไรแล้ว/ไฟล์ที่แก้/คำสั่งและผลเทส/ผ่านหรือติดอะไร/ต้องส่งต่อเพื่อนอะไร พร้อม commit อ้างอิงถ้ามี",
+                "ปิดงานด้วยสรุปสั้นพร้อมคัดลอกส่ง Discord: เฟสนี้ระบบทำอะไรได้ → ทดสอบอะไรผ่าน → จุดค้าง → คนต้องตรวจอะไร → เฟสถัดไปเริ่มได้หรือยัง ส่งรายงานเป็นข้อความปกติได้เลย",
             ])
-            path = output / f"phase-{phase['id']}-{slug}.md"
-            path.write_text("\n".join(sections), encoding="utf-8")
-    print(f"Exported 10 phase prompts to {output}")
+            content = "\n".join(sections) + "\n"
+            if len(content) + 12 > 2000:
+                raise ValueError(f"Discord prompt exceeds one message: phase {phase['id']} {slug}")
+            (output / f"phase-{phase['id']}-{slug}.md").write_text(content, encoding="utf-8")
+    print("Exported 10 phase prompts; each fits one Discord message")
 
 
 if __name__ == "__main__":

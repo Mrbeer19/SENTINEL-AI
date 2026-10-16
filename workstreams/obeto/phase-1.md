@@ -9,19 +9,11 @@
 - ส่งมอบ: POST /api/events และ GET /api/events
 - เกณฑ์ผ่าน: รับ JSON ที่ valid, บันทึก SQLite, อ่านย้อนหลังได้, invalid input ได้ 422, restart แล้วยังมีข้อมูล
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py B01 | codex exec -
-```
+[Prompt B01](../../prompts/tasks/B01.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py B01 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย
 
 ## B02 · Rule-based detection และ incident lifecycle
 
@@ -29,19 +21,11 @@ python bot/export_task.py B01 | claude -p "Implement the task described in the p
 - ส่งมอบ: ตรวจ auth brute force, SSH brute force และ port scan จาก event ที่ตรงประเภทได้
 - เกณฑ์ผ่าน: สร้าง incident จาก threshold ที่กำหนด, normal traffic ไม่เตือน, event ซ้ำไม่สร้าง incident ซ้ำ; HTTP และ SSH ไม่สับสนกัน
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py B02 | codex exec -
-```
+[Prompt B02](../../prompts/tasks/B02.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py B02 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย
 
 ## B03 · บริการเดโมข้ามสองเครื่อง
 
@@ -49,16 +33,8 @@ python bot/export_task.py B02 | claude -p "Implement the task described in the p
 - ส่งมอบ: demo login/ping พร้อมบันทึก source IP
 - เกณฑ์ผ่าน: เครื่องอื่นใน private LAN เรียกได้; source IP มาจาก connection; login ผิดเข้า event pipeline; จำกัดจำนวนครั้งและไม่ใช้บัญชีจริง
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py B03 | codex exec -
-```
+[Prompt B03](../../prompts/tasks/B03.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py B03 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย

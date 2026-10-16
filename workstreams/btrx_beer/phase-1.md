@@ -9,16 +9,8 @@
 - ส่งมอบ: Dashboard และ incident detail จาก mock data
 - เกณฑ์ผ่าน: สถิติ กราฟ ตาราง incident, severity, evidence และสถานะตรง contract; ไม่มีข้อมูลสุ่มปลอมเป็น backend
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py F01 | codex exec -
-```
+[Prompt F01](../../prompts/tasks/F01.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py F01 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย

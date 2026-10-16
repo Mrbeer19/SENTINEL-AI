@@ -56,6 +56,8 @@ Beer รับผิดชอบโมเดลด้วย: baseline, prompt tu
 
 ## อ่านก่อนแบ่งงาน
 
+วิธีทำงานหลัก: คัดลอก prompt รายเฟสจาก Discord ให้ผู้ช่วยของแต่ละคนลงมือทำและทดสอบ แล้วส่งรายงานสั้นให้ทีม คนตรวจภาพรวมและผลที่ AI ระบุให้ลอง ไม่ต้องใช้คำสั่งบอตรับงานหรือส่งงาน ดูรูปแบบรายงานใน [reports/README.md](reports/README.md)
+
 - [แผนพัฒนาตั้งแต่เริ่มจนพร้อมนำเสนอ](docs/project-plan.md)
 - [Prompt แยกเฟส — เริ่ม Phase 0](prompts/README.md)
 - [API contract ของ MVP](docs/api-contract.md)

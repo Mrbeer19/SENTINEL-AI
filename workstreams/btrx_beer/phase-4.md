@@ -9,19 +9,11 @@
 - ส่งมอบ: UI แสดง backend จริงครบ flow
 - เกณฑ์ผ่าน: ไม่มี fake state ใน demo หลัก; refresh/reconnect ยังถูกต้อง; report และ timeline มาจาก records
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py F04 | codex exec -
-```
+[Prompt F04](../../prompts/tasks/F04.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py F04 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย
 
 ## F05 · UI polish และสไลด์หลักฐานการทำงาน
 
@@ -29,16 +21,8 @@ python bot/export_task.py F04 | claude -p "Implement the task described in the p
 - ส่งมอบ: หน้า UI พร้อมสอบและภาพประกอบ
 - เกณฑ์ผ่าน: จอ projector อ่านได้, responsive, status ชัด, screenshot แสดงจริงไม่ใช่ mock
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py F05 | codex exec -
-```
+[Prompt F05](../../prompts/tasks/F05.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py F05 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย

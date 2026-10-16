@@ -9,16 +9,8 @@
 - ส่งมอบ: ผู้ใช้อนุมัติ/ปฏิเสธและเห็น before/after
 - เกณฑ์ผ่าน: แสดง policy, target, duration; ไม่กดซ้ำ; reject ไม่มี rule; before/after อ้างข้อมูล verification
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py F03 | codex exec -
-```
+[Prompt F03](../../prompts/tasks/F03.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py F03 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย

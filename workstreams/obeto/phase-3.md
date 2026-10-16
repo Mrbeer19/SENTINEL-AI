@@ -9,19 +9,11 @@
 - ส่งมอบ: Approve/Reject และ blocklist
 - เกณฑ์ผ่าน: Reject ไม่สร้าง rule; protected IP บล็อกไม่ได้; approve ซ้ำไม่สร้างซ้ำ; rule หมดอายุได้; audit ครบ
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py B06 | codex exec -
-```
+[Prompt B06](../../prompts/tasks/B06.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py B06 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย
 
 ## B07 · Verification และ realtime events
 
@@ -29,16 +21,8 @@ python bot/export_task.py B06 | claude -p "Implement the task described in the p
 - ส่งมอบ: blocked client ได้ 403 และ WebSocket แจ้งขั้นตอน
 - เกณฑ์ผ่าน: ก่อน approve ping ผ่าน หลัง approve request ใหม่จาก IP เดิมได้ 403; verification บันทึกผลจริง; reconnect อ่าน state ได้
 
-**คำสั่ง AI CLI** — เลือก Codex หรือ Claude และรันในโฟลเดอร์โปรเจกต์:
+**รายละเอียดสำหรับผู้ช่วย** — อ่าน prompt ของงานนี้:
 
-```powershell
-python bot/export_task.py B07 | codex exec -
-```
+[Prompt B07](../../prompts/tasks/B07.md)
 
-หรือ
-
-```powershell
-python bot/export_task.py B07 | claude -p "Implement the task described in the piped input"
-```
-
-**หน้าที่ของคนสั่ง AI:** อ่าน diff, ทดสอบเกณฑ์ผ่าน, ใช้ `/submit` พร้อมหลักฐาน แล้ว `/selfcheck` ด้วยตนเอง
+**ส่งงาน:** ให้ AI ทำและรันทดสอบจริง เขียนรายงานพร้อมสรุปสำหรับส่ง Discord คนอ่านภาพรวมและลองตรวจตามรายงานได้เลย
