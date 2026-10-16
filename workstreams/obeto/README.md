@@ -1,0 +1,17 @@
+# obeto — Backend / Security / Agent Integration pipeline
+
+ไฟล์ในโฟลเดอร์นี้สร้างจาก `bot/config/tasks.json` เพื่อให้อ่านงานแยกตามคนและ phase ได้ง่าย
+ถ้าแก้แผนงานหลัก ให้รัน `python bot/generate_workstreams.py` เพื่อสร้างไฟล์ใหม่
+
+## ลำดับ phase
+
+- [Phase 0 · Contract & Setup](phase-0.md): B00
+- [Phase 1 · Observe & Detect](phase-1.md): B01, B02, B03
+- [Phase 2 · Investigate & Plan](phase-2.md): B04, B05
+- [Phase 3 · Approve & Defend](phase-3.md): B06, B07
+- [Phase 4 · Integrate & Present](phase-4.md): B08, B09
+
+## รับงานแทนเพื่อน
+
+เมื่ออีกคนไม่ว่าง ใช้ `/assign` หรือ `/claim` รับงานข้าม pipeline ได้ คนที่สั่ง AI ต้องตรวจงานเอง
+และเจ้าของ pipeline ตรวจรับอีกครั้งผ่าน `/approve` ก่อน task เป็น done

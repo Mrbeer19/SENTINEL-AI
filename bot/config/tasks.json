@@ -1,0 +1,254 @@
+{
+  "project": "SENTINEL AI",
+  "phases": [
+    {
+      "id": 0,
+      "name": "Contract & Setup",
+      "goal": "ตกลงข้อมูลกลางและเปิดโครงโปรเจกต์"
+    },
+    {
+      "id": 1,
+      "name": "Observe & Detect",
+      "goal": "รับ event จริง สร้าง incident และแสดงบน UI"
+    },
+    {
+      "id": 2,
+      "name": "Investigate & Plan",
+      "goal": "AI อ่านหลักฐานและเสนอแผนที่ตรวจสอบได้"
+    },
+    {
+      "id": 3,
+      "name": "Approve & Defend",
+      "goal": "คนอนุมัติ แล้วตัวจำลองป้องกันและพิสูจน์ผล"
+    },
+    {
+      "id": 4,
+      "name": "Integrate & Present",
+      "goal": "เชื่อมระบบ ทดสอบเชิงตัวเลข และซ้อมเดโม"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "B00",
+      "track": "backend",
+      "phase": 0,
+      "title": "กำหนด Event, Incident และ API contract",
+      "depends_on": [],
+      "deliverable": "docs/api-contract.md และตัวอย่าง JSON",
+      "acceptance": "Schema ครอบคลุม security event, incident, proposal, approval, error และ WebSocket event; frontend ใช้ mock ตาม contract ได้",
+      "prompt": "อ่าน SENTINEL AI.txt ก่อน สร้าง docs/api-contract.md สำหรับ MVP ของ SENTINEL AI ระบุ field, type, enum, status transition, endpoint request/response/error และตัวอย่าง JSON ที่ backend/frontend ใช้ตรงกัน ครอบคลุม event→incident→analysis→proposal→approval→firewall→verification แยก HTTP_AUTH_BRUTE_FORCE สำหรับเดโม login กับ SSH_BRUTE_FORCE สำหรับ SSH log จริง ห้ามอ้าง HTTP demo ว่าเป็น SSH จริง ห้ามเพิ่ม scope เกิน MVP สรุปจุดที่ยังต้องตกลงและวิธีตรวจงาน"
+    },
+    {
+      "id": "F00",
+      "track": "frontend",
+      "phase": 0,
+      "title": "สร้าง React shell และ navigation",
+      "depends_on": [],
+      "deliverable": "frontend เปิดได้และสลับหน้าได้",
+      "acceptance": "มี Dashboard, Incidents, Agent, Firewall, Simulator, Reports เป็นหน้าว่าง/placeholder ที่ชัด; responsive; ไม่สมมติ API schema ก่อน B00",
+      "prompt": "อ่าน SENTINEL AI.txt และ mockup/index.html เพื่อดูแนวภาพ สร้าง frontend React+Vite shell พร้อม navigation สำหรับ Dashboard, Incidents, AI Agent, Firewall, Simulator, Reports ทำ layout responsive แบบ SOC สีเข้ม ใช้ placeholder ที่ระบุชัด ไม่สร้าง mock API schema ก่อน B00 สรุปวิธีรันและไฟล์ที่เปลี่ยน"
+    },
+    {
+      "id": "M00",
+      "track": "frontend",
+      "phase": 0,
+      "title": "Beer สำรวจ Local Model และสร้าง baseline",
+      "depends_on": [],
+      "deliverable": "docs/model-baseline.md และ model config ที่เลือก",
+      "acceptance": "รัน Ollama บนเครื่องได้จริง; วัด latency/RAM/VRAM; ทดสอบ structured output และ tool calling; ระบุ tag โมเดลที่ใช้",
+      "prompt": "คุณรับผิดชอบโมเดล AI ของ SENTINEL AI อ่าน SENTINEL AI.txt ตรวจ GPU/VRAM จริง แล้วทดลอง Qwen 3.5 4B ด้วย Ollama tag qwen3.5:4b ที่ผู้ใช้เลือกเป็นโมเดลหลัก วัด latency, RAM/VRAM, structured JSON validity และ tool calling บนตัวอย่าง incident เดียวกัน บันทึก model tag, prompt, hardware, วิธีทำซ้ำ และข้อจำกัดใน docs/model-baseline.md ไม่ฝึกโมเดลจากศูนย์"
+    },
+    {
+      "id": "B01",
+      "track": "backend",
+      "phase": 1,
+      "title": "FastAPI, SQLite และ event ingestion",
+      "depends_on": [
+        "B00"
+      ],
+      "deliverable": "POST /api/events และ GET /api/events",
+      "acceptance": "รับ JSON ที่ valid, บันทึก SQLite, อ่านย้อนหลังได้, invalid input ได้ 422, restart แล้วยังมีข้อมูล",
+      "prompt": "อ่าน docs/api-contract.md สร้าง FastAPI backend, SQLite schema และ POST/GET /api/events ตาม contract ใช้ Pydantic validate timestamp, IP, event type บันทึกข้อมูลจริงและมี health endpoint เพิ่ม tests ที่พิสูจน์การบันทึกและอ่านย้อนหลัง ระบุวิธีรันและผลทดสอบ"
+    },
+    {
+      "id": "B02",
+      "track": "backend",
+      "phase": 1,
+      "title": "Rule-based detection และ incident lifecycle",
+      "depends_on": [
+        "B01"
+      ],
+      "deliverable": "ตรวจ auth brute force, SSH brute force และ port scan จาก event ที่ตรงประเภทได้",
+      "acceptance": "สร้าง incident จาก threshold ที่กำหนด, normal traffic ไม่เตือน, event ซ้ำไม่สร้าง incident ซ้ำ; HTTP และ SSH ไม่สับสนกัน",
+      "prompt": "อ่าน docs/api-contract.md และ backend ปัจจุบัน ทำ detection engine สำหรับ HTTP auth brute force, SSH brute force และ port scan จาก event type ที่ตรงกัน กำหนด window/threshold เป็น config ชัดเจน เชื่อม event ingestion→incident SQLite ป้องกัน duplicate incident และเขียน tests สำหรับ positive, normal traffic, boundary, duplicate และการแยก HTTP/SSH อธิบาย precision/recall ที่จะวัดได้"
+    },
+    {
+      "id": "F01",
+      "track": "frontend",
+      "phase": 1,
+      "title": "Dashboard และ Incident UI",
+      "depends_on": [
+        "F00",
+        "B00"
+      ],
+      "deliverable": "Dashboard และ incident detail จาก mock data",
+      "acceptance": "สถิติ กราฟ ตาราง incident, severity, evidence และสถานะตรง contract; ไม่มีข้อมูลสุ่มปลอมเป็น backend",
+      "prompt": "อ่าน docs/api-contract.md และ frontend ปัจจุบัน สร้าง mock API adapter ที่ตรง contract แล้วทำ Dashboard กับ Incident list/detail มี stats, recent incidents, filters, evidence, loading/error/empty states เตรียมจุดสลับไป real API อธิบายวิธีตรวจ UI"
+    },
+    {
+      "id": "B03",
+      "track": "backend",
+      "phase": 1,
+      "title": "บริการเดโมข้ามสองเครื่อง",
+      "depends_on": [
+        "B01",
+        "B02"
+      ],
+      "deliverable": "demo login/ping พร้อมบันทึก source IP",
+      "acceptance": "เครื่องอื่นใน private LAN เรียกได้; source IP มาจาก connection; login ผิดเข้า event pipeline; จำกัดจำนวนครั้งและไม่ใช้บัญชีจริง",
+      "prompt": "เพิ่ม demo-only HTTP login และ ping endpoint สำหรับการสาธิตสองเครื่องใน private LAN อ่าน source IP จาก request connection ไม่เชื่อ client-supplied IP สร้าง failed-login event ผ่าน pipeline เดียวกับระบบ ระบุชัดว่าเป็น HTTP auth demo ไม่ใช่ SSH จริง ใส่ขอบเขตใช้งานเฉพาะ private LAN, rate/attempt cap และ tests"
+    },
+    {
+      "id": "B04",
+      "track": "backend",
+      "phase": 2,
+      "title": "เชื่อม Ollama และ structured analysis",
+      "depends_on": [
+        "B02",
+        "M00"
+      ],
+      "deliverable": "AI analysis JSON ที่ validate ได้",
+      "acceptance": "Ollama วิเคราะห์จาก incident evidence; output ผ่าน schema; timeout/error มีสถานะชัด",
+      "prompt": "อ่าน docs/api-contract.md และ docs/model-baseline.md จาก Beer สร้าง Ollama integration สำหรับวิเคราะห์ incident จากหลักฐานในฐานข้อมูล ใช้ model config ที่เปลี่ยนรุ่นได้ ไม่ hardcode tag บังคับ structured output ผ่าน Pydantic เก็บ model name, evidence, latency และ error/timeout ห้ามให้ AI เรียก shell หรือแก้ firewall โดยตรง เพิ่ม tests ด้วย mock model และเชื่อมผล baseline ที่ Beer เลือก"
+    },
+    {
+      "id": "B05",
+      "track": "backend",
+      "phase": 2,
+      "title": "Agent tool calling และ execution trace",
+      "depends_on": [
+        "B04"
+      ],
+      "deliverable": "Agent เรียก read-only tools จริง",
+      "acceptance": "มี get_incident_logs/get_ip_activity/get_firewall_status และ trace input/output; คำตอบอ้างหลักฐานจริง",
+      "prompt": "ทำ Agent workflow โดยให้ Ollama เลือกเรียก read-only tools เพื่ออ่าน incident logs, IP activity, related incidents และ firewall status บันทึกทุก tool call และผลลง agent trace จำกัด arguments และจำนวนรอบ ปฏิเสธ tool ที่ไม่อยู่ allowlist ใช้ LangGraph เมื่อมีประโยชน์กับ state/trace จริง เพิ่ม tests สำหรับ tool selection, invalid arguments และ timeout"
+    },
+    {
+      "id": "F02",
+      "track": "frontend",
+      "phase": 2,
+      "title": "Agent Workflow และ evidence viewer",
+      "depends_on": [
+        "F01",
+        "B00"
+      ],
+      "deliverable": "หน้า Agent แสดง node และ tool trace",
+      "acceptance": "สถานะ pending/running/waiting/completed/failed และหลักฐาน/คำแนะนำอ่านได้; รองรับ error",
+      "prompt": "อ่าน docs/api-contract.md ทำ AI Agent page แสดง workflow node, tool calls, evidence, analysis, recommendation และเวลาที่ใช้ จาก mock API ที่ตรง contract แยกข้อมูลจริงออกจากข้อความ AI ชัดเจน รองรับ waiting approval, failed/timeout และโหลดใหม่แล้วสถานะไม่หาย"
+    },
+    {
+      "id": "M01",
+      "track": "frontend",
+      "phase": 2,
+      "title": "Beer ปรับ prompt และทดลอง fine-tune ถ้าทรัพยากรพอ",
+      "depends_on": [
+        "M00",
+        "B02"
+      ],
+      "deliverable": "docs/model-evaluation.md, dataset แยก train/test และ model artifact ถ้า fine-tune สำเร็จ",
+      "acceptance": "เปรียบเทียบ baseline กับ prompt-tuned และ fine-tuned (ถ้าทำได้) บน held-out cases; รายงาน accuracy, JSON validity, tool selection, latency/VRAM; ไม่อ้างผลถ้าไม่ได้รัน",
+      "prompt": "คุณเป็นเจ้าของงานโมเดลของ SENTINEL AI ใช้ incident examples ที่มี label ชัด แยก train/validation/test ก่อนปรับ เริ่มจาก prompt tuning และ structured/tool calling benchmark จาก M00 จากนั้นประเมินว่าฮาร์ดแวร์ RTX 4060/RAM 16GB รองรับ fine-tuning แบบประหยัดทรัพยากรหรือไม่ ถ้ารองรับให้ทดลอง fine-tune ขนาดเล็กและเก็บ model artifact/วิธีทำซ้ำ ถ้าไม่รองรับให้บันทึกเหตุผลเชิงตัวเลขและใช้ prompt-tuned baseline เปรียบเทียบผลบน held-out cases รายงาน accuracy, JSON validity, tool choice, latency และ VRAM ใน docs/model-evaluation.md ห้ามใช้ test set ปรับโมเดล ไม่ส่ง evaluation labels หรือ expected answer ให้โมเดลเป็น input ตอนวัดผล"
+    },
+    {
+      "id": "B06",
+      "track": "backend",
+      "phase": 3,
+      "title": "Policy, approval และ firewall simulator",
+      "depends_on": [
+        "B02",
+        "B05"
+      ],
+      "deliverable": "Approve/Reject และ blocklist",
+      "acceptance": "Reject ไม่สร้าง rule; protected IP บล็อกไม่ได้; approve ซ้ำไม่สร้างซ้ำ; rule หมดอายุได้; audit ครบ",
+      "prompt": "อ่าน docs/api-contract.md ทำ defense proposal state, policy validator, approve/reject API และ firewall simulator ใน SQLite Backend เป็นผู้ execute หลัง approval เท่านั้น ตรวจ protected IP, action enum, IP validity, duration, idempotency และ audit log ห้ามแก้ Windows Firewall จริง เพิ่ม tests สำหรับ approve, reject, duplicate, protected IP และ expiry"
+    },
+    {
+      "id": "B07",
+      "track": "backend",
+      "phase": 3,
+      "title": "Verification และ realtime events",
+      "depends_on": [
+        "B03",
+        "B06"
+      ],
+      "deliverable": "blocked client ได้ 403 และ WebSocket แจ้งขั้นตอน",
+      "acceptance": "ก่อน approve ping ผ่าน หลัง approve request ใหม่จาก IP เดิมได้ 403; verification บันทึกผลจริง; reconnect อ่าน state ได้",
+      "prompt": "เชื่อม firewall simulator กับ demo ping/login endpoint ให้ rule active จาก source IP มีผลจริงในระดับแอป บันทึก verification passed เฉพาะเมื่อมี request ใหม่จาก client IP เดิมหลังอนุมัติแล้วถูก 403 จริง ไม่สรุปผ่านจากการเช็ก policy อย่างเดียว เพิ่ม WebSocket event สำหรับ incident/agent/approval/firewall/verification ตาม contract มี tests end-to-end และอธิบายว่าการบล็อกนี้เป็น app-level"
+    },
+    {
+      "id": "F03",
+      "track": "frontend",
+      "phase": 3,
+      "title": "Approval, Firewall และ Simulator UI",
+      "depends_on": [
+        "F02",
+        "B00"
+      ],
+      "deliverable": "ผู้ใช้อนุมัติ/ปฏิเสธและเห็น before/after",
+      "acceptance": "แสดง policy, target, duration; ไม่กดซ้ำ; reject ไม่มี rule; before/after อ้างข้อมูล verification",
+      "prompt": "อ่าน docs/api-contract.md ทำ UI สำหรับ defense proposal approval/rejection, firewall rules, expiry, attack scenario start/stop และ before/after verification ใช้ mock API ที่ตรง contract ก่อน แล้วเตรียมเชื่อมของจริง ต้องแสดง loading/error และ disable ปุ่มระหว่างส่งคำขอ"
+    },
+    {
+      "id": "B08",
+      "track": "backend",
+      "phase": 4,
+      "title": "Dataset, metrics และ incident report",
+      "depends_on": [
+        "B07",
+        "M01"
+      ],
+      "deliverable": "test results และ report API",
+      "acceptance": "มี normal/attack labeled data, precision/recall/F1, latency, verification และ report จาก records จริง",
+      "prompt": "รวมผลโมเดลที่ Beer ประเมินใน docs/model-evaluation.md กับการทดสอบระบบ สร้างชุดทดสอบ labeled normal, brute force, port scan ที่ไม่ปะปนกับข้อมูลใช้ตั้งกฎ วัด precision/recall/F1/false positive และ AI latency/tool success rate สร้าง incident report จาก event→analysis→approval→verification records จริง บันทึกผลใน docs/test-results.md พร้อมวิธีทำซ้ำ"
+    },
+    {
+      "id": "F04",
+      "track": "frontend",
+      "phase": 4,
+      "title": "Real API/WebSocket integration และ Reports",
+      "depends_on": [
+        "F03",
+        "B07",
+        "B08"
+      ],
+      "deliverable": "UI แสดง backend จริงครบ flow",
+      "acceptance": "ไม่มี fake state ใน demo หลัก; refresh/reconnect ยังถูกต้อง; report และ timeline มาจาก records",
+      "prompt": "แทน mock API ใน demo หลักด้วย FastAPI จริง เชื่อม WebSocket พร้อม reconnect/refetch state ทำ Reports และ timeline จากข้อมูล backend ตรวจ flow start simulation→incident→AI→approval→block→verify เพิ่ม loading/error และอธิบาย endpoint mismatch ที่พบ"
+    },
+    {
+      "id": "B09",
+      "track": "backend",
+      "phase": 4,
+      "title": "ซ้อมเดโมข้ามเครื่องและแก้จุดล้มเหลว",
+      "depends_on": [
+        "B08",
+        "F04"
+      ],
+      "deliverable": "runbook เดโมและผลซ้อม",
+      "acceptance": "สองเครื่องผ่าน private LAN; source IP ถูก; approve แล้ว blocked; reject ไม่ blocked; offline model fallback ระบุชัด",
+      "prompt": "ทดสอบ SENTINEL AI บน private LAN สองเครื่องตามเส้น demo จริง ตรวจ request source IP, event, incident, AI tool trace, approval, app-level block และ verification บันทึกคำสั่งรัน วิธี reset, expected output และ troubleshooting ลง docs/demo-runbook.md แก้เฉพาะ bug ที่ทำให้ flow หลักไม่ผ่าน"
+    },
+    {
+      "id": "F05",
+      "track": "frontend",
+      "phase": 4,
+      "title": "UI polish และสไลด์หลักฐานการทำงาน",
+      "depends_on": [
+        "F04"
+      ],
+      "deliverable": "หน้า UI พร้อมสอบและภาพประกอบ",
+      "acceptance": "จอ projector อ่านได้, responsive, status ชัด, screenshot แสดงจริงไม่ใช่ mock",
+      "prompt": "ตรวจและเก็บงาน UI ของ SENTINEL AI สำหรับพรีเซ็น: hierarchy, contrast, projector readability, responsive, empty/error/waiting states จับภาพหน้าจอจาก backend จริงของ flow เดโม จัดสรุปหน้าที่แต่ละหน้ากับภาพสำหรับสไลด์ ไม่เพิ่ม feature P2"
+    }
+  ]
+}

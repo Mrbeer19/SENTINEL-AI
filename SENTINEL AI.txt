@@ -1,0 +1,1502 @@
+# 🛡️ SENTINEL AI
+## Autonomous Cyber Defense & Intelligent Security Operations Center
+
+**ระบบเฝ้าระวัง วิเคราะห์ และตอบสนองต่อภัยคุกคามทางไซเบอร์ด้วย Local Agentic AI**
+
+**Project Type:** AI Systems / Agentic AI / Cybersecurity / Network Automation  
+**Course:** Advanced Topics in Computer Software  
+**Team Members:** 2 คน  
+**Development:** Flexible Task-Based Development  
+**Final Examination:** 6 พฤศจิกายน 2569  
+**Platform:** Windows 11 + Local AI + Web Application  
+**Hardware:** RTX 4060 / RAM 16GB  
+**Project Motto:** *Observe. Reason. Defend. Verify.*
+
+---
+
+# 1. Project Overview — โปรเจกต์ของเราคืออะไร?
+
+เราจะพัฒนาระบบ **SENTINEL AI** ซึ่งเป็นระบบจำลองศูนย์ปฏิบัติการรักษาความปลอดภัยทางไซเบอร์ หรือ Security Operations Center (SOC) ที่ใช้ปัญญาประดิษฐ์เป็นแกนหลักในการวิเคราะห์เหตุการณ์และวางแผนตอบสนองต่อภัยคุกคาม
+
+แนวคิดคือการสร้าง **AI Security Engineer** ที่สามารถทำงานร่วมกับระบบตรวจจับภัยคุกคามได้จริง
+
+โดยปกติเมื่อระบบเครือข่ายเกิดเหตุการณ์ผิดปกติ เช่น มีคนพยายาม Login ซ้ำ ๆ หรือมีการสแกนพอร์ต ผู้ดูแลระบบจะต้องตรวจสอบ Logs เอง วิเคราะห์ว่าเป็นการโจมตีหรือไม่ และตัดสินใจว่าควรป้องกันอย่างไร
+
+SENTINEL AI จะช่วยทำงานในกระบวนการดังกล่าว
+
+### ความสามารถหลัก
+
+1. ตรวจสอบ Network Logs และ Security Events
+2. ตรวจจับพฤติกรรมที่อาจเป็นภัยคุกคาม
+3. ใช้ Local AI วิเคราะห์หลักฐานและสาเหตุของเหตุการณ์
+4. ใช้ AI Agent เรียกเครื่องมือเพื่อสืบค้นข้อมูลเพิ่มเติม
+5. ให้ AI เสนอแนวทางป้องกัน
+6. ให้ผู้ดูแลอนุมัติหรือปฏิเสธ Action
+7. ดำเนินการป้องกันผ่าน Firewall Simulator
+8. ตรวจสอบว่าการป้องกันสำเร็จหรือไม่
+9. บันทึกประวัติและสร้างรายงานเหตุการณ์
+10. แสดงกระบวนการทั้งหมดผ่าน Real-time Dashboard
+
+**สิ่งที่แตกต่างจาก Chatbot ทั่วไป คือ AI สามารถเลือกใช้เครื่องมือและทำงานเป็น Workflow ได้ ไม่ใช่เพียงรับ Prompt แล้วตอบข้อความกลับมา**
+
+---
+
+# 2. Problem Statement — ปัญหาที่ต้องการแก้ไข
+
+ระบบรักษาความปลอดภัยเครือข่ายในองค์กรต้องรับข้อมูลจำนวนมาก เช่น
+
+- Authentication Logs
+- Firewall Logs
+- Network Connection Logs
+- Server Logs
+- Web Application Logs
+- Security Alerts
+
+ข้อมูลเหล่านี้มีประโยชน์ แต่ผู้ดูแลระบบอาจต้องใช้เวลาในการตรวจสอบและเชื่อมโยงเหตุการณ์
+
+ตัวอย่างเช่น
+
+```text
+12:30:01 Failed SSH Login from 192.0.2.25
+12:30:02 Failed SSH Login from 192.0.2.25
+12:30:03 Failed SSH Login from 192.0.2.25
+12:30:04 Failed SSH Login from 192.0.2.25
+...
+```
+
+หากมี Logs หลายพันรายการ ผู้ดูแลระบบอาจไม่สามารถตรวจสอบทุกเหตุการณ์ได้ทันที
+
+### ปัญหาหลัก
+
+**1. Information Overload**
+
+มี Logs จำนวนมาก ทำให้ตรวจสอบเหตุการณ์ที่สำคัญได้ยาก
+
+**2. Manual Investigation**
+
+ผู้ดูแลต้องค้นหาและวิเคราะห์หลักฐานจากหลายแหล่งด้วยตัวเอง
+
+**3. Delayed Incident Response**
+
+การวิเคราะห์และดำเนินการตอบสนองอาจใช้เวลานาน
+
+**4. Lack of Explainability**
+
+ระบบแจ้งเตือนทั่วไปอาจไม่ได้อธิบายเหตุผลหรือเชื่อมโยงหลักฐานอย่างละเอียด
+
+**5. Complex Security Operations**
+
+การตรวจสอบข้อมูล สร้างแผนป้องกัน และดำเนินการผ่านเครื่องมือหลายส่วนมีความซับซ้อน
+
+### แนวทางแก้ไข
+
+ใช้ Agentic AI ทำหน้าที่ช่วยสืบสวน วิเคราะห์ และเสนอการตอบสนอง โดยมีระบบตรวจจับแบบกำหนดกฎเป็นด่านแรก และมีมนุษย์ควบคุมการดำเนินการที่มีผลกระทบต่อระบบ
+
+---
+
+# 3. Objectives — วัตถุประสงค์
+
+1. พัฒนาระบบตรวจจับพฤติกรรมผิดปกติจาก Security Logs
+2. ประยุกต์ใช้ Local Large Language Model ในการวิเคราะห์เหตุการณ์ด้าน Cybersecurity
+3. พัฒนา Agentic AI ที่สามารถเลือกเรียกใช้เครื่องมือเพื่อสืบสวนเหตุการณ์
+4. สร้างระบบแนะนำแนวทางป้องกันภัยคุกคาม
+5. พัฒนาระบบอนุมัติการตอบสนองต่อเหตุการณ์
+6. สร้าง Firewall Simulator สำหรับทดสอบการป้องกัน
+7. พัฒนา Web Dashboard สำหรับติดตามเหตุการณ์แบบ Real-time
+8. ประเมินความถูกต้อง ความเร็ว และประสิทธิภาพของระบบ
+
+---
+
+# 4. Project Scope — ขอบเขตของระบบ
+
+## 4.1 สิ่งที่ระบบทำได้
+
+- รับ Security Logs ในรูปแบบ JSON
+- ตรวจจับ Brute Force Attack
+- ตรวจจับ Port Scanning
+- ตรวจสอบ Suspicious Login
+- วิเคราะห์ Traffic Anomaly แบบพื้นฐาน
+- ประเมินระดับความรุนแรง
+- ใช้ AI วิเคราะห์ Incidents
+- ใช้ Agent เรียกเครื่องมือสืบค้นหลักฐาน
+- เสนอ Defense Actions
+- อนุมัติหรือปฏิเสธคำแนะนำ
+- จำลองการ Block IP
+- ตรวจสอบผลหลัง Block
+- แสดงข้อมูลแบบ Real-time
+- บันทึกประวัติ Incident
+- สร้าง Incident Reports
+
+## 4.2 สิ่งที่ยังไม่ทำ
+
+- ไม่ป้องกันการโจมตีทุกประเภท
+- ไม่พัฒนาระบบ IPS ระดับองค์กร
+- ไม่สร้าง Antivirus
+- ไม่ฝึก LLM ใหม่จากศูนย์
+- ไม่โจมตีระบบภายนอก
+- ไม่เปิดให้ AI รัน Shell Commands ได้อย่างอิสระ
+- ไม่แก้ Firewall ของเครือข่ายจริงใน MVP
+- ไม่ใช้ AI หลายโมเดลพร้อมกันจนเกินทรัพยากรเครื่อง
+
+ระบบจะใช้ **Controlled Simulation Environment** เพื่อให้สามารถสาธิตและทดสอบได้อย่างปลอดภัย
+
+---
+
+# 5. Technology Stack
+
+## 5.1 Hardware
+
+| Component | Specification |
+|---|---|
+| Operating System | Windows 11 |
+| CPU | ใช้ CPU ของเครื่องที่มี |
+| RAM | 16GB |
+| GPU | NVIDIA RTX 4060 |
+| VRAM | ตรวจสอบรุ่นจริง (Desktop มักเป็น 8GB) |
+| AI Runtime | Ollama |
+| Deployment | Localhost |
+
+## 5.2 Software
+
+| Layer | Technology |
+|---|---|
+| Frontend | React + Vite |
+| Styling | Tailwind CSS |
+| Dashboard Charts | Recharts |
+| Frontend Routing | React Router |
+| Backend | Python + FastAPI |
+| Real-time | WebSocket |
+| Database | SQLite |
+| Local AI | Ollama |
+| LLM | Qwen 3.5 4B หรือรุ่น 4B ที่รองรับ Tool Calling |
+| Agent Framework | LangGraph |
+| AI Structured Output | Pydantic |
+| Threat Detection | Python Rule-based Detection |
+| Local RAG | ChromaDB (Optional) |
+| AI Embeddings | Local Embedding Model (Optional) |
+| Testing | Pytest |
+| Version Control | Git + GitHub |
+
+**หมายเหตุ:** ก่อนเริ่มพัฒนาต้องทดสอบว่าโมเดลที่เลือกมี Ollama Tag ที่ใช้งานได้จริงและทำ Tool Calling ได้เสถียร หากไม่เหมาะสมให้เปลี่ยนเป็นโมเดล Qwen ขนาดใกล้เคียงกัน
+
+---
+
+# 6. ทำไมถึงเลือก Local AI?
+
+แทนที่จะเรียก OpenAI API หรือ Gemini API เราจะใช้โมเดลที่ดาวน์โหลดมารันบนเครื่องตัวเอง
+
+### ข้อดี
+
+- ไม่ต้องจ่ายค่า API ตามจำนวน Token
+- ไม่ต้องส่ง Logs ไปยังผู้ให้บริการ Cloud AI
+- รองรับการทำงาน Offline
+- สามารถควบคุมโมเดลและการตั้งค่าเองได้
+- เหมาะกับการศึกษา Local AI Deployment
+- สามารถทดสอบ Performance บน GPU ได้จริง
+
+### ข้อจำกัด
+
+- ต้องใช้ RAM และ VRAM
+- AI ขนาดเล็กอาจวิเคราะห์ผิดพลาด
+- มีข้อจำกัดด้าน Context Length
+- Tool Calling อาจไม่ถูกต้องทุกครั้ง
+- ต้องออกแบบ Error Handling และ Validation
+
+ด้วยเหตุนี้เราจะไม่ให้ LLM เป็นตัวตัดสินใจทุกอย่าง แต่จะแยก Detection Engine และ Policy Validation ออกจาก AI
+
+---
+
+# 7. System Architecture
+
+```text
+┌───────────────────────────────────────────────┐
+│           SENTINEL AI FRONTEND                │
+│                                               │
+│  Dashboard | Incidents | AI Agent | Firewall  │
+│  Simulator | Reports | Settings               │
+│                                               │
+│         React + Tailwind + Recharts           │
+└──────────────────────┬────────────────────────┘
+                       │
+                REST / WebSocket
+                       │
+┌──────────────────────▼────────────────────────┐
+│              FASTAPI BACKEND                  │
+│                                               │
+│  API Routing                                  │
+│  Authentication / Approval                    │
+│  Event Management                             │
+│  Incident Management                          │
+│  Real-time Event Broadcasting                 │
+└───────────────┬───────────────────────────────┘
+                │
+    ┌───────────┼───────────────┐
+    │           │               │
+    ▼           ▼               ▼
+┌────────┐ ┌───────────┐ ┌──────────────┐
+│SQLite  │ │Detection  │ │Attack        │
+│Database│ │Engine     │ │Simulator     │
+└────────┘ └─────┬─────┘ └──────────────┘
+                 │
+                 ▼
+        ┌───────────────────┐
+        │ Security Incident │
+        └─────────┬─────────┘
+                  │
+                  ▼
+        ┌─────────────────────────┐
+        │      LOCAL AI ENGINE    │
+        │                         │
+        │ Ollama + Qwen + LangGraph│
+        └────────────┬────────────┘
+                     │
+                     ▼
+          ┌─────────────────────┐
+          │ Investigation Agent │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Threat Analysis     │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Defense Planning    │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Policy Validation   │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Human Approval      │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Firewall Simulator  │
+          └─────────┬───────────┘
+                    │
+                    ▼
+          ┌─────────────────────┐
+          │ Result Verification │
+          └─────────┬───────────┘
+                    │
+                    ▼
+             Audit + Dashboard
+```
+
+## หลักการออกแบบระบบ
+
+แบ่งออกเป็น 4 Layer
+
+**1. Presentation Layer**
+
+รับผิดชอบ UI และการแสดงผล
+
+**2. Application Layer**
+
+รับผิดชอบ API, Database, Events และ Business Logic
+
+**3. Intelligence Layer**
+
+รับผิดชอบ AI Reasoning, Agent Workflow และ Tool Calling
+
+**4. Security Execution Layer**
+
+รับผิดชอบการตรวจสอบสิทธิ์ การอนุมัติ และการดำเนินการผ่าน Firewall Simulator
+
+---
+
+# 8. End-to-End Workflow
+
+ระบบทำงานตามกระบวนการ
+
+**Observe → Detect → Investigate → Reason → Plan → Approve → Defend → Verify**
+
+### 1. Observe
+
+ระบบรับ Security Events จาก Log Simulator หรือแหล่งข้อมูลที่รองรับ
+
+### 2. Detect
+
+Detection Engine วิเคราะห์รูปแบบ Logs และสร้าง Alert เมื่อพบเหตุการณ์ผิดปกติ
+
+### 3. Investigate
+
+AI Agent เรียกเครื่องมือเพื่อรวบรวมข้อมูลเพิ่มเติม
+
+### 4. Reason
+
+LLM วิเคราะห์หลักฐานและจำแนกประเภทเหตุการณ์
+
+### 5. Plan
+
+AI เสนอ Defense Action พร้อมเหตุผลประกอบ
+
+### 6. Approve
+
+ผู้ดูแลตรวจสอบแผนและอนุมัติหรือปฏิเสธ
+
+### 7. Defend
+
+Backend ดำเนินการตาม Action ที่อนุมัติผ่าน Firewall Simulator
+
+### 8. Verify
+
+ระบบทดสอบผลการป้องกันและบันทึก Incident Report
+
+---
+
+# 9. Local Agentic AI Engine
+
+นี่คือหัวใจสำคัญที่สุดของงาน
+
+เราไม่ได้ใช้ AI แบบ Chat Completion อย่างเดียว แต่จะให้โมเดลสามารถเรียกใช้ Tools เพื่อค้นหาข้อมูลและดำเนินงานตามขั้นตอน
+
+## 9.1 Agent Architecture
+
+ใช้ LangGraph สร้าง Workflow ที่ประกอบด้วย
+
+- Investigation Node
+- Threat Analysis Node
+- Defense Planning Node
+- Approval Node
+- Execution Node
+- Verification Node
+
+บทบาทเหล่านี้สามารถใช้ LLM โมเดลเดียวกันตามลำดับ เพื่อลดการใช้ VRAM
+
+## 9.2 Investigation Agent
+
+หน้าที่:
+
+- ตรวจสอบ Incident
+- ดึง Logs ที่เกี่ยวข้อง
+- วิเคราะห์ IP Activity
+- ค้นหาเหตุการณ์ที่เชื่อมโยงกัน
+- ตรวจสอบสถานะ Firewall
+- ส่ง Evidence ให้ Analysis Node
+
+ตัวอย่าง Tools:
+
+```python
+get_incident_logs(incident_id)
+
+get_ip_activity(ip_address)
+
+get_failed_login_count(ip_address)
+
+get_related_incidents(ip_address)
+
+get_firewall_status(ip_address)
+```
+
+## 9.3 Threat Analysis Agent
+
+AI วิเคราะห์
+
+- ประเภทภัยคุกคาม
+- หลักฐานประกอบ
+- ระดับความเสี่ยง
+- ผลกระทบที่อาจเกิดขึ้น
+- ความน่าเชื่อถือของข้อสรุป
+- ข้อมูลเพิ่มเติมที่ควรตรวจสอบ
+
+ตัวอย่าง Output:
+
+```json
+{
+  "incident_id": "INC-0001",
+  "threat_type": "SSH_BRUTE_FORCE",
+  "severity": "HIGH",
+  "source_ip": "192.0.2.25",
+  "evidence": [
+    "35 failed logins within 60 seconds",
+    "Repeated attempts from same source"
+  ],
+  "recommended_action": "TEMP_BLOCK_IP",
+  "requires_approval": true
+}
+```
+
+## 9.4 Defense Planning Agent
+
+เสนอ Action ที่อนุญาต เช่น
+
+| Action | ความหมาย |
+|---|---|
+| `MONITOR` | เฝ้าติดตาม |
+| `INVESTIGATE` | ตรวจสอบเพิ่มเติม |
+| `BLOCK_IP` | บล็อก IP |
+| `TEMP_BLOCK_IP` | บล็อกชั่วคราว |
+| `NO_ACTION` | ไม่ดำเนินการ |
+
+ทุก Action ต้องผ่าน Policy Validator ก่อนส่งให้ผู้ดูแลพิจารณา
+
+## 9.5 Execution & Verification
+
+AI สร้างแผน แต่ Backend เป็นผู้ดำเนินการจริงหลังอนุมัติ
+
+ขั้นตอน:
+
+1. ตรวจสอบ Action Schema
+2. ตรวจสอบ IP และสิทธิ์
+3. ตรวจสอบ Protected Targets
+4. ตรวจสอบ Approval
+5. ดำเนินการใน Firewall Simulator
+6. ทดสอบ Packet ใหม่
+7. บันทึก Verification Result
+
+---
+
+# 10. Features Specification
+
+## Feature 1 — Real-time Security Dashboard
+
+หน้าหลักแสดงสถานะการรักษาความปลอดภัย
+
+### Components
+
+- Total Events
+- Active Threats
+- Critical Alerts
+- Blocked IPs
+- Network Traffic Graph
+- Threat Distribution
+- Recent Incidents
+- Live Security Events
+- AI Status
+- Firewall Status
+
+### Behavior
+
+เมื่อเกิดเหตุการณ์ใหม่
+
+- จำนวน Events เพิ่มขึ้น
+- Graph อัปเดต
+- Incident Table อัปเดต
+- Threat Alert ปรากฏ
+- ผู้ดูแลสามารถเปิด Incident Detail ได้
+
+**จุดเด่น:** Dashboard ต้องอัปเดตด้วยข้อมูลจาก Backend จริง ไม่ใช่ข้อมูลสุ่มบนหน้าเว็บอย่างเดียว
+
+## Feature 2 — AI Threat Investigation
+
+มีปุ่ม `Investigate with AI`
+
+เมื่อกดแล้ว AI จะดึงข้อมูลและเริ่มสืบสวน
+
+แสดงผล:
+
+- Incident Summary
+- Related Logs
+- Source IP Activity
+- Threat Classification
+- Evidence
+- AI Recommendation
+- Analysis Duration
+
+## Feature 3 — Live Agent Workflow
+
+แสดงการทำงาน Agent เป็น Workflow Diagram
+
+```text
+Threat Detected
+      ↓
+Collecting Evidence
+      ↓
+AI Threat Analysis
+      ↓
+Defense Planning
+      ↓
+Policy Validation
+      ↓
+Waiting for Approval
+      ↓
+Firewall Execution
+      ↓
+Verification
+```
+
+แต่ละ Node มีสถานะ
+
+- Pending
+- Running
+- Completed
+- Failed
+- Waiting
+
+คลิกดูรายละเอียดได้ เช่น Tool Input/Output และ Execution Time
+
+**นี่คือฟีเจอร์ Highlight สำคัญ เพราะแสดงให้เห็นว่า AI มีการใช้ Tools และทำงานเป็นขั้นตอนจริง**
+
+## Feature 4 — Explainable AI Decisions
+
+แสดงเหตุผลและหลักฐานที่ AI ใช้ประกอบข้อเสนอ
+
+ตัวอย่าง
+
+```text
+Threat: SSH Brute Force
+Severity: HIGH
+
+Evidence:
+- Failed Login 35 times
+- Same source IP
+- Within 60 seconds
+
+Recommendation:
+Temporarily block source IP
+
+Reason:
+Repeated authentication failures
+```
+
+## Feature 5 — Human Approval
+
+เมื่อ AI เสนอ Action ระบบจะแสดง
+
+```text
+AI DEFENSE PROPOSAL
+
+Target IP: 192.0.2.25
+Action: TEMP_BLOCK_IP
+Duration: 10 minutes
+
+[ APPROVE ]  [ REJECT ]
+```
+
+หาก Reject ระบบจะไม่ดำเนินการ
+
+หาก Approve Backend จะตรวจสอบอีกครั้งก่อนเรียก Firewall Simulator
+
+## Feature 6 — Firewall Simulator
+
+รองรับ
+
+- Block IP
+- Unblock IP
+- Temporary Block
+- Expiration
+- Rule History
+- Allow / Deny Packet
+- Protected IPs
+- Verification
+
+ใช้จำลองการทำงานของ Firewall โดยไม่ต้องแก้ Network ของเครื่องจริง
+
+## Feature 7 — Attack Scenario Simulator
+
+สร้างหน้าเลือกสถานการณ์ทดสอบ
+
+### Scenarios
+
+**Scenario A — SSH Brute Force**
+
+สร้าง Failed Login จำนวนมากจาก IP เดียว
+
+**Scenario B — Port Scanning**
+
+สร้าง Connection Attempts ไปยังพอร์ตจำนวนมาก
+
+**Scenario C — Suspicious Login**
+
+จำลอง Failed Login ต่อเนื่องก่อน Login สำเร็จ
+
+**Scenario D — Normal Traffic**
+
+จำลองการใช้งานปกติเพื่อทดสอบ False Positive
+
+**Scenario E — Traffic Anomaly (เสริม)**
+
+สร้างจำนวน Connection เพิ่มขึ้นผิดปกติ
+
+ทุก Scenario ต้องสร้าง Events เข้าสู่ Backend จริงผ่าน Pipeline เดียวกัน
+
+## Feature 8 — Before / After Defense
+
+แสดงภาพเปรียบเทียบผลการป้องกัน
+
+ก่อนป้องกัน:
+
+```text
+192.0.2.25 → Firewall → Demo Server
+                    ALLOWED
+```
+
+หลังป้องกัน:
+
+```text
+192.0.2.25 → Firewall → BLOCKED
+```
+
+พร้อม Counter แสดง Allowed และ Denied Connections
+
+## Feature 9 — Incident Timeline
+
+แสดงลำดับเวลา
+
+```text
+12:30:00 Attack Simulation Started
+12:30:05 Threat Detected
+12:30:10 AI Investigation Started
+12:30:17 Defense Plan Generated
+12:30:25 Admin Approved
+12:30:26 Firewall Rule Applied
+12:30:27 Verification Passed
+```
+
+ข้อมูลทั้งหมดดึงจาก Execution Records จริง
+
+## Feature 10 — AI Security Assistant (Optional)
+
+ช่องแชตเพื่อถามข้อมูลเกี่ยวกับ Incidents
+
+ตัวอย่าง
+
+- ตอนนี้มีภัยคุกคามอะไร?
+- สรุป Incident ล่าสุด
+- ทำไม IP นี้ถึงถูกบล็อก?
+- แสดงเหตุการณ์ที่มี Severity สูง
+- อธิบาย Brute Force Attack
+
+AI ต้องเรียก Tool เพื่ออ่านข้อมูล Database และตอบจากหลักฐานที่มี
+
+## Feature 11 — Local RAG Knowledge Base (Optional)
+
+ให้ AI ค้นหาข้อมูลจากเอกสาร Cybersecurity ที่จัดเตรียมไว้
+
+เช่น
+
+- Incident Response Playbooks
+- Security Best Practices
+- Threat Classification Guidelines
+- MITRE ATT&CK Reference Data
+
+ใช้ Local Embeddings และ ChromaDB สำหรับค้นหาข้อมูลภายในเครื่อง
+
+---
+
+# 11. จุดเด่นของโปรเจกต์
+
+## 🔥 Highlight 1 — 100% Local AI
+
+ระบบสามารถทำงานโดยไม่ต้องเรียก Cloud AI API
+
+ใช้ RTX 4060 ประมวลผลโมเดลผ่าน Ollama
+
+## 🔥 Highlight 2 — Real Agentic Tool Calling
+
+AI สามารถเลือกเรียก Tools ที่กำหนดเพื่อหาข้อมูลเพิ่มเติม ไม่ใช่แค่ตอบข้อความ
+
+## 🔥 Highlight 3 — Explainable Cybersecurity AI
+
+ทุกข้อเสนอสำคัญต้องมีหลักฐานและเหตุผลที่ตรวจสอบได้
+
+## 🔥 Highlight 4 — Live Agent Execution Visualization
+
+เห็นสถานะการทำงานจริงของ Agent และ Tool Calls บนหน้า Dashboard
+
+## 🔥 Highlight 5 — Human-in-the-loop Security
+
+AI เสนอแผน แต่ผู้ดูแลเป็นคนอนุมัติการดำเนินการ
+
+## 🔥 Highlight 6 — Attack-to-Defense Simulation
+
+สาธิตตั้งแต่จำลองการโจมตี ตรวจจับ วิเคราะห์ ป้องกัน และตรวจสอบผลได้ภายในระบบเดียว
+
+## 🔥 Highlight 7 — Before / After Visualization
+
+เห็นผลของการป้องกันชัดเจน ไม่ใช่แค่แสดงข้อความว่าสำเร็จ
+
+## 🔥 Highlight 8 — Measurable Engineering Results
+
+สามารถทดสอบ Detection Accuracy, AI Latency, Tool Success Rate และ Firewall Verification ได้
+
+---
+
+# 12. Frontend Design
+
+## Design Theme
+
+**Dark Cybersecurity SOC**
+
+สีหลัก:
+
+- Dark Navy
+- Electric Blue
+- Cyan
+- Threat Red
+- Orange Warning
+- Green Success
+
+## Main Layout
+
+```text
+┌─────────────────────────────────────────────────┐
+│ SENTINEL AI | SECURITY OPERATIONS | ● ONLINE   │
+├────────────┬────────────────────────────────────┤
+│            │                                    │
+│ Dashboard  │ EVENTS   THREATS   BLOCKED IPS     │
+│            │                                    │
+│ Incidents  ├────────────────────────────────────┤
+│            │                                    │
+│ AI Agent   │      NETWORK TRAFFIC GRAPH         │
+│            │                                    │
+│ Firewall   ├────────────────────────────────────┤
+│            │                                    │
+│ Simulator  │      LIVE SECURITY EVENTS          │
+│            │                                    │
+│ Reports    ├────────────────────────────────────┤
+│            │                                    │
+│ Settings   │      AI INCIDENT ANALYSIS          │
+└────────────┴────────────────────────────────────┘
+```
+
+## หน้าจอหลัก
+
+1. Dashboard
+2. Incidents
+3. AI Agent
+4. Firewall
+5. Attack Simulator
+6. Reports
+7. Settings
+
+สำหรับ MVP สามารถรวมบางหน้าเข้าด้วยกันเพื่อลดเวลาพัฒนา
+
+---
+
+# 13. Database Design
+
+ใช้ SQLite เป็นฐานข้อมูลหลัก
+
+## `security_events`
+
+```text
+id
+timestamp
+source_ip
+destination_ip
+event_type
+protocol
+port
+message
+metadata_json
+```
+
+## `incidents`
+
+```text
+id
+created_at
+threat_type
+severity
+source_ip
+status
+detection_rule
+```
+
+## `ai_analyses`
+
+```text
+id
+incident_id
+model_name
+analysis
+evidence_json
+recommended_action
+processing_time_ms
+```
+
+## `agent_executions`
+
+```text
+id
+incident_id
+step_name
+tool_name
+status
+started_at
+completed_at
+result_json
+```
+
+## `defense_proposals`
+
+```text
+id
+incident_id
+action
+target_ip
+duration_minutes
+reason
+approval_status
+```
+
+## `firewall_rules`
+
+```text
+id
+ip_address
+action
+reason
+created_at
+expires_at
+status
+```
+
+## `audit_logs`
+
+```text
+id
+incident_id
+action
+approved_by
+timestamp
+result
+```
+
+---
+
+# 14. API Contract
+
+Backend จะใช้ FastAPI และส่งข้อมูล JSON
+
+| Method | Endpoint | Function |
+|---|---|---|
+| GET | `/api/dashboard/stats` | Dashboard Summary |
+| GET | `/api/events` | Security Events |
+| GET | `/api/incidents` | Incident List |
+| GET | `/api/incidents/{id}` | Incident Detail |
+| POST | `/api/incidents/{id}/analyze` | Start AI Investigation |
+| GET | `/api/agents/{id}/trace` | Agent Workflow |
+| POST | `/api/defense/{id}/approve` | Approve Action |
+| POST | `/api/defense/{id}/reject` | Reject Action |
+| GET | `/api/firewall/rules` | Firewall Rules |
+| POST | `/api/simulator/start` | Start Scenario |
+| POST | `/api/simulator/stop` | Stop Scenario |
+| GET | `/api/reports` | Incident Reports |
+| WebSocket | `/ws/events` | Real-time Events |
+
+## ตัวอย่าง Incident Response
+
+```json
+{
+  "id": "INC-0001",
+  "threat_type": "SSH_BRUTE_FORCE",
+  "severity": "HIGH",
+  "source_ip": "192.0.2.25",
+  "status": "INVESTIGATING",
+  "failed_attempts": 35
+}
+```
+
+## ตัวอย่าง Agent Event
+
+```json
+{
+  "incident_id": "INC-0001",
+  "step": "THREAT_ANALYSIS",
+  "status": "RUNNING",
+  "tool_name": "get_incident_logs"
+}
+```
+
+## ตัวอย่าง Defense Proposal
+
+```json
+{
+  "incident_id": "INC-0001",
+  "action": "TEMP_BLOCK_IP",
+  "target_ip": "192.0.2.25",
+  "duration_minutes": 10,
+  "requires_approval": true
+}
+```
+
+ข้อมูลตัวอย่างเหล่านี้ต้องใช้เป็น Contract เดียวกันทั้ง Frontend และ Backend
+
+---
+
+# 15. การแบ่งงานสำหรับสมาชิก 2 คน
+
+**รูปแบบการทำงาน:** แยกความรับผิดชอบตามส่วนของระบบ ไม่แบ่งเป็นรายวันหรือรายสัปดาห์
+
+ใครว่างตอนไหนสามารถพัฒนางานตัวเองได้ทันที
+
+---
+
+# 👨‍💻 PERSON 1 — AI / Backend / Cybersecurity Engineer
+
+## หน้าที่หลัก
+
+รับผิดชอบการประมวลผลทั้งหมดของระบบ ตั้งแต่ Logs, Detection, Agentic AI, Database, API จนถึง Firewall Simulator
+
+### A. Local AI Infrastructure
+
+- [ ] ติดตั้ง Ollama
+- [ ] ดาวน์โหลด Local LLM
+- [ ] ทดสอบ GPU Acceleration
+- [ ] เชื่อม Ollama กับ Python
+- [ ] สร้าง Security Analyst Prompt
+- [ ] รองรับ Structured JSON
+- [ ] จัดการ AI Timeout
+- [ ] จัดการ Model Errors
+
+### B. FastAPI Backend
+
+- [ ] สร้าง FastAPI Project
+- [ ] สร้าง REST API
+- [ ] ตั้งค่า CORS
+- [ ] สร้าง WebSocket
+- [ ] สร้าง Error Handling
+- [ ] จัดการ Background Jobs สำหรับ AI
+- [ ] สร้าง Health Check API
+- [ ] สร้าง API Documentation
+
+### C. Database
+
+- [ ] สร้าง SQLite
+- [ ] ออกแบบ Database Models
+- [ ] สร้าง CRUD
+- [ ] Incident History
+- [ ] Agent Execution History
+- [ ] Firewall Rules
+- [ ] Audit Logging
+
+### D. Security Log Processing
+
+- [ ] ออกแบบ Security Event Schema
+- [ ] สร้าง Log Parser
+- [ ] Validate Logs
+- [ ] Normalize Events
+- [ ] Save Events
+- [ ] Forward Events to Detection Engine
+
+### E. Threat Detection Engine
+
+- [ ] SSH Brute Force Detection
+- [ ] Port Scan Detection
+- [ ] Suspicious Login Detection
+- [ ] Severity Scoring
+- [ ] Incident Creation
+- [ ] Duplicate Alert Prevention
+- [ ] Detection Unit Tests
+
+### F. Agentic AI
+
+- [ ] สร้าง LangGraph State
+- [ ] Investigation Agent
+- [ ] Threat Analysis Agent
+- [ ] Defense Planning Agent
+- [ ] Tool Calling
+- [ ] Agent Execution Trace
+- [ ] Policy Validation
+- [ ] AI Error Handling
+- [ ] Agent Tests
+
+### G. Agent Tools
+
+- [ ] `get_incident_logs`
+- [ ] `get_ip_activity`
+- [ ] `get_related_incidents`
+- [ ] `get_firewall_status`
+- [ ] `propose_block_ip`
+- [ ] `verify_firewall_rule`
+
+### H. Firewall Simulator
+
+- [ ] Block IP
+- [ ] Unblock IP
+- [ ] Temporary Block
+- [ ] Expiration
+- [ ] Allow / Deny
+- [ ] Protected IP Validation
+- [ ] Approval Verification
+- [ ] Audit Log
+- [ ] Response Verification
+
+### I. Attack Scenario Backend
+
+- [ ] สร้าง Log Generator
+- [ ] Brute Force Scenario
+- [ ] Port Scan Scenario
+- [ ] Suspicious Login Scenario
+- [ ] Normal Traffic Scenario
+- [ ] Start / Stop API
+- [ ] Simulation State
+
+### J. Testing & AI Evaluation
+
+- [ ] Detection Precision / Recall
+- [ ] AI Classification Accuracy
+- [ ] Tool Calling Correctness
+- [ ] JSON Output Validation
+- [ ] Firewall Verification
+- [ ] Response Time
+- [ ] RAM / VRAM Usage
+
+## Deliverables — Person 1
+
+1. Working FastAPI Backend
+2. Working Local AI Integration
+3. Threat Detection Engine
+4. LangGraph Agent Workflow
+5. Agent Tools
+6. Firewall Simulator
+7. Attack Scenario Generator
+8. Database
+9. API Documentation
+10. Backend Test Results
+
+**เป้าหมาย:** แม้ไม่มี Frontend ก็สามารถทดสอบครบตั้งแต่รับ Log จนถึง Block IP ผ่าน Swagger API ได้
+
+---
+
+# 👨‍💻 PERSON 2 — Frontend / Dashboard / System UI Engineer
+
+## หน้าที่หลัก
+
+รับผิดชอบการสร้าง Web Application ทั้งหมด รวมถึงการแสดงสถานะ Security, Agent Workflow, Attack Simulation และระบบควบคุมการป้องกันผ่าน UI
+
+### A. Frontend Infrastructure
+
+- [ ] React + Vite
+- [ ] Tailwind CSS
+- [ ] React Router
+- [ ] Layout
+- [ ] Sidebar
+- [ ] Navbar
+- [ ] Theme
+- [ ] API Client
+- [ ] Reusable UI Components
+
+### B. SOC Dashboard
+
+- [ ] Total Events Card
+- [ ] Active Threats Card
+- [ ] Critical Alerts Card
+- [ ] Blocked IPs Card
+- [ ] Network Traffic Chart
+- [ ] Threat Distribution Chart
+- [ ] Recent Incidents
+- [ ] Live Events Feed
+- [ ] AI Status Indicator
+
+### C. Real-time Monitoring
+
+- [ ] WebSocket Client
+- [ ] Real-time Event Feed
+- [ ] Auto Update Charts
+- [ ] Alert Notifications
+- [ ] Connection Status
+- [ ] Reconnect Logic
+- [ ] Loading / Error States
+
+### D. Incident Management UI
+
+- [ ] Incident Table
+- [ ] Severity Filters
+- [ ] Search
+- [ ] Incident Details
+- [ ] Evidence Viewer
+- [ ] AI Analysis Viewer
+- [ ] Investigate Button
+- [ ] Incident Timeline
+
+### E. AI Agent Visualization
+
+- [ ] Agent Workflow Diagram
+- [ ] Node State Animation
+- [ ] Tool Call Viewer
+- [ ] AI Analysis Panel
+- [ ] Defense Plan
+- [ ] Execution Timeline
+- [ ] Duration Display
+- [ ] Approval Waiting State
+
+### F. Firewall UI
+
+- [ ] Firewall Status
+- [ ] Blocked IP List
+- [ ] Active Rules
+- [ ] Rule Expiration
+- [ ] Approve Button
+- [ ] Reject Button
+- [ ] Verification Result
+- [ ] Action History
+
+### G. Attack Simulator UI
+
+- [ ] Scenario Selection
+- [ ] Start / Stop
+- [ ] Scenario Progress
+- [ ] Real-time Generated Logs
+- [ ] Threat Result
+- [ ] Scenario Reset
+- [ ] Error Handling
+
+### H. Before / After Defense
+
+- [ ] Network Flow Animation
+- [ ] Attacker / Firewall / Server Nodes
+- [ ] Allowed State
+- [ ] Blocked State
+- [ ] Packet Counter
+- [ ] Verification Status
+- [ ] Result Comparison
+
+### I. Reports & Settings
+
+- [ ] Incident Report Viewer
+- [ ] Security Timeline
+- [ ] Model Status
+- [ ] Settings Page
+- [ ] Detection Threshold UI
+- [ ] Export Report (Optional)
+
+### J. Integration & UI Testing
+
+- [ ] Mock API Integration
+- [ ] Real API Integration
+- [ ] WebSocket Integration
+- [ ] Responsive Testing
+- [ ] Error State Testing
+- [ ] Loading State Testing
+- [ ] End-to-End UI Test
+
+## Deliverables — Person 2
+
+1. React Web Application
+2. Cybersecurity SOC Dashboard
+3. Real-time Monitoring UI
+4. Incident Management UI
+5. AI Agent Visualization
+6. Firewall Management UI
+7. Attack Scenario UI
+8. Before / After Visualization
+9. Reports & Settings UI
+10. Frontend Test Results
+
+**เป้าหมาย:** แม้ Backend ยังไม่เสร็จ Frontend ต้องสามารถทดสอบ User Flow ได้ครบด้วย Mock Data
+
+---
+
+# 16. วิธีทำงานร่วมกันแบบ Flexible
+
+ไม่มีการแบ่งงานเป็นสัปดาห์
+
+แต่ละคนเลือกทำ Task ของตัวเองตามเวลาที่สะดวก
+
+## ข้อตกลง
+
+1. คนที่ 1 ดูแลโฟลเดอร์ `backend/` เป็นหลัก
+2. คนที่ 2 ดูแลโฟลเดอร์ `frontend/` เป็นหลัก
+3. ทั้งสองคนตกลง API Contract ก่อน
+4. ใช้ GitHub Repository เดียวกัน
+5. แยก Feature Branch
+6. เมื่อฟีเจอร์เสร็จให้ Commit และ Push
+7. เปิด Pull Request ก่อน Merge
+8. หาก API เปลี่ยนต้องแจ้งอีกฝ่าย
+9. คนที่ 2 ใช้ Mock Data ระหว่างรอ Backend
+10. เมื่อ API พร้อมจึงเปลี่ยนมาเชื่อมของจริง
+11. Integration Testing ทำร่วมกัน
+12. ไม่เพิ่มฟีเจอร์จนกระทบ Core System
+
+### ตัวอย่างการทำงานโดยไม่ต้องรอกัน
+
+**คนที่ 1 ทำ Local AI**
+
+คนที่ 2 ทำ SOC Dashboard ได้ทันที
+
+**คนที่ 1 ทำ Detection Engine**
+
+คนที่ 2 ทำ Incident List ด้วย Mock Data ได้ทันที
+
+**คนที่ 1 ทำ LangGraph Agent**
+
+คนที่ 2 ทำ Agent Workflow Animation ได้ทันที
+
+**คนที่ 1 ทำ Firewall Simulator**
+
+คนที่ 2 ทำ Firewall Control UI ได้ทันที
+
+---
+
+# 17. Project Structure
+
+```text
+sentinel-ai/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── types/
+│   │   └── App.jsx
+│   └── package.json
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── api/
+│   │   ├── agents/
+│   │   ├── detection/
+│   │   ├── simulator/
+│   │   ├── tools/
+│   │   ├── database/
+│   │   └── schemas/
+│   ├── tests/
+│   └── requirements.txt
+│
+├── datasets/
+│   ├── brute_force.json
+│   ├── port_scan.json
+│   ├── suspicious_login.json
+│   └── normal_logs.json
+│
+├── docs/
+│   ├── architecture.md
+│   ├── api-contract.md
+│   ├── test-results.md
+│   └── presentation.md
+│
+├── README.md
+└── .gitignore
+```
+
+---
+
+# 18. Task Priority
+
+ไม่กำหนดวันทำ แต่กำหนดความสำคัญ
+
+## P0 — ต้องทำ
+
+- Local AI
+- Detection Engine
+- FastAPI
+- SQLite
+- LangGraph Agent
+- Tool Calling
+- Firewall Simulator
+- Human Approval
+- Dashboard
+- Incident Page
+- Attack Simulator
+- API Integration
+
+## P1 — จุดเด่น
+
+- Live Agent Workflow
+- Real-time WebSocket
+- Before / After Defense
+- Agent Execution Trace
+- Incident Timeline
+- Explainable AI UI
+- Verification Report
+
+## P2 — เพิ่มถ้ามีเวลา
+
+- Local RAG
+- AI Chat Assistant
+- Advanced ML Detection
+- AI Model Benchmark Interface
+- Export PDF Reports
+- Advanced Visualization
+
+**ให้ P0 ทำงานครบทั้งระบบก่อนเพิ่ม P1 และ P2**
+
+---
+
+# 19. Testing & Evaluation
+
+## Detection Testing
+
+จัดเตรียม Dataset ที่มีเหตุการณ์ปกติและเหตุการณ์โจมตี
+
+วัด
+
+- Precision
+- Recall
+- F1-score
+- False Positive Rate
+
+## AI Testing
+
+ใช้ Security Logs ชุดทดสอบและคำตอบอ้างอิง
+
+วัด
+
+- Threat Classification Accuracy
+- Structured Output Validity
+- Tool Selection Accuracy
+- Recommendation Accuracy
+- AI Response Time
+
+## Defense Testing
+
+ทดสอบ
+
+- Approve แล้ว Block สำเร็จ
+- Reject แล้วไม่มี Rule เพิ่ม
+- Protected IP ถูกปฏิเสธ
+- Block แล้ว Test Traffic ถูก Deny
+- Temporary Block หมดอายุได้
+- Audit Log ถูกบันทึก
+
+## System Testing
+
+- Frontend / Backend Integration
+- WebSocket
+- Offline Operation
+- Restart Persistence
+- Error Handling
+- Concurrent Events เบื้องต้น
+
+---
+
+# 20. Final Demo Scenario
+
+การสาธิตหลักควรเป็น SSH Brute Force
+
+### Step 1 — เปิดระบบ
+
+แสดง Dashboard และสถานะ Local AI
+
+### Step 2 — จำลองการโจมตี
+
+เลือก SSH Brute Force แล้วกด Start
+
+### Step 3 — Detection
+
+ระบบตรวจพบ Failed Login จำนวนมากและสร้าง Incident
+
+### Step 4 — AI Investigation
+
+AI Agent เรียก Tools เพื่อรวบรวมหลักฐาน
+
+### Step 5 — AI Analysis
+
+แสดงประเภทภัยคุกคาม หลักฐาน และระดับความเสี่ยง
+
+### Step 6 — Defense Planning
+
+AI เสนอ Temporary Block IP
+
+### Step 7 — Human Approval
+
+ผู้ดูแลกด Approve
+
+### Step 8 — Firewall Execution
+
+Firewall Simulator เพิ่ม IP ลง Blocklist
+
+### Step 9 — Verification
+
+ระบบทดสอบ Traffic จาก IP ที่ถูก Block และแสดงผล Denied
+
+### Step 10 — Report
+
+แสดง Incident Timeline และผลการป้องกัน
+
+**Demo จะต้องแสดงผลจากการทำงานจริงของ Backend และ Agent ไม่ใช่แค่การเปลี่ยนสถานะบนหน้าเว็บ**
+
+---
+
+# 21. Evaluation & Final Presentation
+
+จัดทำสไลด์ไม่เกิน 10 หน้า
+
+| Slide | Content |
+|---|---|
+| 1 | Project Title |
+| 2 | Problem Statement |
+| 3 | Objectives & Features |
+| 4 | System Architecture |
+| 5 | Local AI Architecture |
+| 6 | Agentic AI Workflow |
+| 7 | Security Dashboard |
+| 8 | Attack-to-Defense Demo |
+| 9 | Testing & Results |
+| 10 | Conclusion |
+
+### หัวข้อสำคัญในการตอบคำถาม
+
+**ทำไมถึงเป็น Agentic AI?**
+
+เพราะ AI สามารถเลือกใช้ Tools สืบค้นหลักฐาน วางแผน และดำเนินงานหลายขั้นตอนผ่าน Workflow ได้
+
+**ทำไมไม่ใช้ AI ตรวจจับทุก Log?**
+
+ใช้ Rule-based Detection เพื่อประสิทธิภาพ แล้วให้ AI วิเคราะห์ Incident ที่ผ่านการตรวจจับ
+
+**ทำไมต้อง Human Approval?**
+
+เพื่อควบคุมความเสี่ยงจาก AI ที่อาจตัดสินใจผิด
+
+**ทำไมใช้ Local AI?**
+
+เพื่อศึกษาการ Deployment บน GPU ภายในเครื่อง ลดการพึ่งพา Cloud และควบคุมข้อมูล Security
+
+**ความเป็นวิศวกรรมคอมพิวเตอร์อยู่ตรงไหน?**
+
+อยู่ที่การออกแบบและเชื่อมโยง AI, Software Architecture, Networking, Security, Automation, Real-time Communication และระบบทดสอบเข้าด้วยกัน
+
+---
+
+# 22. Definition of Done
+
+เมื่อโปรเจกต์เสร็จต้องผ่านเงื่อนไขดังนี้
+
+- [ ] Local AI ทำงานบนเครื่องได้
+- [ ] Backend และ Frontend เปิดใช้งานได้
+- [ ] รับและบันทึก Security Logs ได้
+- [ ] ตรวจจับ Brute Force และ Port Scan ได้
+- [ ] สร้าง Incident อัตโนมัติได้
+- [ ] AI วิเคราะห์ Incident ได้จริง
+- [ ] Agent เรียก Tool ได้จริง
+- [ ] AI สร้าง Defense Plan ได้
+- [ ] ผู้ดูแล Approve / Reject ได้
+- [ ] Firewall Simulator ทำงานได้
+- [ ] Verification ตรวจสอบผลได้
+- [ ] Dashboard แสดงข้อมูลจริง
+- [ ] มี Audit Logs
+- [ ] ทดสอบแบบ Offline ได้
+- [ ] มีผลการทดสอบเชิงตัวเลข
+- [ ] มีสไลด์และ Demo พร้อมสอบ
+
+---
+
+# 23. Final Project Vision
+
+เราต้องการสร้างต้นแบบ **AI-Powered Security Operations Center** ที่ช่วยให้ผู้ดูแลระบบสามารถตรวจสอบ วิเคราะห์ และตอบสนองต่อภัยคุกคามได้อย่างเป็นระบบ
+
+หัวใจสำคัญของโปรเจกต์คือการประยุกต์ **Local Agentic AI** ให้เป็นตัวเชื่อมระหว่างข้อมูล Security และเครื่องมือป้องกันภัยคุกคาม
+
+ระบบจะต้องทำให้เห็นว่า AI ไม่ใช่เพียงเครื่องมือถามตอบ แต่สามารถเป็นส่วนหนึ่งของ Software System ที่มีความสามารถในการวิเคราะห์ วางแผน และช่วยดำเนินงานได้จริง
+
+### สิ่งที่เราจะโชว์ในวันสอบ
+
+**ATTACK → DETECT → INVESTIGATE → REASON → PLAN → APPROVE → DEFEND → VERIFY**
+
+ตั้งแต่ต้นจนจบภายในระบบเดียว
+
+### จุดขายสุดท้าย
+
+**SENTINEL AI ไม่ได้แค่แจ้งเตือนว่าระบบกำลังถูกโจมตี แต่สามารถวิเคราะห์หลักฐาน สืบสวนเหตุการณ์ เสนอวิธีตอบสนอง และตรวจสอบได้ว่าการป้องกันทำงานสำเร็จจริง**
+
+---
+
+**SENTINEL AI — Observe. Reason. Defend. Verify.**
+
+*Local AI • Agentic Intelligence • Cybersecurity Engineering • Real-time Defense*
+
+**ข้อตกลงการทำงาน:** แบ่งหน้าที่ตามความรับผิดชอบของแต่ละคน ไม่บังคับตารางเวลา ใครว่างตอนไหนก็ทำ และนำงานมาเชื่อมต่อกันผ่าน API Contract และ GitHub

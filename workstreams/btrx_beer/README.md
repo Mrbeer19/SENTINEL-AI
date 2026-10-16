@@ -1,0 +1,17 @@
+# btrx_beer — Frontend / UI / Model Training pipeline
+
+ไฟล์ในโฟลเดอร์นี้สร้างจาก `bot/config/tasks.json` เพื่อให้อ่านงานแยกตามคนและ phase ได้ง่าย
+ถ้าแก้แผนงานหลัก ให้รัน `python bot/generate_workstreams.py` เพื่อสร้างไฟล์ใหม่
+
+## ลำดับ phase
+
+- [Phase 0 · Contract & Setup](phase-0.md): F00, M00
+- [Phase 1 · Observe & Detect](phase-1.md): F01
+- [Phase 2 · Investigate & Plan](phase-2.md): F02, M01
+- [Phase 3 · Approve & Defend](phase-3.md): F03
+- [Phase 4 · Integrate & Present](phase-4.md): F04, F05
+
+## รับงานแทนเพื่อน
+
+เมื่ออีกคนไม่ว่าง ใช้ `/assign` หรือ `/claim` รับงานข้าม pipeline ได้ คนที่สั่ง AI ต้องตรวจงานเอง
+และเจ้าของ pipeline ตรวจรับอีกครั้งผ่าน `/approve` ก่อน task เป็น done
