@@ -1,0 +1,209 @@
+{
+  "layout": [
+    {
+      "route": "overview",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Security Operations Center",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "incidents",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Incident Queue",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "incident/1",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Incident Detail",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "trace/1",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Agent Investigation",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "approvals",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Response Approvals",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "rules",
+      "panels": [],
+      "scroll": 1905,
+      "title": "App Firewall Rules",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "reports/1",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Incident Reports",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "lab",
+      "panels": [],
+      "scroll": 1905,
+      "title": "Controlled Demo Lab",
+      "viteError": false,
+      "width": 1920
+    },
+    {
+      "route": "overview",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "incidents",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "incident/1",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "trace/1",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "approvals",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "rules",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "reports/1",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "lab",
+      "panels": [],
+      "scroll": 1351,
+      "viteError": false,
+      "width": 1366
+    },
+    {
+      "route": "overview",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "incidents",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "incident/1",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "trace/1",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "approvals",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "rules",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "reports/1",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    },
+    {
+      "route": "lab",
+      "panels": [],
+      "scroll": 375,
+      "viteError": false,
+      "width": 390
+    }
+  ],
+  "empty": [
+    {
+      "route": "incidents",
+      "emptyVisible": 2
+    },
+    {
+      "route": "reports",
+      "emptyVisible": 1
+    },
+    {
+      "route": "approvals",
+      "emptyVisible": 1
+    },
+    {
+      "route": "rules",
+      "emptyVisible": 1
+    }
+  ],
+  "flow": {
+    "reject": true,
+    "approve": true,
+    "newRequest403": true,
+    "unblock200": true
+  },
+  "globePreview": {
+    "red": true,
+    "green": true
+  },
+  "scope": "Isolated QA database; model unavailable and clearly labelled fallback; no Mac two-device test"
+}

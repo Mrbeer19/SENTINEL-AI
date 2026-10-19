@@ -18,3 +18,8 @@ frontend/node_modules/
 frontend/dist/
 **/__pycache__/
 *.pyc
+
+# Local handoff archives; source and review notes are added explicitly.
+/SENTINEL-handoff-*.zip
+/mockup/SENTINEL-dashboard-designs-*.zip
+/handoff/
