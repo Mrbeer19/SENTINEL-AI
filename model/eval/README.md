@@ -23,6 +23,16 @@ python3 -m unittest discover -s model/eval -q
 
 ตัวเลือกอื่น: `--runs N`, `--category port_scan`, `--limit 3`, `--rule-hint` (บอกโมเดลว่ากฎไหนจับได้ แบบ backend), `--num-ctx 0` (ใช้ค่า Ollama), `--no-retry`
 
+### ทำงานเหมือน backend v0.2 (ตั้งแต่ 20 ต.ค.)
+
+ค่าเริ่มต้นเลียน `backend/agent.py` เพื่อให้ตัวเลขไม่ดีเกินของจริง:
+
+- tool ไม่เกิน 4 รอบ / 6 ครั้ง และ**หยุดสืบทันทีหลัง `propose_block_ip`**
+- `get_incident_logs` คืน `{incident_id, untrusted_log_records, returned}` ฟิลด์เหมือน event ของ backend (`t, src, type, outcome, port, user`) 40 แถวล่าสุด · บรรทัด sshd แปลงเป็น `outcome` + `user` · `user` ตัดเหลือ 64 ตัว
+- คำตอบสุดท้ายตัด code fence และข้อความรอบ object (ดึง `{...}`) แล้วตรวจ schema แบบ strict เหมือน backend หลัง PR #6 (`--strict-json` = ต้องเป็น JSON ทั้งข้อความ)
+
+ผลใน `results/` ก่อนวันที่ 20 ต.ค. รันด้วยพฤติกรรมเดิม (6 รอบ, log ดิบ, JSON แบบผ่อน) เทียบกับผลใหม่ตรงๆ ไม่ได้
+
 ปรับ prompt ด้วย `dev` เท่านั้น แล้วรัน `test` ครั้งเดียวต่อ prompt version — header ของ JSONL เก็บ hash ของ prompt และ dataset
 
 ## แก้อะไรจาก agent_test.py
@@ -41,7 +51,7 @@ python3 -m unittest discover -s model/eval -q
 
 ## ข้อจำกัด
 
-- tool เป็น fixture ไม่ได้ต่อ backend จริง; ชุด tool ตาม brief ซึ่งยังต่างจาก backend v0.1 (2 tool) — รอ contract v0.2
+- tool เป็น fixture ไม่ได้ต่อ backend จริง; ชื่อ tool และรูปผลตาม backend v0.2 แต่ค่าในผลมาจาก fixture
 - schema ตาม `docs/api-contract-v0.2-draft.md` ซึ่งยังเป็นร่าง
 - เคสเป็น synthetic จาก template ไม่ใช่ log จริง; จำนวนน้อย ใช้เทียบโมเดล/prompt ไม่ใช่อ้างความแม่นยำทั่วไป
 - label บางข้อเป็นการตัดสินของผู้ออกแบบ (เช่น login ผิด 6 ครั้ง = ต้องเสนอบล็อก) ทีมทบทวนได้
