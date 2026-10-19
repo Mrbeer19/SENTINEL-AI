@@ -279,6 +279,8 @@ class PipelineTest(unittest.TestCase):
         bench.run_case_pipeline(case, chat, PIPE)
         planner_input = json.dumps(chat.bodies[3]["messages"], ensure_ascii=False)
         self.assertNotIn("untrusted_log_records", planner_input)
+        self.assertNotIn("evidence", planner_input)
+        self.assertNotIn("explanation_th", planner_input)
         injected = [r["user"] for r in case["logs"] if len(r.get("user", "")) > 20]  # the instruction-like usernames
         self.assertTrue(injected and all(text not in planner_input for text in injected))
 

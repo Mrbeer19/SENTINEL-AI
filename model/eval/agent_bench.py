@@ -428,6 +428,13 @@ def validate_keys(value, keys: list[str]) -> list[str]:
     return errors + [f"unexpected key {k}" for k in value if k not in keys]
 
 
+def planner_input(case: dict, threat: dict) -> tuple[dict, dict]:
+    """Fixed fields only (agreed with backend 20 Oct): no evidence or explanation text, so nothing copied from logs reaches the planner."""
+    facts = {"kind": case.get("rule_hint"), "event_count": case["incident"]["event_count"],
+             "protected": case["incident"]["source_ip"] in case["protected_ips"]}
+    return facts, {k: threat.get(k) for k in ("threat_type", "severity", "confidence")}
+
+
 def run_case_pipeline(case: dict, chat, opts: dict) -> dict:
     """Investigation (tools) → Threat Analysis (JSON) → Defense Planning (sees only the analysis). Never raises."""
     base = {"model": opts["model"], "think": False, "stream": False, "options": {"temperature": opts["temperature"], **({"num_ctx": opts["num_ctx"]} if opts.get("num_ctx") else {})}}
@@ -504,13 +511,13 @@ def run_case_pipeline(case: dict, chat, opts: dict) -> dict:
             json_errors = ["threat analysis: " + e for e in threat_errors]
             raise ValueError("threat analysis output invalid")
 
-        # 3. Defense Planning: incident metadata + analysis only, never the logs.
+        # 3. Defense Planning: fixed fields only, never logs or text that could be copied from them.
         t = time.perf_counter()
         plan_instruction = "Output one JSON object only with keys: recommended_action, reason."
-        facts = {**incident, "source_protected": incident["source_ip"] in case["protected_ips"]}
+        facts, verdict = planner_input(case, threat)
         plan, plan_errors, raw, first = json_stage(
             [{"role": "system", "content": prompts["planner"]},
-             {"role": "user", "content": "Incident: " + json.dumps(facts) + "\nThreat analysis: " + json.dumps(threat, ensure_ascii=False) + "\n" + plan_instruction}],
+             {"role": "user", "content": "Incident: " + json.dumps(facts) + "\nThreat analysis: " + json.dumps(verdict) + "\n" + plan_instruction}],
             PLAN_KEYS, plan_instruction)
         record["stage_seconds"]["defense_planning"] = round(time.perf_counter() - t, 2)
         record["first_try_json_ok"] = record["first_try_json_ok"] and first
