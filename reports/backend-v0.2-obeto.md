@@ -32,7 +32,7 @@
 ```sh
 make -C backend test
 ```
-→ **365 passed ~8 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+→ **403 passed ~9 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
 
 | วัด | คำสั่ง | ผล |
 |---|---|---|

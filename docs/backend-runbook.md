@@ -7,7 +7,7 @@
 ```sh
 make -C backend venv            # สร้าง backend/.venv + ติดตั้ง requirements
 cp backend/.env.example backend/.env
-make -C backend test            # ต้องได้ 365 passed
+make -C backend test            # ต้องได้ 403 passed
 ```
 
 โมเดล (ทำครั้งเดียว ~3.7 GB): `brew install ollama` → `ollama serve` (ค้างไว้อีกหน้าต่าง) → `ollama pull qwen3.5:4b`
@@ -97,7 +97,7 @@ curl -s -X POST localhost:8000/api/logs -H 'Content-Type: application/json' -d '
 ## 7. ตรวจผล/วัดผล (ไม่ต้องเปิด server)
 
 ```sh
-make -C backend test    # 365 เทส ~8 วิ
+make -C backend test    # 403 เทส ~9 วิ
 make -C backend eval    # replay 47 เคสใน datasets/ ผ่านกฎตรวจจับ → precision/recall/F1
 make -C backend bench   # v0.1 เทียบ v0.2 workload เดียวกัน
 ```
