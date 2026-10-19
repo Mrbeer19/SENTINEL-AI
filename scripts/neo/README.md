@@ -4,11 +4,13 @@ M5 เปิด SOC Dashboard ส่วน Mac Neo ส่งคำขอจา�
 
 ## เตรียมที่ M5
 
-Build เว็บจาก `frontend` ด้วย `npm run build` แล้วรัน backend จาก root โปรเจกต์:
+Build เว็บจาก `frontend` ด้วย `npm run build` แล้วรัน backend จาก root โปรเจกต์ แทน `192.168.1.20` ด้วย LAN IP จริงของ M5:
 
 ```sh
-backend/.venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000
+make -C backend run-lan HOST=192.168.1.20
 ```
+
+`run-lan` ตรวจ preflight (Ollama, โมเดล, protected IPs, DB, กฎ, prompt) ก่อนเปิด และ bind เฉพาะ IP ที่ระบุ ห้ามใช้ `--host 0.0.0.0` เพราะจะเปิดรับทุก interface ของเครื่อง (ต้องใช้ backend v0.2 รายละเอียดใน `docs/backend-runbook.md`)
 
 M5 เปิด `http://127.0.0.1:8000` เพื่อจัดการ SOC ส่วน Neo เรียก LAN IP ของ M5 ที่ port 8000 โดยตรง ขณะเดโมจริงไม่ส่งคำขอ Neo ผ่าน Vite proxy เพราะ backend อาจเห็น IP ของ proxy แทน Neo ต้องมี dependencies/model เตรียมบน M5 ก่อน ไม่คัดลอก virtualenv จาก Windows
 

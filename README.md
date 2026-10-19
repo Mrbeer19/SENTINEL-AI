@@ -27,7 +27,7 @@ npm run dev
 
 เปิด **http://127.0.0.1:5173** — API docs อยู่ที่ **http://127.0.0.1:8000/docs**
 
-หลัง `npm run build` backend เสิร์ฟหน้าเว็บเองที่ port 8000: dashboard ผู้ดูแลเปิดบน M5 ที่ `http://127.0.0.1:8000/` ส่วนเครื่อง Neo ใช้ **Terminal เท่านั้น** ส่งคำขอไปยัง `http://<LAN IP ของ M5>:8000` ตาม [คู่มือ Neo Terminal](scripts/neo/README.md) ต้องรัน uvicorn ด้วย `--host 0.0.0.0` และให้ Neo เรียก backend โดยตรง เพื่อบันทึก IP ต้นทางจริง ไม่เปิด Vite dev server ให้ LAN
+หลัง `npm run build` backend เสิร์ฟหน้าเว็บเองที่ port 8000: dashboard ผู้ดูแลเปิดบน M5 ที่ `http://127.0.0.1:8000/` ส่วนเครื่อง Neo ใช้ **Terminal เท่านั้น** ส่งคำขอไปยัง `http://<LAN IP ของ M5>:8000` ตาม [คู่มือ Neo Terminal](scripts/neo/README.md) M5 รัน backend ด้วย `make -C backend run-lan HOST=<LAN IP ของ M5>` (ไม่ใช้ `--host 0.0.0.0` เพราะเปิดทุก interface) และให้ Neo เรียก backend โดยตรง เพื่อบันทึก IP ต้นทางจริง ไม่เปิด Vite dev server ให้ LAN
 
 ## ทดลอง flow แรก
 
