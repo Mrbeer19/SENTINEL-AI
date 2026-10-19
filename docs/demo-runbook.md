@@ -30,7 +30,7 @@ cd ..
 
 ## ซ้อมสองเครื่องใน private LAN
 
-เจ้าของระบบใช้เครือข่าย private ที่ทั้งสองคนมีสิทธิ์ทดสอบ เปิด backend เฉพาะช่วงซ้อมด้วย `--host 0.0.0.0 --port 8000` และอนุญาต inbound Python เฉพาะ private network ใน Windows Firewall ไม่เปิด router port forwarding
+เจ้าของระบบใช้เครือข่าย private ที่ทั้งสองคนมีสิทธิ์ทดสอบ เปิด backend เฉพาะช่วงซ้อมบน M5 ด้วย `make -C backend run-lan HOST=<IP ของ M5>` (ตรวจ preflight ก่อน · **ห้ามใช้ `--host 0.0.0.0`** เพราะเปิดทุก interface) ไม่เปิด router port forwarding · รายละเอียดฝั่ง server ดู `docs/backend-runbook.md`
 
 Operator ใช้ dashboard จากเครื่อง server ที่ `127.0.0.1` ส่วนเพื่อนใช้เฉพาะ demo client ผ่าน IP LAN ของ server ตัวอย่าง:
 
