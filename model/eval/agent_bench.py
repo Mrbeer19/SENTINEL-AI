@@ -31,6 +31,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "datasets" / "sentinel_cases_v1.json"
 DEFAULT_PROMPT = ROOT / "model" / "prompts" / "analyst_system_v1.md"
+# 3-agent pipeline (Investigation → Threat Analysis → Defense Planning), chosen 20 Oct 2026.
+PIPELINE_PROMPTS = {
+    "investigator": ROOT / "model" / "prompts" / "investigator_v1.md",
+    "analyst": ROOT / "model" / "prompts" / "threat_analyst_v1.md",
+    "planner": ROOT / "model" / "prompts" / "defense_planner_v1.md",
+}
 DEFAULT_OUT = Path(__file__).resolve().parent / "results"
 
 THREAT_TYPES = ["HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY", "BENIGN", "UNKNOWN"]
@@ -75,6 +81,10 @@ TOOLS = [
     for name, args in TOOL_ARGS.items()
 ]
 EVIDENCE_TOOLS = {"get_incident_logs", "get_ip_activity"}
+# In the pipeline only the planner decides on a block, so the investigator gets the read-only tools.
+READ_TOOLS = [t for t in TOOLS if t["function"]["name"] != "propose_block_ip"]
+THREAT_KEYS = [k for k in ANALYSIS_KEYS if k != "recommended_action"]
+PLAN_KEYS = ["recommended_action", "reason"]
 MAX_BLOCK_MINUTES = 24 * 60
 # Mirror backend v0.2 (backend/agent.py) so bench numbers match the live agent.
 MAX_TOOL_CALLS = 6
@@ -410,6 +420,123 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
+def validate_keys(value, keys: list[str]) -> list[str]:
+    """Key-level check for one pipeline stage; the merged analysis gets the full schema check."""
+    if not isinstance(value, dict):
+        return ["output is not a JSON object"]
+    errors = [f"missing key {k}" for k in keys if k not in value]
+    return errors + [f"unexpected key {k}" for k in value if k not in keys]
+
+
+def run_case_pipeline(case: dict, chat, opts: dict) -> dict:
+    """Investigation (tools) → Threat Analysis (JSON) → Defense Planning (sees only the analysis). Never raises."""
+    base = {"model": opts["model"], "think": False, "stream": False, "options": {"temperature": opts["temperature"], **({"num_ctx": opts["num_ctx"]} if opts.get("num_ctx") else {})}}
+    prompts = opts["pipeline_prompts"]
+    incident = dict(case["incident"])
+    calls: list[dict] = []
+    stats = {"model_calls": 0, "prompt_tokens": 0, "output_tokens": 0}
+    record = {"case": case["id"], "split": case["split"], "category": case["category"], "pipeline": True,
+              "first_try_json_ok": None, "format_schema_error": None, "stage_seconds": {}}
+    started = time.perf_counter()
+
+    def ask(messages: list, extra: dict | None = None) -> dict:
+        reply = chat({**base, "messages": messages, **(extra or {})})
+        stats["model_calls"] += 1
+        stats["prompt_tokens"] += reply.get("prompt_eval_count") or 0
+        stats["output_tokens"] += reply.get("eval_count") or 0
+        return reply["message"]
+
+    def json_stage(messages: list, keys: list[str], instruction: str):
+        """Ask for one JSON object, retry once with the errors. Returns (value, errors, raw, first_try_ok)."""
+        message = ask(messages)
+        first = None
+        for attempt in range(2):
+            raw = message.get("content", "")
+            try:
+                value = parse_json_reply(raw, lenient=not opts.get("strict_json", False))
+                errors = validate_keys(value, keys)
+            except ValueError as exc:
+                value, errors = None, [f"not JSON: {exc}"]
+            first = (not errors) if first is None else first
+            if not errors or attempt == 1 or not opts["retry"]:
+                return value, errors, raw, first
+            messages += [message, {"role": "user", "content": "That output was invalid: " + "; ".join(errors[:5]) + ". " + instruction}]
+            message = ask(messages)
+        return value, errors, raw, first
+
+    analysis, json_errors, raw = None, ["no final answer"], ""
+    try:
+        # 1. Investigation
+        t = time.perf_counter()
+        messages = [{"role": "system", "content": prompts["investigator"]},
+                    {"role": "user", "content": f"New incident: {json.dumps(incident)}. Investigate it."}]
+        evidence = []
+        for _ in range(opts["max_rounds"]):
+            message = ask(messages, {"tools": READ_TOOLS})
+            messages.append(message)
+            tool_calls = (message.get("tool_calls") or [])[: MAX_TOOL_CALLS - len(calls)]
+            if not tool_calls:
+                break
+            for tool_call in tool_calls:
+                fn = tool_call.get("function") or {}
+                name, args = fn.get("name", ""), normalize_args(fn.get("arguments"))
+                errors = check_tool_call(case, name, args) + ([f"{name}: not available to the investigator"] if name == "propose_block_ip" else [])
+                calls.append({"name": name, "args": args, "errors": errors})
+                result = run_tool(case, name, args) if name != "propose_block_ip" else {"error": "tool not available"}
+                evidence.append({"tool": name, "args": args, "result": result})
+                messages.append({"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)})
+            if len(calls) >= MAX_TOOL_CALLS:
+                break
+        summary = message.get("content", "") if not message.get("tool_calls") else ""
+        record["stage_seconds"]["investigation"] = round(time.perf_counter() - t, 2)
+
+        # 2. Threat Analysis: sees the tool results (untrusted log data stays wrapped) but has no tools.
+        t = time.perf_counter()
+        threat_instruction = "Output one JSON object only with keys: " + ", ".join(THREAT_KEYS) + "."
+        threat, threat_errors, raw, first = json_stage(
+            [{"role": "system", "content": prompts["analyst"]},
+             {"role": "user", "content": "Incident: " + json.dumps(incident) + "\nTool results: " + json.dumps(evidence, ensure_ascii=False)
+              + "\nInvestigator summary: " + json.dumps(summary[:2000], ensure_ascii=False) + "\n" + threat_instruction}],
+            THREAT_KEYS, threat_instruction)
+        record["stage_seconds"]["threat_analysis"] = round(time.perf_counter() - t, 2)
+        record["first_try_json_ok"] = first
+        if threat_errors:
+            json_errors = ["threat analysis: " + e for e in threat_errors]
+            raise ValueError("threat analysis output invalid")
+
+        # 3. Defense Planning: incident metadata + analysis only, never the logs.
+        t = time.perf_counter()
+        plan_instruction = "Output one JSON object only with keys: recommended_action, reason."
+        facts = {**incident, "source_protected": incident["source_ip"] in case["protected_ips"]}
+        plan, plan_errors, raw, first = json_stage(
+            [{"role": "system", "content": prompts["planner"]},
+             {"role": "user", "content": "Incident: " + json.dumps(facts) + "\nThreat analysis: " + json.dumps(threat, ensure_ascii=False) + "\n" + plan_instruction}],
+            PLAN_KEYS, plan_instruction)
+        record["stage_seconds"]["defense_planning"] = round(time.perf_counter() - t, 2)
+        record["first_try_json_ok"] = record["first_try_json_ok"] and first
+        if plan_errors:
+            json_errors = ["defense planning: " + e for e in plan_errors]
+            raise ValueError("defense planning output invalid")
+
+        analysis = {**threat, "recommended_action": plan["recommended_action"]}
+        record["plan_reason"] = plan.get("reason")
+        json_errors = validate_analysis(analysis)
+        # The backend turns a block action into a proposal for the incident source; it is never model-chosen.
+        if not json_errors and analysis["recommended_action"] in BLOCK_ACTIONS:
+            calls.append({"name": "propose_block_ip", "args": {"ip_address": incident["source_ip"], "minutes": 10, "reason": "planner"}, "errors": [], "synthetic": True})
+        record["error"] = None
+    except Exception as exc:  # keep the run, report the failure
+        record["error"] = f"{type(exc).__name__}: {exc}"
+    record["seconds"] = round(time.perf_counter() - started, 2)
+    record.update(stats)
+    record["tools"] = [call["name"] for call in calls if not call.get("synthetic")]
+    record["json_errors"] = json_errors
+    record.update(score(case, calls, analysis if not json_errors else None, json_errors))
+    record["analysis"] = analysis if isinstance(analysis, dict) else None
+    record["raw"] = raw[:2000] if json_errors else ""
+    return record
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--model", default="qwen3.5:4b")
@@ -424,6 +551,7 @@ def main(argv=None) -> int:
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS, help="tool rounds before the final answer (backend v0.2: 4)")
     parser.add_argument("--strict-json", action="store_true", help="reject text around the JSON object (backend before PR #6)")
+    parser.add_argument("--pipeline", action="store_true", help="3 agents: investigator (read tools) → threat analyst → defense planner")
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--url", default="http://127.0.0.1:11434")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -441,14 +569,16 @@ def main(argv=None) -> int:
         parser.error("no cases selected")
     opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint,
             "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "strict_json": args.strict_json,
-            "system_prompt": args.system_prompt.read_text(encoding="utf-8")}
+            "system_prompt": args.system_prompt.read_text(encoding="utf-8"), "pipeline": args.pipeline,
+            "pipeline_prompts": {k: v.read_text(encoding="utf-8") for k, v in PIPELINE_PROMPTS.items()}}
     chat = http_chat(args.url, args.timeout)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    out = args.out_dir / f"{args.model.replace(':', '_').replace('/', '_')}-{args.split}-{stamp}.jsonl"
+    out = args.out_dir / f"{args.model.replace(':', '_').replace('/', '_')}{'-pipeline' if args.pipeline else ''}-{args.split}-{stamp}.jsonl"
     header = {"type": "header", "started": stamp, "model": args.model, "split": args.split, "runs": args.runs,
-              "options": {k: v for k, v in opts.items() if k != "system_prompt"},
+              "options": {k: v for k, v in opts.items() if k not in ("system_prompt", "pipeline_prompts")},
+              "pipeline_prompts_sha256": {k: sha256(v) for k, v in PIPELINE_PROMPTS.items()} if args.pipeline else None,
               "system_prompt": str(args.system_prompt.relative_to(ROOT)) if args.system_prompt.is_relative_to(ROOT) else args.system_prompt.name,
               "system_prompt_sha256": sha256(args.system_prompt), "cases_sha256": sha256(args.cases),
               "ollama_version": get_json(args.url, "/api/version"), "machine": args.machine,
@@ -466,7 +596,7 @@ def main(argv=None) -> int:
         try:
             for case in cases:
                 for run in range(args.runs):
-                    row = run_case(case, chat, opts)
+                    row = (run_case_pipeline if opts["pipeline"] else run_case)(case, chat, opts)
                     row["run"] = run + 1
                     ps = get_json(args.url, "/api/ps")
                     row["ollama_ps"] = [{"name": m.get("name"), "size": m.get("size"), "size_vram": m.get("size_vram"), "context_length": m.get("context_length")}
