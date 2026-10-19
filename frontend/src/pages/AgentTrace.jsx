@@ -6,6 +6,9 @@ import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, a
 const statusTone = { ok: 'good', error: 'bad', rejected_by_policy: 'bad', invalid_output: 'warn', fallback: 'warn' }
 const statusText = { ok: 'ok', error: 'error', rejected_by_policy: 'Rejected by policy', invalid_output: 'Invalid output', fallback: 'Fallback' }
 const opText = { invoke_agent: 'Agent run', chat: 'Model call', execute_tool: 'Tool' }
+// Three agents (LangGraph): the planner never sees log text, only fixed fields.
+const agentText = { investigation: '1 · Investigation', threat_analysis: '2 · Threat Analysis', defense_planning: '3 · Defense Planning', rule_fallback: 'Rule fallback (not AI)' }
+const agentNote = { investigation: 'Read-only tools collect evidence', threat_analysis: 'No tools · classifies the evidence', defense_planning: 'Sees fixed fields only, never log text', rule_fallback: 'Model unavailable or output invalid; detection rule result used' }
 const ms = (v) => v == null ? '' : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v} ms`
 
 export default function AgentTrace({ ctx, id }) {
@@ -42,10 +45,13 @@ export default function AgentTrace({ ctx, id }) {
     <Panel title="Investigation Steps" icon="trace">
       <ol className="vsteps">
         <li className="done"><b>Read incident</b><small>{kindName(report.kind)} from {report.source_ip}</small></li>
-        {trace.map(t => <li key={t.id} className={t.status && t.status !== 'ok' ? 'current' : 'done'}>
-          <b className="mono">{t.tool}</b>
-          <small>{fmtTime(t.created_at)} · {opText[t.operation] || 'Tool'}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}{t.source === 'fallback' && ' · fallback'}{t.status && !['ok', 'fallback'].includes(t.status) && ` · ${statusText[t.status] || t.status}`}</small>
-        </li>)}
+        {trace.map((t, i) => <React.Fragment key={t.id}>
+          {t.agent && t.agent !== trace[i - 1]?.agent && <li className="agentHead"><b>{agentText[t.agent] || t.agent}</b><small>{agentNote[t.agent]}</small></li>}
+          <li className={t.status && t.status !== 'ok' ? 'current' : 'done'}>
+            <b className="mono">{t.tool}</b>
+            <small>{fmtTime(t.created_at)} · {opText[t.operation] || 'Tool'}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}{t.source === 'fallback' && ' · fallback'}{t.status && !['ok', 'fallback'].includes(t.status) && ` · ${statusText[t.status] || t.status}`}</small>
+          </li>
+        </React.Fragment>)}
         <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback (not AI)' : 'Validated JSON') : report.status === 'analyzing' || ctx.busy ? 'Running… (~30 s on the M5)' : 'Not run yet'}</small></li>
         <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : report.analysis && noProposalNote[report.status] ? `No block proposed · ${noProposalNote[report.status]}` : 'No proposal yet'}</small></li>
       </ol>
@@ -73,6 +79,22 @@ export default function AgentTrace({ ctx, id }) {
   </div>
 }
 
+// Log records: the evidence columns first; the source IP is the same on every row, so it goes last.
+const LOG_ORDER = ['t', 'type', 'outcome', 'user', 'port', 'src']
+const colText = { t: 'Time', type: 'Type', outcome: 'Outcome', user: 'Username', port: 'Port', src: 'Source' }
+// Columns whose value is the same on every row (source IP, often the event type) move to the header line.
+const constantOf = (rows) => Object.fromEntries(['src', 'type'].filter(k => rows.length > 1 && rows.every(r => r[k] === rows[0][k])).map(k => [k, rows[0][k]]))
+const columnsOf = (rows) => {
+  const fixed = constantOf(rows)
+  const keys = [...new Set(rows.flatMap(r => Object.keys(r)))].filter(k => !(k in fixed))
+  return [...LOG_ORDER.filter(k => keys.includes(k)), ...keys.filter(k => !LOG_ORDER.includes(k))]
+}
+// Every time on the page is shown in the browser's local zone, including UTC timestamps inside tool output.
+const isTime = (k) => k === 't' || k.endsWith('timestamp') || k.endsWith('_at') || k.endsWith('_seen')
+const cell = (k, v) => v == null ? '—' : isTime(k) ? fmtTime(v) : String(v)
+const localTimes = (v) => Array.isArray(v) ? v.map(localTimes) : v && typeof v === 'object'
+  ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, isTime(k) && typeof x === 'string' ? new Date(x).toLocaleString('en-GB', { hour12: false }) : localTimes(x)])) : v
+
 function ToolCall({ t }) {
   const input = parseJson(t.input)
   const raw = parseJson(t.output)
@@ -82,11 +104,11 @@ function ToolCall({ t }) {
   return <Panel title={<><span className="mono">{t.tool}</span>{t.tool === 'propose_block_ip' ? <Badge tone="warn">Proposal pre-check</Badge> : <Badge tone="info">Read only</Badge>}{status !== 'ok' && <Badge tone={statusTone[status] || 'warn'}>{statusText[status] || status}</Badge>}{t.source === 'fallback' && <Badge tone="warn">fallback</Badge>}</>} icon="terminal" actions={<span className="muted small">{fmtTime(t.created_at)}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}</span>}>
     <h3 className="sub">Input</h3>
     <Code>{JSON.stringify(input, null, 2)}</Code>
-    <h3 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}{output !== raw && ' · untrusted log data'}</small>}</h3>
-    {Array.isArray(output) ? (output.length ? <div className="tableWrap short"><table>
-      <thead><tr>{Object.keys(output[0]).map(k => <th key={k}>{k}</th>)}</tr></thead>
-      <tbody>{output.slice(0, 30).map((row, i) => <tr key={i}>{Object.entries(row).map(([k, v]) => <td key={k} className="mono">{k.endsWith('timestamp') || k.endsWith('_at') ? fmtTime(v) : String(v ?? '—')}</td>)}</tr>)}</tbody>
-    </table></div> : <Empty>Empty result</Empty>) : <Code>{JSON.stringify(output, null, 2)}</Code>}
+    <h3 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}{output !== raw && ' · untrusted log data'}{Object.entries(constantOf(output)).map(([k, v]) => ` · ${colText[k] || k} ${v}`)}</small>}</h3>
+    {Array.isArray(output) ? (output.length ? <div className="tableWrap short logTable"><table>
+      <thead><tr>{columnsOf(output).map(k => <th key={k}>{colText[k] || k}</th>)}</tr></thead>
+      <tbody>{output.slice(0, 40).map((row, i) => <tr key={i}>{columnsOf(output).map(k => <td key={k} className={k === 'user' ? 'userCell' : 'mono'}>{cell(k, row[k])}</td>)}</tr>)}</tbody>
+    </table></div> : <Empty>Empty result</Empty>) : <Code>{JSON.stringify(localTimes(output), null, 2)}</Code>}
   </Panel>
 }
 
