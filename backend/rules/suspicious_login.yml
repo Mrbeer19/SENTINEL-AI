@@ -1,0 +1,30 @@
+# Sigma-inspired rule with a SENTINEL correlation type: count failures before the matching success.
+title: Successful login after repeated failures
+id: sentinel-suspicious-login
+status: experimental
+description: A login succeeds after many failed attempts from the same source IP on the same channel (HTTP or SSH) in a short window. The account may have been guessed.
+references:
+  - https://attack.mitre.org/techniques/T1078/
+  - https://attack.mitre.org/techniques/T1110/
+tags:
+  - attack.initial_access
+  - attack.t1078
+  - attack.credential_access
+  - attack.t1110
+level: high
+logsource:
+  product: sentinel
+  category: authentication
+detection:
+  selection:
+    outcome: success
+  condition: selection
+correlation:
+  type: failures_before
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 5
+sentinel:
+  kind: SUSPICIOUS_LOGIN

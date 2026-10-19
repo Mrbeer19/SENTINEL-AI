@@ -1,10 +1,26 @@
-# API contract — MVP 0.1
+# API contract — v0.2
 
-OpenAPI ที่ `/docs` และ `/openapi.json` สะท้อน schema ปัจจุบัน เอกสารนี้อธิบายการเชื่อมสอง pipeline ก่อนแก้ field/status ให้แก้ทั้ง contract, backend, frontend และ tests ในงานเดียวกัน
+OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จาก localhost หรือมี `X-Admin-Key` เท่านั้น) สะท้อน schema ปัจจุบัน ก่อนแก้ field/status ให้แก้ contract, backend และ tests ใน PR เดียวกัน แล้วแจ้งฝั่ง frontend เจ้าของ contract: Obeto · ร่างที่ใช้รวม: `docs/api-contract-v0.2-draft.md` (Beer)
+
+## เปลี่ยนจาก v0.1
+
+| เรื่อง | v0.1 | v0.2 |
+|---|---|---|
+| `analysis` | string JSON `classification, severity(ตัวเล็ก), summary, evidence, recommendation` · fallback เป็นข้อความ | object ตาม [Analysis](#analysis) ทั้งผลโมเดลและ fallback |
+| `incident.severity` | `low/medium/high` | `LOW/MEDIUM/HIGH/CRITICAL` |
+| proposal | สร้างทุกครั้งหลังวิเคราะห์ | สร้างเฉพาะเมื่อ `recommended_action` เป็นการบล็อกและผ่าน policy |
+| `proposal.source_ip` | IP เป้าหมาย | ใช้ `target_ip` · `source_ip` ยังส่งเป็น alias ถึง v0.3 |
+| `trace[]` | `tool, input, output` | เพิ่ม `operation, status, duration_ms, source` |
+| status | 5 ค่า | เพิ่ม `analyzing, needs_review, monitoring, closed` |
+| เครื่องอื่นอ่าน API | ได้ทุก GET และ `/ws` | ได้แค่ `/api/health`, `/api/demo/login`, `/api/demo/traffic` |
+| tools ของโมเดล | `get_recent_events`, `get_active_rules` | 5 ตัวตาม benchmark ([Tools](#tools)) |
+| WS | `{stage, payload}` | `{v: 2, stage, ts, payload}` + stage `analysis_step`, `reset` |
+
+ไม่เปลี่ยน: path ทั้งหมด · `incident.kind` · demo login/traffic · `/api/simulations` · `uvicorn backend.app:app`
 
 ## Event
 
-`POST /api/events` → 201: `{ "event": EventRecord, "incident": Incident | null }`
+`POST /api/events` → 201 `{ "event": EventRecord, "incident": Incident | null }`
 
 ```json
 {
@@ -12,73 +28,199 @@ OpenAPI ที่ `/docs` และ `/openapi.json` สะท้อน schema �
   "event_type": "HTTP_AUTH",
   "outcome": "failed",
   "destination_port": null,
-  "timestamp": "2026-10-16T08:00:00+00:00",
-  "label": "unknown"
+  "timestamp": "2026-10-16T15:00:00+07:00",
+  "label": "unknown",
+  "username": "admin"
 }
 ```
 
-`source_ip` ต้องเป็น IPv4/IPv6; `event_type` = `HTTP_AUTH | SSH_AUTH | CONNECTION`; `outcome` = `failed | success | attempt`; optional port 1–65535; timestamp หากส่งต้องมี timezone และไม่เกินอนาคต 5 นาที; ถ้าไม่ส่งใช้เวลารับ event; `label` = `normal | attack | unknown` ใช้ประเมินเท่านั้น ไม่ส่ง label ให้โมเดลเป็นหลักฐาน
+- `event_type` = `HTTP_AUTH | SSH_AUTH | CONNECTION` · `outcome` = `failed | success | attempt` · port 1–65535 (optional)
+- `timestamp` ต้องมี timezone ไม่เกินอนาคต 5 นาที **เก็บเป็น UTC เสมอ** (`+00:00`) ไม่ส่ง = เวลารับ
+- `username` optional รับได้ ≤1024 ตัว (เกิน = 422) **เก็บแค่ 80 ตัวแรก** ตัวพิมพ์ได้เท่านั้น · ถูกตัดเมื่อไหร่ `username_truncated = 1` (event ไม่หายจากการตรวจจับ) · ไม่เก็บ password · `label` ใช้ประเมินเท่านั้น ไม่ส่งให้โมเดล
+- Record เพิ่ม `id`, `ocsf_class_uid` ([OCSF](#ocsf)) และ `username_truncated` (0/1 · แถวเก่าก่อนเพิ่ม field = `null`) · `GET /api/events?limit=100` ใหม่ก่อน สูงสุด 500
 
-Record เพิ่ม `id` และ timestamp จริง `GET /api/events?limit=100` คืน array ใหม่ก่อน จำกัดสูงสุด 500
+### Raw log ingest
 
-## Detection และ incident
+`POST /api/logs` `{ "format": "sshd", "lines": ["2026-10-20T12:00:01+07:00 m5 sshd[1200]: Failed password for invalid user admin from 192.0.2.25 port 51234 ssh2", ...], "label": "unknown" }` (1–1000 บรรทัด, บรรทัดละ ≤1000 ตัว · localhost/admin key เท่านั้น)
 
-ในหน้าต่าง 60 วินาที: HTTP/SSH failed >=5 ครั้งจาก IP เดียวกันตรวจแยกชนิด; CONNECTION >=8 distinct destination ports เป็น port scan ปัจจุบัน incident เดิมของ source/kind ที่ยังไม่ `closed` จะถูกอัปเดต event_count
+- เวลา: ISO (rsyslog Ubuntu 24.04) หรือ `Oct 20 12:00:01` (ไม่มีปี/โซน → เวลาท้องถิ่นของ server)
+- `Failed password|publickey` → `SSH_AUTH failed` · `Accepted password|publickey` → `SSH_AUTH success` · port 22 · ผ่าน validation + detection เดียวกับ `POST /api/events`
+- บรรทัด sshd อื่น (`Invalid user`, `Connection closed`, pam) = `skipped` (ไม่นับซ้ำ) · อ่านไม่ได้/ไม่ผ่าน validation = `rejected` ไม่ทำให้ทั้งชุดล้ม
+- ตอบ `{lines, accepted, skipped, rejected, errors: [{line, error}] (≤20), incident_ids}`
 
-Incident มี `id`, `kind`, `source_ip`, `status`, `severity`, `event_count`, `created_at`, `analysis`, `analysis_mode` รายละเอียดจาก `GET /api/incidents/{id}` เพิ่ม `trace[]`, `timeline[]`, `proposal | null`
+## Detection
 
-สถานะหลัก: `detected → awaiting_approval → blocked → verified` หรือ `awaiting_approval → rejected` การ unblock เปลี่ยนสถานะกฎและเพิ่ม audit record; ไม่ลบประวัติ incident เดิม
+กฎอยู่ที่ `backend/rules/*.yml` รูปแบบอิง Sigma (selection + correlation ในไฟล์เดียว) เปลี่ยนเกณฑ์ได้โดยไม่แก้โค้ด
 
-`POST /api/incidents/{id}/analyze` เรียก Ollama 2 ขั้น: model เลือก read-only tools แล้วสร้าง structured output ที่ validate ด้วย Pydantic
+| rule id | kind | เงื่อนไข | ATT&CK | level |
+|---|---|---|---|---|
+| `sentinel-http-auth-bruteforce` | `HTTP_AUTH_BRUTE_FORCE` | `HTTP_AUTH` failed ≥5 / 60 วิ / IP | T1110.001 | HIGH |
+| `sentinel-ssh-auth-bruteforce` | `SSH_BRUTE_FORCE` | `SSH_AUTH` failed ≥5 / 60 วิ / IP (log replay) | T1110.001 | HIGH |
+| `sentinel-port-scan` | `PORT_SCAN` | `CONNECTION` ≥8 พอร์ตต่างกัน / 60 วิ / IP | T1046 | MEDIUM |
+| `sentinel-traffic-anomaly` | `TRAFFIC_ANOMALY` | `CONNECTION` ≥100 ครั้ง / 60 วิ / IP (พอร์ตใดก็ได้) · สเปก scenario E (เสริม) | T1498 | MEDIUM |
+| `sentinel-suspicious-login` | `SUSPICIOUS_LOGIN` | login **success** หลัง failed ≥5 ช่องทางเดียวกัน (HTTP/SSH) / 60 วิ / IP · `event_count` = จำนวน failed | T1078 | HIGH |
+
+- หน้าต่างเวลานับย้อนจาก **เวลาของ event** (UTC)
+- ≥3 เท่าของเกณฑ์ → `CRITICAL`
+- brute force ที่เข้าได้ในที่สุด = **2 incident** จาก IP เดียวกัน: `*_BRUTE_FORCE` (ตอน failed ครั้งที่ 5) + `SUSPICIOUS_LOGIN` (ตอน success) · UI แสดงแยกกัน อนุมัติบล็อกอันไหนก็บล็อก IP เดียวกัน
+- incident ที่ยังเปิดของ (IP, kind) เดิมจะถูกอัปเดต `event_count` · incident ที่จบแล้ว (`verified | rejected | closed`) ไม่ถูกใช้ซ้ำ → เปิดใหม่
+
+## Incident
+
+Field: `id, kind, source_ip, status, severity, event_count, created_at, updated_at, rule_id, attack_technique, analysis, analysis_mode, analysis_meta`
+`GET /api/incidents/{id}` เพิ่ม `trace[]`, `timeline[]`, `proposal | null`
+
+```
+detected → analyzing → awaiting_approval → blocked → verified
+                     ↘ needs_review | monitoring | closed
+awaiting_approval → rejected
+blocked → closed (ปลดกฎก่อน verify)
+ทุกสถานะที่ยังเปิด → closed (demo reset)
+```
+
+เปลี่ยนนอกเส้นนี้ → 409 · ทุกการเปลี่ยนเขียน audit 1 แถว
+
+## Analysis
+
+**agent 3 ตัว (LangGraph)** — `investigation` เรียก tool เก็บหลักฐาน → `threat_analysis` (ไม่มี tool) ตอบ `threat_type, severity, confidence, evidence, explanation_th` → `defense_planning` (ไม่มี tool **ไม่เห็น evidence / explanation / log**) เห็นแค่ `Incident: {kind, event_count, protected}` + `Threat analysis: {threat_type, severity, confidence}` ตอบ `recommended_action, reason` (ข้อความแต่ละขั้นตรงกับ `agent_bench.py --pipeline` ทุกตัวอักษร) → backend รวมเป็น `analysis` 6 key ด้านล่าง → policy → คน · ขั้นไหนล้ม (โมเดลล่ม / JSON ผิด 2 ครั้ง) = `rule_fallback` ทั้งผล · `reason` ของ planner ใช้เป็น `proposal.reason` · prompt: `SENTINEL_PROMPT_PATH` (`model/prompts/investigator_v1.md`), `SENTINEL_ANALYST_PROMPT_PATH` (`model/prompts/threat_analyst_v1.md`), `SENTINEL_PLANNER_PROMPT_PATH` (`defense_planner_v1.md`) ไม่มีไฟล์ = ข้อความในโค้ด · `prompt_version` = 3 ส่วนต่อด้วย ` + `
+
+`POST /api/incidents/{id}/analyze` รอจนเสร็จแล้วคืน incident detail (บน M5 ~20 วิ) ระหว่างนั้นส่ง WS `analysis_step` ทุกขั้น เรียกซ้ำเมื่อมีผลแล้ว = คืนผลเดิม · incident ที่จบแล้ว → 409
 
 ```json
 {
-  "classification": "HTTP_AUTH_BRUTE_FORCE",
-  "severity": "high",
-  "summary": "Repeated failed logins",
-  "evidence": ["Six failures in recent records"],
-  "recommendation": "Review temporary block"
+  "threat_type": "HTTP_AUTH_BRUTE_FORCE",
+  "severity": "HIGH",
+  "confidence": 0.86,
+  "evidence": ["20 failed logins to /api/demo/login within 60 s", "No successful login"],
+  "recommended_action": "TEMP_BLOCK_IP",
+  "explanation_th": "IP นี้ลองรหัสผ่านผิดซ้ำ 20 ครั้งใน 1 นาที เข้าข่ายเดารหัสผ่าน"
 }
 ```
 
-`analysis` เก็บ JSON นี้เป็น string; ถ้า fallback เป็นข้อความที่ติดป้าย `Rule fallback` โหมด = `ollama` (มี tool calls), `ollama_no_tools` (โมเดลไม่เลือก tool), หรือ `rule_fallback` (โมเดลใช้ไม่ได้/ผลไม่ผ่าน validation) ไม่ใช้ fallback เป็นผลวัดความถูกต้องของโมเดล
+| field | ค่า |
+|---|---|
+| `threat_type` | `HTTP_AUTH_BRUTE_FORCE \| SSH_BRUTE_FORCE \| PORT_SCAN \| SUSPICIOUS_LOGIN \| TRAFFIC_ANOMALY \| BENIGN \| UNKNOWN` |
+| `severity` | `LOW \| MEDIUM \| HIGH \| CRITICAL` |
+| `confidence` | 0–1 จากโมเดล · **`null` เมื่อ `rule_fallback`** · ใช้แสดงผลเท่านั้น ไม่ใช้แทนการอนุมัติ |
+| `evidence` | string 1–10 รายการ |
+| `recommended_action` | `NO_ACTION \| MONITOR \| INVESTIGATE \| TEMP_BLOCK_IP \| BLOCK_IP` |
+| `explanation_th` | string ไม่ว่าง |
 
-Tool allowlist: `get_recent_events` และ `get_active_rules` scope ผูกกับ IP ของ incident ฝั่ง server; trace เก็บ tool/input/output/time จริง ไม่มี shell tool
+ห้ามมี key อื่น (strict) · ถ้าโมเดลพิมพ์ข้อความล้อม object จะดึง `{...}` ออกมาแล้ว validate strict เหมือนเดิม (ตกลงกับ Beer 20 ต.ค.) · ผิด → retry 1 ครั้งพร้อม error → ยังผิด → `rule_fallback`
 
-## Human approval และ firewall
+`analysis_mode`: `ollama` (เรียก tool แล้ว JSON ผ่าน) · `ollama_retry` (ผ่านหลัง retry) · `ollama_no_tools` · `rule_fallback`
+**ห้ามนับ `rule_fallback` เป็นผลของโมเดล**
 
-Proposal มี `id`, `incident_id`, `source_ip`, `action=TEMP_BLOCK_IP`, `duration_seconds=600`, `status=pending|approved|rejected`, `reviewer`, `created_at`
+`analysis_meta`: `{ model, model_digest, prompt_version, rules_version }` — `prompt_version` = `<ชื่อไฟล์>@<sha256 12 ตัว>` ของ `model/prompts/analyst_system_v1.md`
 
-- `GET /api/proposals` → array
-- `POST /api/proposals/{id}/approve` body `{ "reviewer": "SOC operator" }` → Incident detail; สร้าง rule หลังตรวจ protected IP
-- `POST /api/proposals/{id}/reject` body เหมือนกัน → Incident detail; ไม่สร้าง rule
-- ตัดสินใจซ้ำ → 409; protected/loopback IP → 400
-- `GET /api/rules` → array มี `active` คำนวณจาก expiry
-- `DELETE /api/rules/{id}` → ปิดกฎด้วย expiry และบันทึก timeline
+`format=schema` ของ Ollama ปิดเป็นค่าเริ่มต้น (ได้ 501 บน MLX runner) เปิดด้วย `SENTINEL_OLLAMA_FORMAT=1`
 
-Rule มี `id`, `proposal_id`, `source_ip`, `expires_at`, `created_at`, `active` ระบบบล็อกเฉพาะ demo traffic/login ในระดับแอป
+### Action → ผล
 
-## Demo และ verification
+| `recommended_action` | backend ทำ | status |
+|---|---|---|
+| `TEMP_BLOCK_IP` / `BLOCK_IP` ผ่าน policy | สร้าง proposal `pending` | `awaiting_approval` |
+| `TEMP_BLOCK_IP` / `BLOCK_IP` ไม่ผ่าน policy | ไม่สร้าง · เหตุผลใน timeline stage `policy` | `needs_review` |
+| `INVESTIGATE` | ไม่สร้าง | `needs_review` |
+| `MONITOR` | ไม่สร้าง | `monitoring` |
+| `NO_ACTION` | ไม่สร้าง | `closed` |
 
-- `POST /api/demo/login` body `{ "username": "student", "password": "wrong" }` ใช้ IP จริงจาก connection; ทดสอบรหัสถูกด้วย `sentinel-demo`; สำเร็จ 200, auth ไม่ผ่าน 401, ถูก rule บล็อก 403; ไม่เก็บ password ใน event
-- `POST /api/demo/traffic` body `{}` ใช้ IP จริง; local operator เท่านั้นที่ส่ง `{ "source_ip": "192.0.2.25" }` เพื่อจำลอง IP ได้
-- Allowed → 200 `{ "source_ip": "...", "decision": "allowed", "rule_id": null }`
-- Denied → **403** `{ "source_ip": "...", "decision": "denied", "rule_id": 1 }`; เพิ่ม traffic record แล้วจึงตั้ง incident `verified`
-- `GET /api/traffic` → 100 records ล่าสุด
-- `POST /api/simulations` body `{ "scenario": "http_brute_force", "source_ip": "192.0.2.25" }`
-- Scenario = `http_brute_force | ssh_brute_force_logs | port_scan | normal`; เป็น bounded synthetic events ที่ผ่าน ingestion เดียวกัน
+`rule_fallback` เสนอ `TEMP_BLOCK_IP` เสมอ แต่ proposal ติด `source = "rule_fallback"` ให้คนเห็น
+
+## Tools
+
+ทั้งหมด scope ฝั่ง server ตาม incident ที่วิเคราะห์ ไม่มี shell ไม่มี SQL อิสระ ชื่อและ args ตรงกับ `model/eval/agent_bench.py`
+
+| tool | args | คืน |
+|---|---|---|
+| `get_incident_logs` | `incident_id` (`INC-0001`) | `{incident_id, untrusted_log_records[≤40], returned}` · username ตัดเหลือ 64 |
+| `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched |
+| `get_related_incidents` | `ip_address` | incident อื่นของ IP นี้ ≤10 |
+| `get_firewall_status` | `ip_address` | `{ip, status: ALLOWED/BLOCKED, protected}` |
+
+เพดาน: tool 6 ครั้ง / 4 รอบ · **investigator ใช้ได้แค่ 4 tool อ่านอย่างเดียว** (`propose_block_ip` เอาออกแล้ว ตกลงกับ Beer ใน PR #7 · การเลือกบล็อกเป็นของ defense_planning) เรียกมาจะได้ error แล้วสืบต่อ
+
+## Trace
+
+| field | ค่า |
+|---|---|
+| `agent` | `investigation \| threat_analysis \| defense_planning \| rule_fallback` (แถวเก่าก่อน 3 agent = `null`) |
+| `operation` | `invoke_agent` (จบ 1 agent) · `chat` (เรียกโมเดล 1 ครั้ง) · `execute_tool` — ตามชื่อ OpenTelemetry GenAI |
+| `tool` | ชื่อ tool / ชื่อโมเดล / ชื่อ agent (แถว `invoke_agent`) |
+| `status` | `ok \| error \| rejected_by_policy \| invalid_output \| fallback` |
+| `source` | `model \| fallback` |
+| `duration_ms`, `input`, `output` (JSON string), `created_at` | |
+
+## Proposal และ policy
+
+Field: `id, incident_id, target_ip, source_ip (alias), action, duration_seconds, status=pending|approved|rejected, reviewer, created_at, source=model|rule_fallback, d3fend="D3-ITF", reason, policy_notes[]`
+
+Policy (`backend/policy.py`) ตรวจตอนสร้างและตอนอนุมัติซ้ำอีกรอบ:
+1. action ต้องเป็น `TEMP_BLOCK_IP | BLOCK_IP`
+2. **`target_ip` ต้องเท่ากับ `source_ip` ของ incident**
+3. ไม่อยู่ใน protected: loopback, `0.0.0.0`, `::`, multicast และ `SENTINEL_PROTECTED_IPS`
+4. `TEMP_BLOCK_IP` = 600 วิ · `BLOCK_IP` = 3600 วิ เฉพาะ incident `CRITICAL` (ไม่ใช่ → ลดเป็น TEMP + note)
+
+- `GET /api/proposals`
+- `POST /api/proposals/{id}/approve` body `{ "reviewer": "SOC operator" }` → incident detail · สร้างกฎ · `blocked`
+- `POST /api/proposals/{id}/reject` → incident detail · ไม่สร้างกฎ · `rejected`
+- ตัดสินซ้ำ 409 · policy ไม่ผ่านตอนอนุมัติ 400
+
+## Firewall และ verification
+
+- `GET /api/rules` → array มี `active` · `DELETE /api/rules/{id}` ปิดกฎ (incident `blocked` → `closed`)
+- บล็อกระดับแอปเฉพาะ demo login/traffic ไม่แตะ firewall ของ OS
+- **`verified` เฉพาะเมื่อ request ใหม่จริงจาก IP เดิมโดน 403** การมีกฎอย่างเดียวไม่นับ
+
+## Demo
+
+- `POST /api/demo/login` `{ "username": "student", "password": "wrong" }` → 200 / 401 / 403 (โดนบล็อก) · ใช้ IP จาก connection · บัญชีถูก = `student` / `sentinel-demo`
+- `POST /api/demo/traffic` `{}` → 200 `{source_ip, decision: "allowed", rule_id: null}` / **403** `decision: "denied"` · local เท่านั้นส่ง `source_ip` จำลองได้
+- `POST /api/demo/reset` (local) → `{rules_disabled, incidents_closed}` ปิดกฎ active, ปิด incident ที่ยังเปิด, ปฏิเสธ proposal ค้าง · ไม่ลบประวัติ
+- `POST /api/simulations` `{ "scenario": "http_brute_force | ssh_brute_force_logs | port_scan | suspicious_login | traffic_anomaly | normal", "source_ip": "192.0.2.25" }` → ส่ง event ทั้งหมดทันที · จำนวน event: 6 / 6 / 9 / 7 / 120 / 2
+- **ส่งทีละ event (ดูสดบน dashboard):** `POST /api/simulations/start` body เดียวกัน + `interval_ms` (50–10000, ค่าเริ่มต้น 500) → **202** state · รันได้ทีละอัน ซ้อน = 409 · `POST /api/simulations/stop` → state (`stopped: true`) · `GET /api/simulations/state` → `{running, scenario, source_ip, sent, total, interval_ms, started_at, finished_at, stopped, incident_ids, source_note}` · ทุก event ส่ง WS stage `simulation` พร้อม state
+- `GET /api/traffic` → 100 ล่าสุด
+
+## Audit
+
+`audit_log`: `id, ts, actor, action, incident_id, detail (JSON string), prev_hash, hash` — `hash = sha256([ts, actor, action, incident_id, detail, prev_hash])` แถวแรกใช้ prev = `0×64`
+- `GET /api/audit?limit=200`
+- `GET /api/audit/verify` → `{valid, entries, broken_at}` แก้/ลบ/สลับแถวใดก็ตาม chain ขาด
+- action: `incident_created, status_changed, analysis_recorded, proposal_created, proposal_rejected, rule_applied, rule_disabled, verification_passed, demo_reset`
+- `timeline` เดิมยังอยู่สำหรับ UI (ไม่มี hash)
 
 ## Reports, health และ realtime
 
-- `GET /api/health` → status, model, model_ready, ai_mode
-- `GET /api/metrics` → events, incidents, exploratory precision/recall/F1 พร้อม note ขอบเขต
-- `GET /api/reports/{id}` → incident detail + events + traffic
-- `WS /ws` → `{ "stage": "event", "payload": {...} }`
-- Stage = `connected | event | incident | analysis | approval | firewall | traffic | verification`
-- เมื่อ reconnect ให้ refetch REST state; WebSocket แจ้งเปลี่ยนแปลง ไม่ใช่แหล่งเก็บข้อมูลหลัก
+- `GET /api/health` (เปิดให้ Neo) → `status, version, model, model_ready, ai_mode`
+- `GET /api/metrics` · `GET /api/reports/{id}` (incident detail + events + traffic + audit)
+- `WS /ws` → `{ "v": 2, "stage": "...", "ts": "...", "payload": {...} }`
+- stage: `connected | event | incident | analysis_step | analysis | approval | firewall | traffic | verification | reset | simulation`
+- `analysis_step.payload` = trace row 1 แถว · reconnect แล้ว refetch REST
 
 ## Access และ errors
 
-รัน local operator ที่ localhost เป็นค่าเริ่มต้น เมื่อเปิด private LAN, remote client เขียน management API ต้องมี `X-Admin-Key` ตรงกับ `SENTINEL_ADMIN_KEY` ส่วน demo login/traffic เปิดไว้รับการทดสอบจากเครื่องเพื่อน ห้ามเปิด Vite dev server ให้ LAN เพราะ proxy จะทำให้ request ดูเหมือน localhost
+| ใคร | เข้าได้ |
+|---|---|
+| localhost (M5) | ทุก endpoint |
+| เครื่องอื่นที่มี `X-Admin-Key` = `SENTINEL_ADMIN_KEY` | ทุก endpoint รวม `/ws` |
+| เครื่องอื่น (Neo) | `/api/health`, `/api/demo/login`, `/api/demo/traffic` เท่านั้น · จำกัด 30 ครั้ง / 10 วิ / IP (429) · `/docs` `/redoc` `/openapi.json` = 403 |
 
-Validation 422, missing resource 404, policy/source spoofing 400/403, repeated decision 409 รูปแบบ error = `{ "detail": string | ValidationError[] }` ระบบนี้เป็น lab MVP ยังไม่มีบัญชีผู้ใช้/role และยังไม่ผ่านการประเมินสำหรับเปิด public internet
+**กันเว็บอื่นในเบราว์เซอร์บน M5:** POST/PUT/PATCH/DELETE ที่มี `Origin` ไม่ใช่ `localhost` / `127.0.0.1` / `SENTINEL_ALLOWED_HOSTS` (พอร์ตใดก็ได้) → 403 `Cross-site request refused` · ไม่มี `Origin` (curl, terminal) ผ่าน · `Host` ไม่อยู่ในรายการ → 400 `Invalid host header` · WS ใช้กฎ `Origin` เดียวกัน · `make run-lan HOST=…` เพิ่ม IP M5 ให้เอง
+
+ห้ามเปิด Vite dev server ให้ LAN เพราะ proxy ทำให้ request ดูเหมือน localhost · ตรวจเครื่องก่อนเดโม: `python -m backend.preflight --host <M5 LAN IP>`
+
+Errors: 422 validation · 404 ไม่พบ · 400 policy / Host ไม่อนุญาต · 403 สิทธิ์/spoof/โดนบล็อก · 409 ตัดสินซ้ำ/สถานะผิดลำดับ · 429 เกินอัตรา · รูปแบบ `{ "detail": string | ValidationError[] }`
+
+## OCSF
+
+อิงชื่อ class ของ OCSF (ไม่ได้ส่งออกเต็มสเปก)
+
+| ของเรา | OCSF |
+|---|---|
+| `HTTP_AUTH`, `SSH_AUTH` | Authentication (`class_uid` 3002) |
+| `CONNECTION` | Network Activity (`class_uid` 4001) |
+| `source_ip` | `src_endpoint.ip` |
+| `destination_port` | `dst_endpoint.port` |
+| `outcome` | `status` (Success / Failure) |
+| `username` | `user.name` |
+| `timestamp` | `time` |

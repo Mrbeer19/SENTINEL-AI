@@ -27,13 +27,15 @@ npm run dev
 
 เปิด **http://127.0.0.1:5173** — API docs อยู่ที่ **http://127.0.0.1:8000/docs**
 
+หลัง `npm run build` backend เสิร์ฟหน้าเว็บเองที่ port 8000: dashboard ผู้ดูแลเปิดบน M5 ที่ `http://127.0.0.1:8000/` ส่วนเครื่อง Neo ใช้ **Terminal เท่านั้น** ส่งคำขอไปยัง `http://<LAN IP ของ M5>:8000` ตาม [คู่มือ Neo Terminal](scripts/neo/README.md) M5 รัน backend ด้วย `make -C backend run-lan HOST=<LAN IP ของ M5>` (ไม่ใช้ `--host 0.0.0.0` เพราะเปิดทุก interface) และให้ Neo เรียก backend โดยตรง เพื่อบันทึก IP ต้นทางจริง ไม่เปิด Vite dev server ให้ LAN
+
 ## ทดลอง flow แรก
 
-1. หน้า Firewall: ส่ง test request จาก `192.0.2.25` ก่อนป้องกัน ต้องได้ `allowed`
-2. หน้า Simulator: เลือก HTTP auth brute force และ Start simulation
-3. เปิด incident แล้วกด Run investigation เพื่อเรียก Ollama
+1. หน้า Demo Lab: กด “ส่งคำขอก่อนบล็อก” จาก `192.0.2.25` ก่อนป้องกัน ต้องได้ `allowed`
+2. หน้า Demo Lab: เลือก HTTP login replay แล้วกด “เริ่มเหตุการณ์จำลอง”
+3. เปิด incident แล้วกด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป
 4. อ่าน analysis, evidence และ tool trace ตรวจ `analysis_mode` ก่อนอธิบายว่าเป็นผลจากโมเดล
-5. กด Approve แล้วส่ง test request ใหม่จาก IP เดิม ต้องได้ HTTP 403 และสถานะ `verified`
+5. เปิด “ตรวจข้อเสนอ” ตรวจ IP และผู้ตรวจทาน → “อนุมัติบล็อก 10 นาที” → “ยืนยันบล็อก IP” จากนั้นส่ง test request ใหม่ด้วย IP จำลองเดิมผ่าน Demo Lab ต้องได้ HTTP 403 และสถานะ `verified` การทดสอบข้ามเครื่องให้ Neo ส่งคำขอใหม่จาก Terminal
 6. หน้า Reports: เปิด JSON report ซึ่งรวม events, analysis, proposal, timeline และ traffic จริง
 7. ทดลองอีก IP แล้ว Reject ต้องไม่เกิดกฎบล็อกของ IP นั้น
 
@@ -44,7 +46,8 @@ SSH scenario เป็น synthetic log replay และแสดงชนิด
 | โฟลเดอร์ | หน้าที่ | เจ้าของหลัก |
 |---|---|---|
 | `backend/` | FastAPI, SQLite, detection, tools, approval, verification | Obeto |
-| `frontend/` | React dashboard 6 หน้า | Beer |
+| `frontend/` | React dashboard ผู้ดูแล M5 จำนวน 8 หน้า (`/`) | Beer |
+| `scripts/neo/` | คำสั่ง Terminal สำหรับ Neo ทดสอบผ่าน LAN กับ M5 | ทั้งคู่ |
 | `prompts/phases/` | Prompt คัดลอกใช้แยกคนและเฟส | ทั้งคู่ |
 | `prompts/tasks/` | Prompt ย่อย 19 งาน รวม deployment | ทั้งคู่ |
 | `workstreams/` | ลำดับงานและเกณฑ์ผ่าน | ทั้งคู่ |
