@@ -15,6 +15,9 @@
 - audit log hash chain + `GET /api/audit/verify`
 - เครื่องอื่นเข้าได้แค่ health + demo endpoints (rate limit) · ที่เหลือต้อง localhost หรือ `X-Admin-Key`
 - `python -m backend.preflight --host <IP>` ตรวจเครื่องก่อนเดโม
+- กฎ 5 ตัว: HTTP/SSH brute force, port scan, **suspicious login** (success หลัง failed ≥5), **traffic anomaly** (≥100 connection/60 วิ)
+- scenario 6 แบบตามสเปก A–E + `POST /api/simulations/start|stop`, `GET /api/simulations/state` ส่งทีละ event ให้ dashboard เห็นสด
+- `POST /api/logs` แปลง log sshd ดิบเป็น event (สเปก D: log parser)
 - SOC metrics: MTTD / time to proposal / MTTR / time to verify ใน `/api/metrics.soc` และ `report.soc_timings`
 - `backend/Makefile` + `backend/scripts/` (smoke, bench, eval) + `docs/backend-runbook.md`
 
@@ -28,7 +31,7 @@
 ```sh
 make -C backend test
 ```
-→ **326 passed ~5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+→ **365 passed ~8 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
 
 | วัด | คำสั่ง | ผล |
 |---|---|---|

@@ -7,7 +7,7 @@
 ```sh
 make -C backend venv            # สร้าง backend/.venv + ติดตั้ง requirements
 cp backend/.env.example backend/.env
-make -C backend test            # ต้องได้ 326 passed
+make -C backend test            # ต้องได้ 365 passed
 ```
 
 โมเดล (ทำครั้งเดียว ~3.7 GB): `brew install ollama` → `ollama serve` (ค้างไว้อีกหน้าต่าง) → `ollama pull qwen3.5:4b`
@@ -57,6 +57,19 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 
 ทางเลือกที่ต้องโชว์ได้: **Reject** ที่ขั้น 4 → ขั้น 5 ได้ `200` ไม่โดนบล็อก · **ปิด Ollama** ก่อนขั้น 3 → `analysis_mode = rule_fallback`, `confidence = null`, proposal `source = rule_fallback` (ยังต้องคนอนุมัติ)
 
+### Scenario จำลองบน M5 (ไม่ต้องใช้เครื่องยิง)
+
+```sh
+# ส่งทีละ event ทุก 0.5 วิ ให้ dashboard เห็นไหลเข้า (scenario: http_brute_force | ssh_brute_force_logs | port_scan | suspicious_login | traffic_anomaly | normal)
+curl -s -X POST localhost:8000/api/simulations/start -H 'Content-Type: application/json' -d '{"scenario":"suspicious_login","source_ip":"192.0.2.40"}'
+curl -s localhost:8000/api/simulations/state     # ดูความคืบหน้า
+curl -s -X POST localhost:8000/api/simulations/stop
+# log sshd ดิบ (สเปก D)
+curl -s -X POST localhost:8000/api/logs -H 'Content-Type: application/json' -d '{"format":"sshd","lines":["'"$(date -Iseconds)"' m5 sshd[1]: Failed password for invalid user admin from 192.0.2.41 port 50000 ssh2"]}'
+```
+
+`suspicious_login` เปิด 2 incident (brute force + suspicious login) ตามออกแบบ · `traffic_anomaly` 120 event ที่ 0.5 วิ ใช้เวลา 1 นาที (เปิด incident ที่ event ที่ 100)
+
 ## 5. reset และข้อมูล
 
 - `make -C backend reset` = ปิดกฎที่ยัง active + ปิด incident ที่ยังเปิด + proposal ที่ค้างเป็น rejected · **ไม่ลบประวัติ** audit ยัง valid
@@ -82,7 +95,7 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 ## 7. ตรวจผล/วัดผล (ไม่ต้องเปิด server)
 
 ```sh
-make -C backend test    # 326 เทส ~5 วิ
+make -C backend test    # 365 เทส ~8 วิ
 make -C backend eval    # replay 47 เคสใน datasets/ ผ่านกฎตรวจจับ → precision/recall/F1
 make -C backend bench   # v0.1 เทียบ v0.2 workload เดียวกัน
 ```
