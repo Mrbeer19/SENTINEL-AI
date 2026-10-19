@@ -38,10 +38,11 @@
 | | ภัย | ทางกัน |
 |---|---|---|
 | **S**poofing | Neo ส่ง `source_ip` ปลอมใน body | ใช้ IP จาก connection เท่านั้น · override ได้จาก localhost |
+| **S**poofing (ผ่านเบราว์เซอร์บน M5) | เว็บอื่นที่เปิดบน M5 ยิง POST มาที่ `127.0.0.1` แล้วได้สิทธิ์ localhost (CSRF) · ชื่อโดเมนของผู้โจมตีชี้มา 127.0.0.1 (DNS rebinding) | POST/PUT/PATCH/DELETE ที่มี `Origin` ไม่ใช่ host ที่อนุญาต → 403 · `TrustedHostMiddleware` (`localhost`, `127.0.0.1` + `SENTINEL_ALLOWED_HOSTS`) → 400 · Beer เจอ 20 ต.ค. แก้แล้ว |
 | **T**ampering | แก้ event/audit ใน DB | audit hash chain + `/api/audit/verify` (DB อยู่บน M5 ไม่เปิดให้ LAN) |
 | **R**epudiation | "ใครกดอนุมัติ" | `reviewer` + audit `rule_applied` |
-| **I**nformation disclosure | Neo แอบดูหน้า SOC/WS | อ่าน API/WS ได้เฉพาะ localhost/admin key · ไม่เก็บ password |
-| **D**enial of service | ยิงรัวจนเครื่องค้าง | rate limit demo endpoint 30/10 วิ/IP · field ยาวเกิน schema ถูกปฏิเสธ (422) · ยังไม่ได้จำกัดขนาด body ระดับ server |
+| **I**nformation disclosure | Neo แอบดูหน้า SOC/WS · เว็บอื่นบน M5 เปิด `ws://127.0.0.1/ws` อ่านข้อมูล SOC (CORS ไม่คุม WebSocket) | อ่าน API/WS ได้เฉพาะ localhost/admin key · WS ที่ `Origin` ไม่ใช่ host ที่อนุญาตถูกปิด · `/docs` ปิดจาก LAN · ไม่เก็บ password |
+| **D**enial of service | ยิงรัวจนเครื่องค้าง | rate limit demo endpoint 30/10 วิ/IP (ลืม IP ที่หมดหน้าต่างเมื่อเกิน 1000 IP) · username >1024 / log >1000 บรรทัด ถูกปฏิเสธ (422) · ยังไม่ได้จำกัดขนาด body ระดับ server |
 | **E**levation of privilege | โมเดลสั่งบล็อกเอง | โมเดลไม่มี tool ที่เปลี่ยนสถานะ · policy + human approval |
 
 ## ความเสี่ยงที่ยอมรับ (ไม่ได้แก้ในขอบเขตเดโม)

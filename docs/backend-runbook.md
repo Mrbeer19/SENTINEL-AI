@@ -89,6 +89,8 @@ curl -s -X POST localhost:8000/api/logs -H 'Content-Type: application/json' -d '
 | analyze ได้ `rule_fallback` ทั้งที่เปิดโมเดล | โมเดลตอบ JSON ผิด 2 ครั้ง / timeout 90 วิ / ชื่อโมเดลไม่ตรง | ดู trace แถว `invalid_output` · `ollama list` |
 | approve ได้ `400 … protected` | IP นั้นถูกเพิ่มเป็น protected หลังเสนอ | ถูกต้องตาม policy (ตรวจซ้ำตอนอนุมัติ) |
 | `/api/audit/verify` `valid:false` | มีคนแก้ DB ตรง | `broken_at` บอกแถวแรกที่ถูกแก้ |
+| เบราว์เซอร์ได้ `400 Invalid host header` | เปิดด้วยชื่อ/IP ที่ไม่อยู่ใน `SENTINEL_ALLOWED_HOSTS` | ใช้ `127.0.0.1` หรือรันผ่าน `make run-lan HOST=…` |
+| ปุ่มบน dashboard ได้ `403 Cross-site request refused` | หน้า dashboard มาจาก origin อื่น (เช่นเปิดผ่านชื่อเครื่อง) | เปิด dashboard ที่ `127.0.0.1:8000` หรือ `localhost:5173` |
 | เครื่องยิงเปิด `/docs` ได้ 403 | ปิดไว้ตั้งใจ (Beer ตกลง 20 ต.ค.) | เปิดดูบน M5 ที่ `127.0.0.1:8000/docs` |
 | event มี `username_truncated = 1` | username ยาวเกิน 80 ตัว (มักเป็นการลองยัดข้อความ) | ปกติ · เก็บ 80 ตัวแรกและยังนับเข้ากฎตรวจจับ · เกิน 1024 ตัว = 422 |
 

@@ -104,7 +104,7 @@ blocked → closed (ปลดกฎก่อน verify)
 | `recommended_action` | `NO_ACTION \| MONITOR \| INVESTIGATE \| TEMP_BLOCK_IP \| BLOCK_IP` |
 | `explanation_th` | string ไม่ว่าง |
 
-ห้ามมี key อื่น (strict) ผิด → retry 1 ครั้งพร้อม error → ยังผิด → `rule_fallback`
+ห้ามมี key อื่น (strict) · ถ้าโมเดลพิมพ์ข้อความล้อม object จะดึง `{...}` ออกมาแล้ว validate strict เหมือนเดิม (ตกลงกับ Beer 20 ต.ค.) · ผิด → retry 1 ครั้งพร้อม error → ยังผิด → `rule_fallback`
 
 `analysis_mode`: `ollama` (เรียก tool แล้ว JSON ผ่าน) · `ollama_retry` (ผ่านหลัง retry) · `ollama_no_tools` · `rule_fallback`
 **ห้ามนับ `rule_fallback` เป็นผลของโมเดล**
@@ -203,9 +203,11 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 | เครื่องอื่นที่มี `X-Admin-Key` = `SENTINEL_ADMIN_KEY` | ทุก endpoint รวม `/ws` |
 | เครื่องอื่น (Neo) | `/api/health`, `/api/demo/login`, `/api/demo/traffic` เท่านั้น · จำกัด 30 ครั้ง / 10 วิ / IP (429) · `/docs` `/redoc` `/openapi.json` = 403 |
 
+**กันเว็บอื่นในเบราว์เซอร์บน M5:** POST/PUT/PATCH/DELETE ที่มี `Origin` ไม่ใช่ `localhost` / `127.0.0.1` / `SENTINEL_ALLOWED_HOSTS` (พอร์ตใดก็ได้) → 403 `Cross-site request refused` · ไม่มี `Origin` (curl, terminal) ผ่าน · `Host` ไม่อยู่ในรายการ → 400 `Invalid host header` · WS ใช้กฎ `Origin` เดียวกัน · `make run-lan HOST=…` เพิ่ม IP M5 ให้เอง
+
 ห้ามเปิด Vite dev server ให้ LAN เพราะ proxy ทำให้ request ดูเหมือน localhost · ตรวจเครื่องก่อนเดโม: `python -m backend.preflight --host <M5 LAN IP>`
 
-Errors: 422 validation · 404 ไม่พบ · 400 policy · 403 สิทธิ์/spoof/โดนบล็อก · 409 ตัดสินซ้ำ/สถานะผิดลำดับ · 429 เกินอัตรา · รูปแบบ `{ "detail": string | ValidationError[] }`
+Errors: 422 validation · 404 ไม่พบ · 400 policy / Host ไม่อนุญาต · 403 สิทธิ์/spoof/โดนบล็อก · 409 ตัดสินซ้ำ/สถานะผิดลำดับ · 429 เกินอัตรา · รูปแบบ `{ "detail": string | ValidationError[] }`
 
 ## OCSF
 

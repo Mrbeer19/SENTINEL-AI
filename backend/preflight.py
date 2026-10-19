@@ -61,6 +61,8 @@ def main() -> int:
         results.append(check(addr.is_private and not addr.is_unspecified, f"bind host {addr} is a private LAN address",
                              "bind to the M5 hotspot IP, not 0.0.0.0 or a public IP"))
         results.append(check(str(addr) in settings.protected_ips, f"bind host {addr} is protected", "add the M5 LAN IP to SENTINEL_PROTECTED_IPS"))
+        results.append(check(str(addr) in settings.allowed_hosts, f"bind host {addr} is an allowed Host header",
+                             "add the M5 LAN IP to SENTINEL_ALLOWED_HOSTS (make run-lan does this)"))
     print("\nREADY" if all(results) else "\nNOT READY")
     return 0 if all(results) else 1
 

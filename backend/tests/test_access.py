@@ -123,3 +123,62 @@ def test_api_docs_are_hidden_from_the_lab(make_app, path):
     assert connect(app, REMOTE).get(path).status_code == 403
     assert connect(app, REMOTE, {"X-Admin-Key": KEY}).get(path).status_code == 200
     assert connect(app).get(path).status_code == 200
+
+
+
+# ---- browser-borne attacks on the operator's own machine ----
+
+EVIL = "http://evil.example"
+
+
+@pytest.mark.parametrize("method,path,body", [("post", "/api/demo/reset", None), ("post", "/api/incidents/1/analyze", None),
+                                               ("delete", "/api/rules/1", None), ("post", "/api/simulations", {"scenario": "normal"}),
+                                               ("post", "/api/demo/login", {"username": "u", "password": "p"})])
+def test_cross_site_writes_are_refused(make_app, method, path, body):
+    client = connect(make_app(), "127.0.0.1", {"Origin": EVIL})
+    response = call(client, method, path, body)
+    assert response.status_code == 403 and response.json()["detail"] == "Cross-site request refused"
+
+
+@pytest.mark.parametrize("origin", ["null", "file://", "http://localhost.evil.example", "ftp://localhost"])
+def test_odd_origins_are_refused(make_app, origin):
+    assert connect(make_app(), "127.0.0.1", {"Origin": origin}).post("/api/demo/reset").status_code == 403
+
+
+@pytest.mark.parametrize("origin", ["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:5173", "http://testserver"])
+def test_dashboard_origins_still_work(make_app, origin):
+    assert connect(make_app(), "127.0.0.1", {"Origin": origin}).post("/api/demo/reset").status_code == 200
+
+
+def test_requests_without_origin_still_work(make_app):
+    """curl / the Neo terminal / lab_client.py send no Origin."""
+    assert connect(make_app(), REMOTE).post("/api/demo/traffic", json={}).status_code == 200
+
+
+def test_cross_site_reads_are_not_blocked_by_origin_check(make_app):
+    """GETs are guarded by CORS (the browser hides the response) and the Host check, not by this rule."""
+    assert connect(make_app(), "127.0.0.1", {"Origin": EVIL}).get("/api/health").status_code == 200
+
+
+@pytest.mark.parametrize("host", ["attacker.example", "localhost.attacker.example", "192.168.1.66"])
+def test_unknown_host_header_is_refused(make_app, host):
+    assert connect(make_app(), "127.0.0.1", {"Host": host}).get("/api/incidents").status_code == 400
+
+
+def test_lan_ip_of_the_server_is_an_allowed_host(make_app):
+    app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10")
+    assert connect(app, REMOTE, {"Host": "192.168.1.10:8000"}).post("/api/demo/traffic", json={}).status_code == 200
+    assert connect(app, "127.0.0.1", {"Origin": "http://192.168.1.10:8000"}).post("/api/demo/reset").status_code == 200
+
+
+def test_websocket_from_another_site_is_refused(make_app):
+    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": EVIL}) as client:
+        with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws"):
+            pass
+
+
+def test_websocket_from_the_dashboard_is_accepted(make_app):
+    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": "http://localhost:5173"}) as client:
+        with client.websocket_connect("/ws") as socket:
+            assert socket.receive_json()["stage"] == "connected"
+

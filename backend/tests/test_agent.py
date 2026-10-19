@@ -146,6 +146,16 @@ def test_propose_block_of_anything_else_is_rejected_by_policy(tools, ip):
 
 # ---- output parsing ----
 
+@pytest.mark.parametrize("wrap", ["Here is my analysis:\n{}", "{}\nDone.", "```json\n{}\n``` hope this helps"])
+def test_parse_takes_the_object_out_of_surrounding_text(wrap):
+    assert parse_analysis(wrap.replace("{}", json.dumps(analysis()))).recommended_action == "TEMP_BLOCK_IP"
+
+
+def test_parse_still_rejects_a_bad_object_inside_text():
+    with pytest.raises(ValidationError):
+        parse_analysis("Result: " + json.dumps({**analysis(), "summary": "extra"}))
+
+
 def test_parse_accepts_fenced_json():
     assert parse_analysis("```json\n" + json.dumps(analysis()) + "\n```").severity == "HIGH"
 
