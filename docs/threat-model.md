@@ -23,7 +23,7 @@
 | รหัส | ความเสี่ยง | เกี่ยวกับเราไหม | ทางกัน | หลักฐาน |
 |---|---|---|---|---|
 | ASI01 | Agent Goal Hijack | **ใช่** — username ใน log สั่งโมเดลให้บล็อก IP อื่น | log ห่อเป็น `untrusted_log_records` + prompt สั่งห้ามทำตาม · **agent ที่เลือก action (defense_planning) ไม่เห็นข้อความจาก log เลย** รับแค่ field ตายตัว · policy: `target_ip` ต้องเท่ากับ source ของ incident · คนอนุมัติ | `test_goal_hijack_cannot_redirect_block_to_another_ip` · `test_planner_never_sees_log_text` · benchmark injection 0/3 (RTX, M5) |
-| ASI02 | Tool Misuse & Exploitation | **ใช่** | tool 5 ตัว allowlist, ตรวจ args, scope IP/incident ฝั่ง server, `propose_block_ip` แค่ pre-check · เพดาน 6 ครั้ง | `agent.py: run_tool` |
+| ASI02 | Tool Misuse & Exploitation | **ใช่** | investigator ได้ tool อ่านอย่างเดียว 4 ตัว (ไม่มี tool ที่เสนอ/บล็อก) allowlist, ตรวจ args, scope IP/incident ฝั่ง server · เพดาน 6 ครั้ง / 4 รอบ | `agent.py: run_tool` |
 | ASI03 | Identity & Privilege Abuse | ใช่ — Neo พยายามใช้ API ผู้ดูแล | API ทั้งหมด (อ่าน+เขียน, `/ws`) เฉพาะ localhost หรือ `X-Admin-Key` · โมเดลไม่มีสิทธิ์ execute | `test_remote_peer_cannot_read_soc_api_or_websocket` |
 | ASI04 | Supply Chain Vulnerabilities | บางส่วน | โมเดลจาก Ollama library เท่านั้น · บันทึก `model_digest` ในทุกผล · dependency pin ช่วงเวอร์ชันใน requirements | `analysis_meta.model_digest` |
 | ASI05 | Unexpected Code Execution | ต่ำ | ไม่มี shell/eval tool · กฎ YAML อ่านด้วย `safe_load` และ field ที่ใช้ใน SQL จำกัด allowlist | `detection.py: SELECTABLE` |
