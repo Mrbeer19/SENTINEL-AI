@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, IPvAnyAddress
 
-from backend import policy
+from backend import policy, soc
 from backend.agent import Agent
 from backend.config import LOCAL_PEERS, ROOT, load_settings
 from backend.detection import Match, RuleSet
@@ -392,7 +392,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         tp, fp, fn = len(predicted & actual), len(predicted - actual), len(actual - predicted)
         precision = tp / (tp + fp) if tp + fp else 0
         recall = tp / (tp + fn) if tp + fn else 0
-        return {"events": len(events), "incidents": len(incidents), "precision": precision, "recall": recall, "f1": 2 * precision * recall / (precision + recall) if precision + recall else 0, "note": "Exploratory source-IP metric only; use held-out labeled dataset for final evaluation"}
+        return {"events": len(events), "incidents": len(incidents), "precision": precision, "recall": recall, "f1": 2 * precision * recall / (precision + recall) if precision + recall else 0, "note": "Exploratory source-IP metric only; use held-out labeled dataset for final evaluation",
+                "soc": soc.summary([soc.timings(store, ruleset, row) for row in incidents])}
 
     @api.get("/api/reports/{incident_id}")
     def report(incident_id: int):
@@ -400,6 +401,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         incident["events"] = store.rows("SELECT * FROM events WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
         incident["traffic"] = store.rows("SELECT * FROM traffic WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
         incident["audit"] = store.rows("SELECT * FROM audit_log WHERE incident_id=? ORDER BY id", (incident_id,))
+        incident["soc_timings"] = soc.timings(store, ruleset, incident)
         return incident
 
     @api.get("/api/audit")
