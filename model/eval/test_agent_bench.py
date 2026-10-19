@@ -116,9 +116,9 @@ class SchemaTest(unittest.TestCase):
 
     def test_parse_fenced_and_wrapped_json(self):
         self.assertEqual(bench.parse_json_reply("```json\n{\"a\": 1}\n```"), {"a": 1})
-        self.assertEqual(bench.parse_json_reply("Result: {\"a\": 1} done", lenient=True), {"a": 1})
+        self.assertEqual(bench.parse_json_reply("Result: {\"a\": 1} done"), {"a": 1})  # backend v0.2 strips prose (PR #6)
         with self.assertRaises(ValueError):
-            bench.parse_json_reply("Result: {\"a\": 1} done")  # backend v0.2 rejects text around the object
+            bench.parse_json_reply("Result: {\"a\": 1} done", lenient=False)
         with self.assertRaises(ValueError):
             bench.parse_json_reply("no json here", lenient=True)
 

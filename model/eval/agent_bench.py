@@ -111,10 +111,9 @@ def validate_analysis(value) -> list[str]:
     return errors
 
 
-def parse_json_reply(text: str, lenient: bool = False):
-    """Parse the model reply like backend v0.2: strip one code fence, then the whole text must be JSON.
-
-    lenient=True also accepts text around one object (the v1 bench behaviour)."""
+def parse_json_reply(text: str, lenient: bool = True):
+    """Parse the model reply like backend v0.2 (PR #6): strip one code fence; if prose surrounds the object,
+    take the outermost {...}. The schema check stays strict. lenient=False = the whole text must be JSON."""
     text = (text or "").strip()
     if not lenient:
         return json.loads(text.removeprefix("```json").removeprefix("```").removesuffix("```").strip())
@@ -349,7 +348,7 @@ def run_case(case: dict, chat, opts: dict) -> dict:
         for attempt in range(2):
             raw = message.get("content", "")
             try:
-                analysis = parse_json_reply(raw, lenient=opts.get("lenient_json", False))
+                analysis = parse_json_reply(raw, lenient=not opts.get("strict_json", False))
                 json_errors = validate_analysis(analysis)
             except ValueError as exc:
                 analysis, json_errors = None, [f"not JSON: {exc}"]
@@ -423,7 +422,7 @@ def main(argv=None) -> int:
     parser.add_argument("--num-ctx", type=int, default=4096, help="0 = Ollama default; backend uses 4096")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS, help="tool rounds before the final answer (backend v0.2: 4)")
-    parser.add_argument("--lenient-json", action="store_true", help="accept text around the JSON object (v1 bench; backend v0.2 does not)")
+    parser.add_argument("--strict-json", action="store_true", help="reject text around the JSON object (backend before PR #6)")
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--url", default="http://127.0.0.1:11434")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -440,7 +439,7 @@ def main(argv=None) -> int:
     if not cases:
         parser.error("no cases selected")
     opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint,
-            "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "lenient_json": args.lenient_json,
+            "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "strict_json": args.strict_json,
             "system_prompt": args.system_prompt.read_text(encoding="utf-8")}
     chat = http_chat(args.url, args.timeout)
 

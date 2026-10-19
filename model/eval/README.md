@@ -29,7 +29,7 @@ python3 -m unittest discover -s model/eval -q
 
 - tool ไม่เกิน 4 รอบ / 6 ครั้ง และ**หยุดสืบทันทีหลัง `propose_block_ip`**
 - `get_incident_logs` คืน `{incident_id, untrusted_log_records, returned}` ฟิลด์เหมือน event ของ backend (`t, src, type, outcome, port, user`) · บรรทัด sshd แปลงเป็น `outcome` + `user` · `user` ตัดเหลือ 64 ตัว
-- คำตอบสุดท้ายตัดแค่ code fence แล้วต้องเป็น JSON ทั้งข้อความ (`--lenient-json` = ยอมข้อความรอบ object แบบ bench เดิม)
+- คำตอบสุดท้ายตัด code fence และข้อความรอบ object (ดึง `{...}`) แล้วตรวจ schema แบบ strict เหมือน backend หลัง PR #6 (`--strict-json` = ต้องเป็น JSON ทั้งข้อความ)
 
 ผลใน `results/` ก่อนวันที่ 20 ต.ค. รันด้วยพฤติกรรมเดิม (6 รอบ, log ดิบ, JSON แบบผ่อน) เทียบกับผลใหม่ตรงๆ ไม่ได้
 
