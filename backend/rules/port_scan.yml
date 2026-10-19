@@ -1,0 +1,28 @@
+# Sigma-inspired rule: base selection + value_count correlation in one file.
+title: Port scan
+id: sentinel-port-scan
+status: stable
+description: One source IP connects to many distinct destination ports in a short window.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+tags:
+  - attack.discovery
+  - attack.t1046
+level: medium
+logsource:
+  product: sentinel
+  category: network_activity
+detection:
+  selection:
+    event_type: CONNECTION
+  condition: selection
+correlation:
+  type: value_count
+  field: destination_port
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 8
+sentinel:
+  kind: PORT_SCAN
