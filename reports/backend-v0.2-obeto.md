@@ -15,6 +15,7 @@
 - audit log hash chain + `GET /api/audit/verify`
 - เครื่องอื่นเข้าได้แค่ health + demo endpoints (rate limit) · ที่เหลือต้อง localhost หรือ `X-Admin-Key`
 - `python -m backend.preflight --host <IP>` ตรวจเครื่องก่อนเดโม
+- **agent 3 ตัว (LangGraph)** investigation → threat_analysis → defense_planning · planner ไม่เห็นข้อความจาก log · โมเดลจริงบน M5 19.4–22.2 วิ/incident (ตัวเดียว 22–23) planner 1–2 วิ · กับ prompt 3 ไฟล์ของ Beer (PR #7) 20.1–24.3 วิ 6.3 GB · investigator ใช้ tool อ่านอย่างเดียว 4 ตัว
 - กฎ 5 ตัว: HTTP/SSH brute force, port scan, **suspicious login** (success หลัง failed ≥5), **traffic anomaly** (≥100 connection/60 วิ)
 - scenario 6 แบบตามสเปก A–E + `POST /api/simulations/start|stop`, `GET /api/simulations/state` ส่งทีละ event ให้ dashboard เห็นสด
 - `POST /api/logs` แปลง log sshd ดิบเป็น event (สเปก D: log parser)
@@ -31,7 +32,7 @@
 ```sh
 make -C backend test
 ```
-→ **365 passed ~8 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+→ **395 passed ~9 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
 
 | วัด | คำสั่ง | ผล |
 |---|---|---|

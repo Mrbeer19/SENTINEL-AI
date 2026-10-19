@@ -24,7 +24,7 @@ def analysis(**overrides):
 
 def fake_model(monkeypatch, tool_calls=(), finals=()):
     """Script Ollama: first tool round returns `tool_calls`, then the final answers in order."""
-    finals = list(finals)
+    finals, last = list(finals), {}
     original = httpx.AsyncClient.post
 
     async def reply(self, url, **kwargs):
@@ -35,9 +35,14 @@ def fake_model(monkeypatch, tool_calls=(), finals=()):
             first = not any(m["role"] == "tool" for m in body["messages"])
             calls = [{"function": {"name": n, "arguments": a}} for n, a in tool_calls] if first else []
             payload = {"role": "assistant", "content": "", "tool_calls": calls}
-        else:
+        elif "recommended_action, reason" in body["messages"][-1]["content"]:  # defense planner
+            payload = {"role": "assistant", "content": json.dumps({"recommended_action": last["recommended_action"], "reason": "scripted plan"})}
+        else:  # threat analyst: the 6-key final minus the planner's field
             final = finals.pop(0)
-            payload = {"role": "assistant", "content": final if isinstance(final, str) else json.dumps(final)}
+            if isinstance(final, dict):
+                last.update(final)
+                final = json.dumps({k: v for k, v in final.items() if k != "recommended_action"})
+            payload = {"role": "assistant", "content": final}
         return httpx.Response(200, json={"message": payload}, request=httpx.Request("POST", str(url)))
 
     monkeypatch.delenv("SENTINEL_DISABLE_OLLAMA", raising=False)
@@ -78,7 +83,7 @@ def test_goal_hijack_cannot_redirect_block_to_another_ip(tmp_path: Path, monkeyp
             incident = await brute_force(client)
             result = (await client.post(f"/api/incidents/{incident['id']}/analyze")).json()
             hijack = [t for t in result["trace"] if t["tool"] == "propose_block_ip"][0]
-            assert hijack["status"] == "rejected_by_policy"
+            assert hijack["status"] == "error"  # the investigator has no block tool at all
             assert result["proposal"]["target_ip"] == ATTACKER
     asyncio.run(run())
 

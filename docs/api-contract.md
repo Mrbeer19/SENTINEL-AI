@@ -82,7 +82,9 @@ blocked → closed (ปลดกฎก่อน verify)
 
 ## Analysis
 
-`POST /api/incidents/{id}/analyze` รอจนเสร็จแล้วคืน incident detail (บน M5 ~30 วิ) ระหว่างนั้นส่ง WS `analysis_step` ทุกขั้น เรียกซ้ำเมื่อมีผลแล้ว = คืนผลเดิม · incident ที่จบแล้ว → 409
+**agent 3 ตัว (LangGraph)** — `investigation` เรียก tool เก็บหลักฐาน → `threat_analysis` (ไม่มี tool) ตอบ `threat_type, severity, confidence, evidence, explanation_th` → `defense_planning` (ไม่มี tool **ไม่เห็น evidence / explanation / log**) เห็นแค่ `Incident: {kind, event_count, protected}` + `Threat analysis: {threat_type, severity, confidence}` ตอบ `recommended_action, reason` (ข้อความแต่ละขั้นตรงกับ `agent_bench.py --pipeline` ทุกตัวอักษร) → backend รวมเป็น `analysis` 6 key ด้านล่าง → policy → คน · ขั้นไหนล้ม (โมเดลล่ม / JSON ผิด 2 ครั้ง) = `rule_fallback` ทั้งผล · `reason` ของ planner ใช้เป็น `proposal.reason` · prompt: `SENTINEL_PROMPT_PATH` (`model/prompts/investigator_v1.md`), `SENTINEL_ANALYST_PROMPT_PATH` (`model/prompts/threat_analyst_v1.md`), `SENTINEL_PLANNER_PROMPT_PATH` (`defense_planner_v1.md`) ไม่มีไฟล์ = ข้อความในโค้ด · `prompt_version` = 3 ส่วนต่อด้วย ` + `
+
+`POST /api/incidents/{id}/analyze` รอจนเสร็จแล้วคืน incident detail (บน M5 ~20 วิ) ระหว่างนั้นส่ง WS `analysis_step` ทุกขั้น เรียกซ้ำเมื่อมีผลแล้ว = คืนผลเดิม · incident ที่จบแล้ว → 409
 
 ```json
 {
@@ -135,16 +137,16 @@ blocked → closed (ปลดกฎก่อน verify)
 | `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched |
 | `get_related_incidents` | `ip_address` | incident อื่นของ IP นี้ ≤10 |
 | `get_firewall_status` | `ip_address` | `{ip, status: ALLOWED/BLOCKED, protected}` |
-| `propose_block_ip` | `ip_address, minutes, reason` | policy pre-check เท่านั้น ไม่บล็อก · IP อื่น/protected → `REJECTED_BY_POLICY` |
 
-เพดาน: tool 6 ครั้ง / 4 รอบ · เรียก `propose_block_ip` แล้วจบการสืบทันที
+เพดาน: tool 6 ครั้ง / 4 รอบ · **investigator ใช้ได้แค่ 4 tool อ่านอย่างเดียว** (`propose_block_ip` เอาออกแล้ว ตกลงกับ Beer ใน PR #7 · การเลือกบล็อกเป็นของ defense_planning) เรียกมาจะได้ error แล้วสืบต่อ
 
 ## Trace
 
 | field | ค่า |
 |---|---|
-| `operation` | `invoke_agent` (ทั้งรอบ) · `chat` (เรียกโมเดล 1 ครั้ง) · `execute_tool` — ตามชื่อ OpenTelemetry GenAI |
-| `tool` | ชื่อ tool / ชื่อโมเดล / `investigation` / `rule_fallback` |
+| `agent` | `investigation \| threat_analysis \| defense_planning \| rule_fallback` (แถวเก่าก่อน 3 agent = `null`) |
+| `operation` | `invoke_agent` (จบ 1 agent) · `chat` (เรียกโมเดล 1 ครั้ง) · `execute_tool` — ตามชื่อ OpenTelemetry GenAI |
+| `tool` | ชื่อ tool / ชื่อโมเดล / ชื่อ agent (แถว `invoke_agent`) |
 | `status` | `ok \| error \| rejected_by_policy \| invalid_output \| fallback` |
 | `source` | `model \| fallback` |
 | `duration_ms`, `input`, `output` (JSON string), `created_at` | |

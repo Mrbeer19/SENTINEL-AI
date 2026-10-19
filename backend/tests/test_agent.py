@@ -8,7 +8,7 @@ from conftest import ATTACKER, analysis, connect, event, simulate
 from pydantic import ValidationError
 
 from backend.app import create_app
-from backend.agent import LOG_LIMIT, MAX_ROUNDS, MAX_TOOL_CALLS, Agent, parse_analysis, rule_fallback
+from backend.agent import LOG_LIMIT, MAX_ROUNDS, MAX_TOOL_CALLS, TOOLS, Agent, parse_analysis, rule_fallback
 from backend.config import load_settings
 from backend.store import Store
 
@@ -40,15 +40,10 @@ def test_arguments_must_be_an_object(tools):
     assert agent.run_tool(incident, "get_ip_activity", "192.0.2.25")[0] == "error"
 
 
-@pytest.mark.parametrize("name", ["get_incident_logs", "get_ip_activity", "get_related_incidents", "get_firewall_status", "propose_block_ip"])
+@pytest.mark.parametrize("name", ["get_incident_logs", "get_ip_activity", "get_related_incidents", "get_firewall_status"])
 def test_missing_arguments_are_errors(tools, name):
     status, output = run(tools, name)
     assert status == "error" and "must be" in output["error"]
-
-
-@pytest.mark.parametrize("minutes", ["10", 10.0, True, None])
-def test_minutes_must_be_a_real_integer(tools, minutes):
-    assert run(tools, "propose_block_ip", ip_address=ATTACKER, minutes=minutes, reason="x")[0] == "error"
 
 
 @pytest.mark.parametrize("value", ["", "   ", 5, ["192.0.2.25"]])
@@ -126,22 +121,16 @@ def test_firewall_status_reports_block_and_protection(tools):
     assert run(tools, "get_firewall_status", ip_address="nope")[0] == "error"
 
 
-# ---- propose_block_ip ----
+# ---- the investigator only reads ----
 
-def test_propose_block_of_own_source_waits_for_human(tools):
-    assert run(tools, "propose_block_ip", ip_address=ATTACKER, minutes=10, reason="brute force")[1]["status"] == "WAITING_APPROVAL"
+def test_investigator_has_read_only_tools():
+    assert {t["function"]["name"] for t in TOOLS} == {"get_incident_logs", "get_ip_activity", "get_related_incidents", "get_firewall_status"}
 
 
-def test_propose_block_never_creates_a_proposal_or_rule(tools):
+def test_investigator_cannot_propose_a_block(tools):
     client, _, _ = tools
-    run(tools, "propose_block_ip", ip_address=ATTACKER, minutes=10, reason="brute force")
+    assert run(tools, "propose_block_ip", ip_address=ATTACKER, minutes=10, reason="x")[0] == "error"
     assert client.get("/api/proposals").json() == [] and client.get("/api/rules").json() == []
-
-
-@pytest.mark.parametrize("ip", [OTHER, "127.0.0.1", "not-an-ip"])
-def test_propose_block_of_anything_else_is_rejected_by_policy(tools, ip):
-    status, output = run(tools, "propose_block_ip", ip_address=ip, minutes=10, reason="x")
-    assert status == "rejected_by_policy" and output["status"] == "REJECTED_BY_POLICY"
 
 
 # ---- output parsing ----
@@ -203,12 +192,13 @@ def test_tool_rounds_are_capped(make_app, script_model):
     assert len(rounds) == MAX_ROUNDS and result["analysis_mode"] == "ollama"
 
 
-def test_propose_block_ends_the_investigation(make_app, script_model):
+def test_a_propose_call_from_the_investigator_is_refused_and_the_run_goes_on(make_app, script_model):
     script_model(rounds=[[("propose_block_ip", {"ip_address": ATTACKER, "minutes": 10, "reason": "x"})],
                          [("get_ip_activity", {"ip_address": ATTACKER})]], finals=[analysis()])
     client = connect(make_app())
     result = analyze(client, simulate(client))
-    assert [t["tool"] for t in result["trace"] if t["operation"] == "execute_tool"] == ["propose_block_ip"]
+    calls = [(t["tool"], t["status"]) for t in result["trace"] if t["operation"] == "execute_tool"]
+    assert calls == [("propose_block_ip", "error"), ("get_ip_activity", "ok")] and result["analysis_mode"] == "ollama"
 
 
 def test_tool_errors_are_returned_to_the_model_not_raised(make_app, script_model):
@@ -216,7 +206,7 @@ def test_tool_errors_are_returned_to_the_model_not_raised(make_app, script_model
     client = connect(make_app())
     result = analyze(client, simulate(client))
     assert result["analysis_mode"] == "ollama"
-    tool_msgs = [m for m in bodies[-1]["messages"] if m["role"] == "tool"]
+    tool_msgs = [m for b in bodies for m in b["messages"] if m["role"] == "tool"]
     assert "error" in json.loads(tool_msgs[0]["content"])
 
 
@@ -265,7 +255,7 @@ def test_model_never_sees_event_labels(make_app, script_model):
 def test_missing_prompt_file_uses_builtin_prompt(make_app, tmp_path):
     client = connect(make_app(SENTINEL_PROMPT_PATH=str(tmp_path / "missing.md")))
     result = analyze(client, simulate(client))
-    assert result["analysis_meta"]["prompt_version"] == "builtin"
+    assert result["analysis_meta"]["prompt_version"].startswith("builtin:")
 
 
 def test_prompt_version_is_file_name_and_hash(make_app, tmp_path):
@@ -273,4 +263,5 @@ def test_prompt_version_is_file_name_and_hash(make_app, tmp_path):
     prompt.write_text("be careful")
     client = connect(make_app(SENTINEL_PROMPT_PATH=str(prompt)))
     version = analyze(client, simulate(client))["analysis_meta"]["prompt_version"]
-    assert version.startswith("p.md@") and len(version.split("@")[1]) == 12
+    first = version.split(" + ")[0]
+    assert first.startswith("p.md@") and len(first.split("@")[1]) == 12
