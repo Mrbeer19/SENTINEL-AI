@@ -39,6 +39,15 @@ OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จา
 - `username` optional รับได้ ≤1024 ตัว (เกิน = 422) **เก็บแค่ 80 ตัวแรก** ตัวพิมพ์ได้เท่านั้น · ถูกตัดเมื่อไหร่ `username_truncated = 1` (event ไม่หายจากการตรวจจับ) · ไม่เก็บ password · `label` ใช้ประเมินเท่านั้น ไม่ส่งให้โมเดล
 - Record เพิ่ม `id`, `ocsf_class_uid` ([OCSF](#ocsf)) และ `username_truncated` (0/1 · แถวเก่าก่อนเพิ่ม field = `null`) · `GET /api/events?limit=100` ใหม่ก่อน สูงสุด 500
 
+### Raw log ingest
+
+`POST /api/logs` `{ "format": "sshd", "lines": ["2026-10-20T12:00:01+07:00 m5 sshd[1200]: Failed password for invalid user admin from 192.0.2.25 port 51234 ssh2", ...], "label": "unknown" }` (1–1000 บรรทัด, บรรทัดละ ≤1000 ตัว · localhost/admin key เท่านั้น)
+
+- เวลา: ISO (rsyslog Ubuntu 24.04) หรือ `Oct 20 12:00:01` (ไม่มีปี/โซน → เวลาท้องถิ่นของ server)
+- `Failed password|publickey` → `SSH_AUTH failed` · `Accepted password|publickey` → `SSH_AUTH success` · port 22 · ผ่าน validation + detection เดียวกับ `POST /api/events`
+- บรรทัด sshd อื่น (`Invalid user`, `Connection closed`, pam) = `skipped` (ไม่นับซ้ำ) · อ่านไม่ได้/ไม่ผ่าน validation = `rejected` ไม่ทำให้ทั้งชุดล้ม
+- ตอบ `{lines, accepted, skipped, rejected, errors: [{line, error}] (≤20), incident_ids}`
+
 ## Detection
 
 กฎอยู่ที่ `backend/rules/*.yml` รูปแบบอิง Sigma (selection + correlation ในไฟล์เดียว) เปลี่ยนเกณฑ์ได้โดยไม่แก้โค้ด

@@ -16,9 +16,9 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
-from backend import policy, soc
+from backend import logparse, policy, soc
 from backend.agent import Agent
 from backend.config import LOCAL_PEERS, ROOT, load_settings
 from backend.detection import Match, RuleSet
@@ -71,6 +71,12 @@ class TrafficIn(BaseModel):
 class SimulationIn(BaseModel):
     scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "suspicious_login", "traffic_anomaly", "normal"]
     source_ip: IPvAnyAddress = "192.0.2.25"
+
+
+class LogsIn(BaseModel):
+    format: Literal["sshd"]
+    lines: list[str] = Field(min_length=1, max_length=1000)
+    label: Literal["normal", "attack", "unknown"] = "unknown"
 
 
 class SimulationRunIn(SimulationIn):
@@ -217,6 +223,30 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     @api.post("/api/events", status_code=201)
     async def add_event(event: EventIn):
         return await ingest(event)
+
+    @api.post("/api/logs")
+    async def add_logs(logs: LogsIn):
+        """Raw sshd lines → events through the same validation and detection as POST /api/events."""
+        now = datetime.now(timezone.utc)
+        accepted, skipped, errors, incident_ids = 0, 0, [], []
+        for number, line in enumerate(logs.lines, start=1):
+            try:
+                if len(line) > 1000:
+                    raise ValueError("line longer than 1000 characters")
+                result = await ingest(EventIn(**logparse.parse_line(line, now), label=logs.label))
+            except logparse.Skip:
+                skipped += 1
+                continue
+            except (ValueError, ValidationError, HTTPException) as exc:
+                reason = exc.detail if isinstance(exc, HTTPException) else str(exc).splitlines()[0]
+                if len(errors) < 20:
+                    errors.append({"line": number, "error": reason[:200]})
+                continue
+            accepted += 1
+            if result["incident"] and result["incident"]["id"] not in incident_ids:
+                incident_ids.append(result["incident"]["id"])
+        return {"lines": len(logs.lines), "accepted": accepted, "skipped": skipped, "rejected": len(logs.lines) - accepted - skipped,
+                "errors": errors, "incident_ids": incident_ids}
 
     @api.get("/api/events")
     def list_events(limit: int = 100):
