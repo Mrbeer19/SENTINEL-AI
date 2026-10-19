@@ -2,6 +2,7 @@ import React from 'react'
 import { useReport } from '../api.js'
 import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, SeverityBadge, StatusBadge, Stepper, fmtDateTime, fmtTime, incId, isActiveRule, kindName, parseAnalysis, proposalTone, propId, ruleId } from '../ui.jsx'
 import { incidentEvents } from './Incidents.jsx'
+import { NextStep } from '../components/WorkflowGuide.jsx'
 
 // Before = last allowed request before the rule existed; after = first denied request once it did.
 export function verification(report, rules) {
@@ -32,13 +33,12 @@ export default function IncidentDetail({ ctx, id }) {
   const { report, error, loading } = useReport(id, ctx.version)
   if (!id) return <Empty>เลือก incident จากหน้า <a href="#/incidents">Incidents</a></Empty>
   if (loading && !report) return <Loading />
-  if (!report || report.id !== id) return <Banner tone="bad" icon="x">{error || 'กำลังโหลด…'}</Banner>
+  if (!report || report.id !== id) return <Banner tone="bad" icon="x" action={<a className="btn ghost sm" href="#/incidents">กลับไปรายการเหตุการณ์</a>}>{error || 'โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่'}</Banner>
 
   const events = incidentEvents(report.events, report).sort((a, b) => a.id - b.id)
   const analysis = parseAnalysis(report.analysis)
   const p = report.proposal
   const v = verification(report, ctx.data.rules)
-  const analyze = () => ctx.act(`/api/incidents/${id}/analyze`, { ok: (r) => `วิเคราะห์เสร็จ · โหมด ${r.analysis_mode}` })
   // The event that crossed the threshold is the latest one recorded at or before the incident was opened.
   const thresholdId = [...events].reverse().find(e => new Date(e.timestamp) <= new Date(report.created_at))?.id
 
@@ -54,6 +54,7 @@ export default function IncidentDetail({ ctx, id }) {
       <p className="muted">{incId(id)} · <span className="mono">{report.source_ip}</span> · opened {fmtDateTime(report.created_at)}</p>
     </div>
 
+    <div className="span3"><NextStep ctx={ctx} incident={report} /></div>
     <Panel className="span3"><Stepper steps={detailStages(report)} /></Panel>
 
     <div className="facts span3">
@@ -77,7 +78,6 @@ export default function IncidentDetail({ ctx, id }) {
     <div className="stack">
       <Panel title="Investigation Summary" icon="brain" actions={<ModeBadge mode={report.analysis_mode} />}>
         <AnalysisView analysis={analysis} mode={report.analysis_mode} />
-        {!report.analysis && <button className="btn primary block" disabled={ctx.busy} onClick={analyze}>{ctx.busy ? 'Local model is investigating…' : 'Run investigation'}</button>}
       </Panel>
       <Panel title="Proposed Response" icon="shield">
         {p ? <>
@@ -102,7 +102,7 @@ function Fact({ icon, label, value, mono }) {
 }
 
 export function AnalysisView({ analysis, mode }) {
-  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด Run investigation เพื่อให้โมเดลบน M5 เรียก tools อ่านหลักฐาน</p>
+  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบบน M5 อ่านหลักฐานและเสนอการตอบสนอง</p>
   if (analysis.text) return <div className="analysis"><Banner tone="warn" icon="info">ผลนี้มาจาก {mode === 'rule_fallback' ? 'rule fallback ไม่ใช่การวิเคราะห์ของโมเดล' : 'ข้อความที่ไม่ใช่ JSON'}</Banner><p>{analysis.text}</p></div>
   const a = analysis.json
   return <div className="analysis">

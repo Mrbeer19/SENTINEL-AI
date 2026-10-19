@@ -9,7 +9,7 @@ export default function AgentTrace({ ctx, id }) {
 
   if (!incidents.length) return <Empty>ยังไม่มี incident ให้ดู trace</Empty>
   if (loading && !report) return <Loading />
-  if (!report || report.id !== current) return <Banner tone="bad" icon="x">{error || 'กำลังโหลด…'}</Banner>
+  if (!report || report.id !== current) return <Banner tone="bad" icon="x" action={<a className="btn ghost sm" href="#/incidents">กลับไปรายการเหตุการณ์</a>}>{error || 'โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่'}</Banner>
 
   const analysis = parseAnalysis(report.analysis)
   const p = report.proposal
@@ -36,7 +36,7 @@ export default function AgentTrace({ ctx, id }) {
         <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback text' : 'Validated JSON') : 'Not run yet'}</small></li>
         <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : 'No proposal yet'}</small></li>
       </ol>
-      {!report.analysis && <button className="btn primary block" disabled={ctx.busy} onClick={analyze}>{ctx.busy ? 'Local model is investigating…' : 'Run investigation'}</button>}
+      {!report.analysis && <button className="btn primary block" disabled={ctx.busy || !!ctx.error} onClick={analyze}>{ctx.busy ? 'กำลังวิเคราะห์หลักฐาน…' : 'เริ่มวิเคราะห์'}</button>}
     </Panel>
 
     <div className="stack">
@@ -74,6 +74,7 @@ function ToolCall({ t }) {
 
 function CopyButton({ text }) {
   const [done, setDone] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
   if (!text || !navigator.clipboard) return null
-  return <button className="btn ghost sm" onClick={async () => { try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500) } catch { /* clipboard blocked */ } }}>{done ? 'Copied' : 'Copy'}</button>
+  return <><button className="btn ghost sm" onClick={async () => { try { await navigator.clipboard.writeText(text); setFailed(false); setDone(true); setTimeout(() => setDone(false), 1500) } catch { setFailed(true) } }}>{done ? 'คัดลอกแล้ว' : 'คัดลอก'}</button>{failed && <span role="status" className="coral small">คัดลอกไม่ได้ · เลือกข้อความแล้วคัดลอกเองได้</span>}</>
 }

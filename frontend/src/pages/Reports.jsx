@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
 import { useReport } from '../api.js'
-import { Banner, Empty, Icon, Loading, ModeBadge, Panel, Stat, StatusBadge, fmtDateTime, fmtTime, go, incId, kindName, parseAnalysis, ruleId } from '../ui.jsx'
+import { Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, StatusBadge, fmtDateTime, fmtTime, go, incId, kindName, parseAnalysis, ruleId } from '../ui.jsx'
 import { VerificationView, verification } from './IncidentDetail.jsx'
 import { incidentEvents } from './Incidents.jsx'
 
 export default function Reports({ ctx, id }) {
   const { incidents } = ctx.data
   const [query, setQuery] = useState('')
-  const current = id || incidents[0]?.id
   const list = incidents.filter(i => !query || [incId(i.id), i.source_ip, kindName(i.kind)].some(v => v.toLowerCase().includes(query.toLowerCase())))
+  const current = (list.find(i => i.id === id) || list[0])?.id
 
   return <div className="grid reports">
     <div className="stats four span3">
@@ -20,13 +20,14 @@ export default function Reports({ ctx, id }) {
 
     <Panel title={`Incident Reports (${incidents.length})`} icon="rules" className="noprint">
       <label className="search"><Icon name="info" size={16} /><span className="sr">Search reports</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search incidents, source IP, or type…" /></label>
+      <FilterSummary count={list.length} total={incidents.length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <ul className="queue">{list.map(i => <li key={i.id}><button className={`queueItem ${current === i.id ? 'on' : ''}`} onClick={() => go('reports', i.id)} aria-current={current === i.id}>
         <Icon name="alert" size={26} />
         <span><b>{incId(i.id)} <StatusBadge status={i.status} /></b><strong>{kindName(i.kind)}</strong><small className="mono">{i.source_ip} · {fmtTime(i.created_at)}</small></span>
-      </button></li>)}</ul> : <Empty>ยังไม่มีรายงาน</Empty>}
+      </button></li>)}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>ยังไม่มีรายงาน · <a href="#/incidents">ดูเหตุการณ์</a></Empty>}
     </Panel>
 
-    <div className="span2">{current ? <ReportView ctx={ctx} id={current} /> : <Panel><Empty>ยังไม่มี incident</Empty></Panel>}</div>
+    <div className="span2">{current ? <ReportView ctx={ctx} id={current} /> : <Panel><Empty>{query ? 'ไม่มีรายงานที่ตรงกับตัวกรอง' : 'รายงานจะแสดงเมื่อมีเหตุการณ์ในระบบ'}</Empty></Panel>}</div>
   </div>
 }
 

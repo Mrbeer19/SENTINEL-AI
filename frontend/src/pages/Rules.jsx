@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Badge, Banner, Empty, Icon, Panel, Stat, fmtTime, go, incId, isActiveRule, remaining, ruleId, useNow } from '../ui.jsx'
+import React, { useEffect, useState } from 'react'
+import { Badge, Banner, Empty, FilterSummary, Icon, NoResults, Panel, Stat, fmtTime, go, incId, isActiveRule, remaining, ruleId, useNow } from '../ui.jsx'
 
 const within = (t, rule) => t.source_ip === rule.source_ip && new Date(t.created_at) >= new Date(rule.created_at) && new Date(t.created_at) <= new Date(rule.expires_at)
 export const ruleProof = (rule, traffic) => traffic.filter(t => t.decision === 'denied' && within(t, rule)).sort((a, b) => a.id - b.id)[0] || null
@@ -7,14 +7,17 @@ export const ruleProof = (rule, traffic) => traffic.filter(t => t.decision === '
 export default function Rules({ ctx, id }) {
   const { rules, traffic, proposals } = ctx.data
   const now = useNow(1000)
-  const [tab, setTab] = useState('active')
+  const [tab, setTab] = useState(() => rules.find(r => r.id === id) && !isActiveRule(rules.find(r => r.id === id)) ? 'history' : 'active')
   const [query, setQuery] = useState('')
   const [confirm, setConfirm] = useState(null)
   const incidentOf = (rule) => proposals.find(p => p.id === rule.proposal_id)?.incident_id
   const active = rules.filter(r => isActiveRule(r, now))
   const list = (tab === 'active' ? active : rules.filter(r => !isActiveRule(r, now)))
     .filter(r => !query || [ruleId(r.id), r.source_ip, incId(incidentOf(r) || 0)].some(v => v.toLowerCase().includes(query.toLowerCase())))
-  const selected = rules.find(r => r.id === id) || active[0] || rules[0]
+  const selected = list.find(r => r.id === id) || list[0]
+  const routeRule = rules.find(r => r.id === id)
+  const routeActive = routeRule ? isActiveRule(routeRule, now) : null
+  useEffect(() => { if (routeActive !== null) setTab(routeActive ? 'active' : 'history'); setConfirm(null) }, [id, routeActive])
   const unblock = async (rule) => { setConfirm(null); await ctx.act(`/api/rules/${rule.id}`, { method: 'DELETE', ok: `ปลดบล็อก ${ruleId(rule.id)} แล้ว · request ใหม่จาก ${rule.source_ip} จะผ่าน` }) }
   // Reason for each recent decision: the rule that covered that source at that moment.
   const coveringRule = (t) => rules.find(r => within(t, r))
@@ -30,12 +33,13 @@ export default function Rules({ ctx, id }) {
 
     <Panel className="span2">
       <div className="tabRow">
-        <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'active'} className={tab === 'active' ? 'on' : ''} onClick={() => setTab('active')}>Active ({active.length})</button>
-          <button role="tab" aria-selected={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>History ({rules.length - active.length})</button>
+        <div className="tabs" role="group" aria-label="สถานะกฎ">
+          <button aria-pressed={tab === 'active'} className={tab === 'active' ? 'on' : ''} onClick={() => { setTab('active'); setQuery(''); setConfirm(null) }}>กำลังทำงาน ({active.length})</button>
+          <button aria-pressed={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => { setTab('history'); setQuery(''); setConfirm(null) }}>ประวัติ ({rules.length - active.length})</button>
         </div>
         <label className="search"><Icon name="info" size={16} /><span className="sr">Filter rules</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter by source IP, incident, or rule ID…" /></label>
       </div>
+      <FilterSummary count={list.length} total={tab === 'active' ? active.length : rules.length - active.length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <div className="tableWrap"><table>
         <thead><tr><th>Rule</th><th>Source IP</th><th>Incident</th><th>Expires</th><th>Status</th><th>Verification</th><th>Actions</th></tr></thead>
         <tbody>{list.map(r => {
@@ -51,17 +55,17 @@ export default function Rules({ ctx, id }) {
               ? <span className="confirm"><button className="btn danger sm" disabled={ctx.busy} onClick={() => unblock(r)}>Confirm</button><button className="btn ghost sm" onClick={() => setConfirm(null)}>Cancel</button></span>
               : <button className="btn ghost sm" disabled={ctx.busy} onClick={() => setConfirm(r.id)}>Unblock</button>) : '—'}</td>
           </tr>
-        })}</tbody></table></div> : <Empty>{tab === 'active' ? 'ไม่มีกฎที่ทำงานอยู่ · กฎจะเกิดหลังคนอนุมัติ proposal เท่านั้น' : 'ยังไม่มีกฎที่หมดอายุ'}</Empty>}
+        })}</tbody></table></div> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'active' ? <>ไม่มีกฎที่ทำงานอยู่ · <a href="#/approvals">ดูข้อเสนอที่รออนุมัติ</a></> : 'ยังไม่มีกฎที่หมดอายุหรือถูกปลด'}</Empty>}
     </Panel>
 
     <div className="stack">
       <Panel title="Rule Details" icon="shield" actions={selected && <Badge tone={isActiveRule(selected, now) ? 'good' : 'muted'}>{isActiveRule(selected, now) ? 'Active' : 'Expired'}</Badge>}>
-        {selected ? <RuleDetail rule={selected} now={now} incident={incidentOf(selected)} traffic={traffic} onRemove={() => setConfirm(selected.id)} confirming={confirm === selected.id} busy={ctx.busy} unblock={() => unblock(selected)} cancel={() => setConfirm(null)} /> : <Empty>ยังไม่มีกฎ</Empty>}
+        {selected ? <RuleDetail rule={selected} now={now} incident={incidentOf(selected)} traffic={traffic} onRemove={() => setConfirm(selected.id)} confirming={confirm === selected.id} busy={ctx.busy || !!ctx.error} unblock={() => unblock(selected)} cancel={() => setConfirm(null)} /> : <Empty>ไม่มีกฎในรายการที่เลือก</Empty>}
       </Panel>
       <Panel title="Protected Sources" icon="shield">
-        <p className="muted small">The backend refuses rules for these sources (set in <code>backend/app.py</code>).</p>
+        <p className="muted small">Loopback and unspecified addresses are excluded from app-level blocks.</p>
         <div className="chips"><code>127.0.0.1 (localhost)</code><code>::1 (IPv6 localhost)</code><code>0.0.0.0</code></div>
-        <p className="muted small">Gateway / M5 LAN address are not protected yet — proposed in contract v0.2.</p>
+        <p className="muted small">Review the target IP before approving a rule. Only the listed addresses are protected automatically.</p>
       </Panel>
     </div>
 

@@ -33,23 +33,33 @@ export function useLiveData() {
   const [error, setError] = useState('')
   const [connected, setConnected] = useState(false)
   const [version, setVersion] = useState(0)
-  const inflight = useRef(false)
+  const [updatedAt, setUpdatedAt] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const inflight = useRef(null)
 
-  const refresh = useCallback(async () => {
-    if (inflight.current) return
-    inflight.current = true
-    try {
-      const [health, events, incidents, proposals, rules, traffic] = await Promise.all(
-        ['/api/health', '/api/events?limit=500', '/api/incidents', '/api/proposals', '/api/rules', '/api/traffic'].map(getJson))
-      setData({ health, events, incidents, proposals, rules, traffic })
-      setError('')
-      setVersion(v => v + 1)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      inflight.current = false
-      setLoading(false)
+  const refresh = useCallback(async (force = false) => {
+    if (inflight.current) {
+      if (force === true) { await inflight.current; return refresh(true) }
+      return inflight.current
     }
+    const run = (async () => {
+      setRefreshing(true)
+      try {
+        const [health, events, incidents, proposals, rules, traffic] = await Promise.all(
+          ['/api/health', '/api/events?limit=500', '/api/incidents', '/api/proposals', '/api/rules', '/api/traffic'].map(getJson))
+        setData({ health, events, incidents, proposals, rules, traffic })
+        setError('')
+        setVersion(v => v + 1)
+        setUpdatedAt(new Date().toISOString())
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setRefreshing(false)
+        setLoading(false)
+      }
+    })()
+    inflight.current = run
+    try { await run } finally { inflight.current = null }
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
@@ -69,19 +79,19 @@ export function useLiveData() {
     return () => { stopped = true; clearTimeout(retry); clearTimeout(debounce); clearInterval(poll); socket?.close() }
   }, [refresh])
 
-  return { data, loading, error, connected, refresh, version }
+  return { data, loading, error, connected, refresh, version, updatedAt, refreshing }
 }
 
 // Incident detail + events + traffic in one call; refetched whenever live data changes.
 export function useReport(id, version) {
-  const [state, setState] = useState({ report: null, error: '', loading: true })
+  const [state, setState] = useState({ id: null, report: null, error: '', loading: true })
   useEffect(() => {
-    if (!id) { setState({ report: null, error: '', loading: false }); return }
+    if (!id) { setState({ id, report: null, error: '', loading: false }); return }
     let cancelled = false
     getJson(`/api/reports/${id}`)
-      .then(report => { if (!cancelled) setState({ report, error: '', loading: false }) })
-      .catch(err => { if (!cancelled) setState(s => ({ report: err.status === 404 ? null : s.report, error: err.status === 404 ? `ไม่พบ incident #${id}` : err.message, loading: false })) })
+      .then(report => { if (!cancelled) setState({ id, report, error: '', loading: false }) })
+      .catch(err => { if (!cancelled) setState(s => ({ id, report: err.status === 404 || s.id !== id ? null : s.report, error: err.status === 404 ? `ไม่พบ incident #${id}` : err.message, loading: false })) })
     return () => { cancelled = true }
   }, [id, version])
-  return state
+  return state.id === id ? state : { report: null, error: '', loading: !!id }
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Empty, Icon, Panel, SeverityBadge, Stat, StatusBadge, Stepper, fmtTime, go, incId, incidentStatus, kindEvidence, kindName, perMinute, useNow } from '../ui.jsx'
+import { Empty, FilterSummary, Icon, NoResults, Panel, SeverityBadge, Stat, StatusBadge, Stepper, fmtTime, incId, incidentStatus, kindEvidence, kindName, perMinute, useNow } from '../ui.jsx'
 
 const typeFor = { HTTP_AUTH_BRUTE_FORCE: 'HTTP_AUTH', SSH_BRUTE_FORCE: 'SSH_AUTH', PORT_SCAN: 'CONNECTION' }
 export const incidentEvents = (events, incident) => events.filter(e => e.source_ip === incident.source_ip && e.event_type === typeFor[incident.kind])
@@ -11,7 +11,7 @@ export function stagesFor(incident) {
   return [
     { label: 'Detected', state: 'done', note: fmtTime(incident.created_at) },
     { label: 'Investigated', state: analyzed ? 'done' : 'current', note: analyzed ? incident.analysis_mode : 'Run investigation' },
-    { label: s === 'rejected' ? 'Rejected' : 'Approved', state: s === 'rejected' ? 'stop' : decided ? 'done' : analyzed ? 'current' : 'todo', note: decided ? (s === 'rejected' ? 'No rule created' : 'Rule active') : 'Human decision' },
+    { label: s === 'rejected' ? 'Rejected' : 'Approved', state: s === 'rejected' ? 'stop' : decided ? 'done' : analyzed ? 'current' : 'todo', note: decided ? (s === 'rejected' ? 'No rule created' : 'Decision recorded') : 'Human decision' },
     { label: 'Verified', state: s === 'verified' ? 'done' : s === 'blocked' ? 'current' : s === 'rejected' ? 'todo' : 'todo', note: s === 'verified' ? 'New request denied' : s === 'blocked' ? 'Send a new request' : 'Pending' },
   ]
 }
@@ -33,8 +33,10 @@ export default function Incidents({ ctx }) {
     return order === 'newest' ? list : [...list].reverse()
   }, [data.incidents, query, severity, status, order])
 
-  const selected = data.incidents.find(i => i.id === selectedId) || rows[0]
+  const selected = rows.find(i => i.id === selectedId) || rows[0]
   const count = (fn) => data.incidents.filter(fn).length
+  const filtered = !!query || severity !== 'all' || status !== 'all'
+  const clear = () => { setQuery(''); setSeverity('all'); setStatus('all') }
 
   return <div className="grid incidents">
     <div className="stats four span3">
@@ -46,11 +48,13 @@ export default function Incidents({ ctx }) {
 
     <Panel className="span2">
       <div className="filters" role="search">
-        <label className="search"><Icon name="info" size={16} /><span className="sr">Search</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search incident, IP or type" /></label>
+        <label className="search"><Icon name="search" size={16} /><span className="sr">Search</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search incident, IP or type" /></label>
         <label><span className="sr">Severity</span><select value={severity} onChange={e => setSeverity(e.target.value)}><option value="all">Severity: All</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
         <label><span className="sr">Status</span><select value={status} onChange={e => setStatus(e.target.value)}><option value="all">Status: All</option>{Object.entries(incidentStatus).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
         <label><span className="sr">Order</span><select value={order} onChange={e => setOrder(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
       </div>
+      <FilterSummary count={rows.length} total={data.incidents.length} active={filtered} onClear={clear} />
+      {rows.length > 0 && <p className="tableHint">เลือกหมายเลข incident เพื่อดูสรุป หรือกด “เปิดรายละเอียด” เพื่อดำเนินการต่อ</p>}
       {rows.length ? <div className="tableWrap"><table>
         <thead><tr><th>Incident</th><th>Detection</th><th>Source IP</th><th>Evidence</th><th>Severity</th><th>Status</th><th>Last event</th></tr></thead>
         <tbody>{rows.map(i => {
@@ -61,7 +65,7 @@ export default function Incidents({ ctx }) {
             <td><SeverityBadge value={i.severity} /></td><td><StatusBadge status={i.status} /></td><td className="mono">{fmtTime(last?.timestamp || i.created_at)}</td>
           </tr>
         })}</tbody></table></div>
-        : <Empty>{data.incidents.length ? 'ไม่มี incident ที่ตรงกับตัวกรอง' : 'ยังไม่มี incident · ระบบจะเปิด incident เมื่อ login ผิด ≥5 ครั้ง หรือเชื่อมต่อ ≥8 พอร์ตใน 60 วินาที'}</Empty>}
+        : filtered ? <NoResults onClear={clear} /> : <Empty>ยังไม่มี incident · เริ่มจาก <a href="#/lab">Demo Lab</a> หรือส่งคำขอทดสอบจาก Neo</Empty>}
     </Panel>
 
     <Panel className="side">
@@ -84,8 +88,8 @@ function IncidentSummary({ incident, events, now }) {
     {latest ? <code className="evidence">{latest.event_type} · {latest.outcome}{latest.destination_port ? ` · port ${latest.destination_port}` : ''} · {fmtTime(latest.timestamp)}</code> : <p className="muted small">ไม่พบ event</p>}
     <h3><Icon name="trace" /> Investigation stage</h3>
     <Stepper steps={stagesFor(incident)} />
-    <a className="btn primary block" href={`#/incident/${incident.id}`}>Open incident</a>
-    <a className="btn ghost block" href={`#/trace/${incident.id}`}>View agent trace</a>
+    <a className="btn primary block" href={`#/incident/${incident.id}`}>เปิดรายละเอียด<Icon name="chevron" size={16} /></a>
+    <a className="btn ghost block" href={`#/trace/${incident.id}`}>ดูขั้นตอนการวิเคราะห์</a>
     {incident.kind === 'SSH_BRUTE_FORCE' && <p className="muted small"><Icon name="info" size={14} /> SSH scenario uses synthetic log replay</p>}
   </div>
 }

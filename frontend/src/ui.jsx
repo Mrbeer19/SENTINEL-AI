@@ -1,6 +1,8 @@
 import React from 'react'
 
 const paths = {
+  search: 'M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM16 16l5 5',
+  chevron: 'M9 5l7 7-7 7',
   home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   alert: 'M12 3l10 18H2L12 3zM12 10v5M12 18v.01',
   trace: 'M6 6a2 2 0 1 0 0 .01M18 12a2 2 0 1 0 0 .01M6 18a2 2 0 1 0 0 .01M8 7l8 4M8 17l8-4',
@@ -72,8 +74,10 @@ export function SeverityBadge({ value }) {
 export const proposalTone = { pending: 'warn', approved: 'good', rejected: 'bad' }
 
 export function Panel({ title, icon, actions, children, className = '', id }) {
-  return <section className={`panel ${className}`} aria-labelledby={id}>
-    {title && <header className="panelHead"><h2 id={id}>{icon && <Icon name={icon} />}{title}</h2>{actions && <div className="panelActions">{actions}</div>}</header>}
+  const generatedId = React.useId()
+  const titleId = id || generatedId
+  return <section className={`panel ${className}`} aria-labelledby={title ? titleId : undefined}>
+    {title && <header className="panelHead"><h2 id={titleId}>{icon && <span className="panelIcon"><Icon name={icon} size={17} /></span>}<span className="panelTitle">{title}</span></h2>{actions && <div className="panelActions">{actions}</div>}</header>}
     {children}
   </section>
 }
@@ -83,6 +87,7 @@ export function Stat({ icon, tone = 'mint', label, value, note, series }) {
     <span className="statIcon"><Icon name={icon} size={22} /></span>
     <div className="statBody"><span className="statLabel">{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</div>
     {series && <Spark values={series} />}
+    <i className="statGlow" aria-hidden="true" />
   </div>
 }
 
@@ -95,7 +100,15 @@ export function Spark({ values }) {
 }
 
 export function Empty({ children, icon = 'info' }) {
-  return <div className="empty"><Icon name={icon} size={20} /><span>{children}</span></div>
+  return <div className="empty"><span className="emptyIcon"><Icon name={icon} size={20} /></span><span>{children}</span></div>
+}
+
+export function FilterSummary({ count, total, active, onClear }) {
+  return <div className="filterSummary"><span role="status">แสดง <b>{count}</b> จาก {total} รายการ</span>{active && count > 0 && <button className="btn ghost sm" onClick={onClear}><Icon name="x" size={14} />ล้างตัวกรอง</button>}</div>
+}
+
+export function NoResults({ onClear }) {
+  return <Empty icon="search"><b>ไม่พบรายการที่ตรงกับตัวกรอง</b><span className="emptyHint">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูรายการทั้งหมด</span><button className="btn ghost" onClick={onClear}>ล้างตัวกรอง</button></Empty>
 }
 
 export function Banner({ tone = 'info', icon = 'info', children, action }) {
