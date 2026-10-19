@@ -299,7 +299,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         async def step(row: dict):
             await broadcast("analysis_step", row)
 
-        analysis, mode, meta = await agent.investigate(incident, step)
+        analysis, mode, meta, reason = await agent.investigate(incident, step)
         meta["rules_version"] = ruleset.version
         source = "rule_fallback" if mode == "rule_fallback" else "model"
         action = analysis.recommended_action
@@ -314,7 +314,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                     con.execute(
                         "INSERT INTO proposals(incident_id,source_ip,target_ip,action,duration_seconds,status,created_at,source,d3fend,reason,policy_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                         (incident_id, decision.target_ip, decision.target_ip, decision.action, decision.duration_seconds, "pending", utcnow(),
-                         source, policy.D3FEND_TECHNIQUE, analysis.evidence[0][:500], json.dumps(decision.notes)))
+                         source, policy.D3FEND_TECHNIQUE, (reason or analysis.evidence[0])[:500], json.dumps(decision.notes)))
                     log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} for {decision.duration_seconds} seconds ({source}); pending human approval")
                     audit(con, "policy", "proposal_created", incident_id, {"action": decision.action, "target_ip": decision.target_ip, "source": source, "notes": decision.notes})
                     transition(con, incident_id, "awaiting_approval", "policy", "block proposal passed policy")

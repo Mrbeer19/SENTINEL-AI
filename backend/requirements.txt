@@ -3,3 +3,4 @@ uvicorn[standard]>=0.34,<1
 httpx>=0.28,<1
 pytest>=8,<10
 pyyaml>=6,<7
+langgraph>=1.2,<2

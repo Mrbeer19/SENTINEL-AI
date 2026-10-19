@@ -216,7 +216,7 @@ def test_tool_errors_are_returned_to_the_model_not_raised(make_app, script_model
     client = connect(make_app())
     result = analyze(client, simulate(client))
     assert result["analysis_mode"] == "ollama"
-    tool_msgs = [m for m in bodies[-1]["messages"] if m["role"] == "tool"]
+    tool_msgs = [m for b in bodies for m in b["messages"] if m["role"] == "tool"]
     assert "error" in json.loads(tool_msgs[0]["content"])
 
 
@@ -265,7 +265,7 @@ def test_model_never_sees_event_labels(make_app, script_model):
 def test_missing_prompt_file_uses_builtin_prompt(make_app, tmp_path):
     client = connect(make_app(SENTINEL_PROMPT_PATH=str(tmp_path / "missing.md")))
     result = analyze(client, simulate(client))
-    assert result["analysis_meta"]["prompt_version"] == "builtin"
+    assert result["analysis_meta"]["prompt_version"].startswith("builtin:")
 
 
 def test_prompt_version_is_file_name_and_hash(make_app, tmp_path):
@@ -273,4 +273,5 @@ def test_prompt_version_is_file_name_and_hash(make_app, tmp_path):
     prompt.write_text("be careful")
     client = connect(make_app(SENTINEL_PROMPT_PATH=str(prompt)))
     version = analyze(client, simulate(client))["analysis_meta"]["prompt_version"]
-    assert version.startswith("p.md@") and len(version.split("@")[1]) == 12
+    first = version.split(" + ")[0]
+    assert first.startswith("p.md@") and len(first.split("@")[1]) == 12

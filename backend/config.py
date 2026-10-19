@@ -32,6 +32,8 @@ class Settings:
     admin_key: str
     protected_ips: frozenset[str]
     prompt_path: Path
+    analyst_prompt_path: Path
+    planner_prompt_path: Path
     rules_dir: Path
     demo_rate_limit: int
     demo_rate_window_s: int
@@ -48,6 +50,8 @@ def load_settings() -> Settings:
         admin_key=os.getenv("SENTINEL_ADMIN_KEY", ""),
         protected_ips=ALWAYS_PROTECTED | parse_ips(os.getenv("SENTINEL_PROTECTED_IPS", "")),
         prompt_path=Path(os.getenv("SENTINEL_PROMPT_PATH", REPO / "model" / "prompts" / "analyst_system_v1.md")),
+        analyst_prompt_path=Path(os.getenv("SENTINEL_ANALYST_PROMPT_PATH", REPO / "model" / "prompts" / "threat_analyst_v1.md")),
+        planner_prompt_path=Path(os.getenv("SENTINEL_PLANNER_PROMPT_PATH", REPO / "model" / "prompts" / "defense_planner_v1.md")),
         rules_dir=Path(os.getenv("SENTINEL_RULES_DIR", ROOT / "rules")),
         demo_rate_limit=int(os.getenv("SENTINEL_DEMO_RATE_LIMIT", "30")),
         demo_rate_window_s=int(os.getenv("SENTINEL_DEMO_RATE_WINDOW", "10")),

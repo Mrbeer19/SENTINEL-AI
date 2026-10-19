@@ -52,11 +52,14 @@ def analysis(**overrides):
 def script_model(monkeypatch):
     """script_model(rounds=[[(tool, args), ...], ...], finals=[...]) scripts Ollama and returns the list of request bodies sent.
 
-    rounds[i] is the tool calls returned in tool round i (missing rounds → no calls). finals are returned in order
-    for requests without tools; an Exception instance is raised instead of answered.
+    rounds[i] is the tool calls returned in tool round i (missing rounds → no calls). finals are the 6-key analyses
+    the run should end with, one per threat_analysis answer: the analyst gets it minus recommended_action, and the
+    defense planner then answers that recommended_action. A string is sent as-is; an Exception is raised.
+    plans, when given, are the planner's raw answers in order instead (str or dict).
     """
-    def install(rounds=(), finals=(), status=200):
-        rounds, finals, bodies = list(rounds), list(finals), []
+    def install(rounds=(), finals=(), status=200, plans=None):
+        rounds, finals, bodies, last = list(rounds), list(finals), [], {}
+        plans = None if plans is None else list(plans)
 
         async def reply(self, url, **kwargs):
             body = kwargs["json"]
@@ -67,11 +70,19 @@ def script_model(monkeypatch):
                 done = sum(1 for m in body["messages"] if m["role"] == "assistant")
                 calls = [{"function": {"name": n, "arguments": a}} for n, a in (rounds[done] if done < len(rounds) else [])]
                 payload = {"role": "assistant", "content": "", "tool_calls": calls}
-            else:
+            elif "recommended_action, reason" in body["messages"][-1]["content"]:  # defense planner
+                plan = plans.pop(0) if plans is not None else {"recommended_action": last.get("recommended_action", "TEMP_BLOCK_IP"), "reason": "scripted plan"}
+                if isinstance(plan, Exception):
+                    raise plan
+                payload = {"role": "assistant", "content": plan if isinstance(plan, str) else json.dumps(plan)}
+            else:  # threat analyst
                 final = finals.pop(0)
                 if isinstance(final, Exception):
                     raise final
-                payload = {"role": "assistant", "content": final if isinstance(final, str) else json.dumps(final)}
+                if isinstance(final, dict):
+                    last.update(final)
+                    final = json.dumps({k: v for k, v in final.items() if k != "recommended_action"})
+                payload = {"role": "assistant", "content": final}
             return httpx.Response(200, json={"message": payload}, request=httpx.Request("POST", str(url)))
 
         monkeypatch.delenv("SENTINEL_DISABLE_OLLAMA", raising=False)

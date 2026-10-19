@@ -30,7 +30,7 @@ V2_COLUMNS = {
     "events": {"username": "TEXT", "ocsf_class_uid": "INTEGER", "username_truncated": "INTEGER"},
     "incidents": {"rule_id": "TEXT", "attack_technique": "TEXT", "analysis_meta": "TEXT", "updated_at": "TEXT"},
     "proposals": {"target_ip": "TEXT", "source": "TEXT", "d3fend": "TEXT", "reason": "TEXT", "policy_notes": "TEXT"},
-    "traces": {"operation": "TEXT", "status": "TEXT", "duration_ms": "INTEGER", "source": "TEXT"},
+    "traces": {"operation": "TEXT", "status": "TEXT", "duration_ms": "INTEGER", "source": "TEXT", "agent": "TEXT"},
 }
 
 

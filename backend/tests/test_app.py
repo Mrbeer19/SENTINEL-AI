@@ -100,10 +100,12 @@ def test_model_selected_tool_executes_and_output_is_validated(tmp_path: Path, mo
             if "tools" in body:
                 called = any(item["role"] == "tool" for item in body["messages"])
                 payload = {"role": "assistant", "content": "", "tool_calls": [] if called else [{"function": {"name": "get_incident_logs", "arguments": {"incident_id": "INC-0001"}}}]}
+            elif "recommended_action, reason" in body["messages"][-1]["content"]:
+                payload = {"role": "assistant", "content": json.dumps({"recommended_action": "TEMP_BLOCK_IP", "reason": "Repeated failed logins"})}
+                assert "format" not in body
             else:
-                payload = {"role": "assistant", "content": json.dumps({"threat_type": "HTTP_AUTH_BRUTE_FORCE", "severity": "HIGH", "confidence": 0.9, "evidence": ["Six failures in the observed records"], "recommended_action": "TEMP_BLOCK_IP", "explanation_th": "ลองรหัสผิดซ้ำ"})}
-                tool_outputs = [json.loads(item["content"]) for item in body["messages"] if item["role"] == "tool"]
-                assert tool_outputs and all("label" not in record for out in tool_outputs for record in out["untrusted_log_records"])
+                payload = {"role": "assistant", "content": json.dumps({"threat_type": "HTTP_AUTH_BRUTE_FORCE", "severity": "HIGH", "confidence": 0.9, "evidence": ["Six failures in the observed records"], "explanation_th": "ลองรหัสผิดซ้ำ"})}
+                assert "label" not in body["messages"][-1]["content"] and "untrusted_log_records" in body["messages"][-1]["content"]
                 assert "format" not in body
             return httpx.Response(200, json={"message": payload}, request=httpx.Request("POST", str(url)))
         return await original(self, url, **kwargs)
