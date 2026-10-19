@@ -4,7 +4,7 @@
 
 | ตรวจ | ผล |
 |---|---|
-| Backend integration/policy/model-adapter/WebSocket | 7 passed (v0.1) → **317 passed (v0.2, 20 ต.ค.)** ดูหัวข้อ Backend v0.2 |
+| Backend integration/policy/model-adapter/WebSocket | 7 passed (v0.1) → **326 passed (v0.2, 20 ต.ค.)** ดูหัวข้อ Backend v0.2 |
 | Discord board dependency/claim/self-review/owner-review/persistence | 5 passed |
 | Frontend `npm run build` | passed, Vite 8.3.4 |
 | Frontend dependency install audit | 0 vulnerabilities ณเวลาติดตั้ง |
@@ -51,11 +51,11 @@ npm run build
 
 ### เทสอัตโนมัติ — `make -C backend test`
 
-**317 passed ~4.5 วิ** รันซ้ำ 4 รอบผลเท่ากัน ทุกเทสปิด Ollama และชี้ไป port ปิด (เทสที่ต้องใช้โมเดลใช้ตัวจำลองที่กำหนดคำตอบเอง) จึงยืนยัน backend ไม่ใช่ความแม่นของโมเดล
+**326 passed ~5 วิ** รันซ้ำ 4 รอบผลเท่ากัน ทุกเทสปิด Ollama และชี้ไป port ปิด (เทสที่ต้องใช้โมเดลใช้ตัวจำลองที่กำหนดคำตอบเอง) จึงยืนยัน backend ไม่ใช่ความแม่นของโมเดล
 
 | ไฟล์ | เทส | ครอบคลุม |
 |---|---|---|
-| `test_detection.py` | 41 | threshold ทุกกฎ, หน้าต่าง 60 วิ (60 ติด/61 ไม่ติด), แยกตาม IP/ชนิด, CRITICAL ที่ 3 เท่า, ไฟล์กฎผิดรูปถูกปฏิเสธ |
+| `test_detection.py` | 50 | threshold ทุกกฎ, suspicious login (4 vs 5 ครั้ง, ต่างช่องทาง, นอกหน้าต่าง), หน้าต่าง 60 วิ (60 ติด/61 ไม่ติด), แยกตาม IP/ชนิด, CRITICAL ที่ 3 เท่า, ไฟล์กฎผิดรูปถูกปฏิเสธ |
 | `test_policy.py` | 36 | ตาราง action × severity 8 แบบ, loopback/multicast/protected, target ≠ source, ตรวจซ้ำตอน approve |
 | `test_agent.py` | 58 | args ของ tool 5 ตัว, ขอบเขต IP/incident, log ≤40, output strict 10 แบบ, เพดาน 6 tool/4 รอบ, fallback เมื่อ HTTP error/timeout |
 | `test_lifecycle.py` | 38 | เส้นสถานะครบจาก audit, ตัดสินซ้ำ 409, reviewer, unblock/expiry, demo login (รวมชื่อยาว 500 ตัว), ไม่เก็บ password, reset |
@@ -69,14 +69,14 @@ npm run build
 
 ### Detection บนชุดข้อมูลที่ติด label — `make -C backend eval`
 
-replay log ของ 47 เคสใน `datasets/sentinel_cases_v1.json` (seed 20261019) เข้า `/api/events` ด้วยเวลาเดิม ทีละเคสบน DB ใหม่ เทียบกับ `rule_hint` (กฎที่ควรเปิด incident)
+replay log ของ 47 เคสใน `datasets/sentinel_cases_v1.json` (seed 20261019) เข้า `/api/events` ด้วยเวลาเดิม ทีละเคสบน DB ใหม่ เทียบชุดชนิด incident ที่เปิดกับที่ควรเปิด (`rule_hint` + `SUSPICIOUS_LOGIN` สำหรับหมวด suspicious_login) ต้องตรงทั้งชุดจึงนับถูก
 
 | split | เคส | TP | FP | FN | TN | precision | recall | F1 | FP rate |
 |---|---|---|---|---|---|---|---|---|---|
 | test | 28 | 21 | 0 | 0 | 7 | 1.0 | 1.0 | 1.0 | 0.0 |
 | dev | 19 | 13 | 0 | 0 | 6 | 1.0 | 1.0 | 1.0 | 0.0 |
 
-**อ่านอย่างระวัง:** ชุดข้อมูลสร้างจากสคริปต์ที่ตั้งใจให้เคสโจมตีเกิน threshold และเคสปกติต่ำกว่า ผล 1.0 ยืนยันว่ากฎ + การนับเวลา + การ replay ตรงกับที่ออกแบบชุดข้อมูลไว้ ไม่ใช่ความแม่นกับ traffic จริง · เคส `suspicious_login` (ผิดหลายครั้งแล้วเข้าได้) เปิด incident แบบ brute force ตาม `rule_hint` ส่วนการแยกเป็น SUSPICIOUS_LOGIN เป็นงานของโมเดล · ผลโมเดลดู `reports/model-eval-v2-beer.md`
+**อ่านอย่างระวัง:** ชุดข้อมูลสร้างจากสคริปต์ที่ตั้งใจให้เคสโจมตีเกิน threshold และเคสปกติต่ำกว่า ผล 1.0 ยืนยันว่ากฎ + การนับเวลา + การ replay ตรงกับที่ออกแบบชุดข้อมูลไว้ ไม่ใช่ความแม่นกับ traffic จริง · ทดลองลดเกณฑ์ suspicious login เหลือ 4 → `test-22-benign` (ผิด 4 แล้วเข้าได้) ถูกเตือนผิด FP rate 0.143 ตัววัดจับได้ จึงใช้เกณฑ์ 5 · ผลโมเดลดู `reports/model-eval-v2-beer.md`
 
 ### ก่อน/หลัง v0.1 → v0.2 — `make -C backend bench`
 
@@ -88,7 +88,7 @@ workload เดียวกันทั้งสองเวอร์ชัน (
 | ingest p95 | 1.49 ms | 1.64 ms | +0.15 ms |
 | incident ที่เปิด | 70 | 70 | เท่ากัน |
 | ลูปเต็ม 1 incident (median) | 8.5 ms | 13.8 ms | +5 ms |
-| เทส | 7 | 317 | |
+| เทส | 7 | 326 | |
 
 v0.2 ช้าลงเพราะเขียน audit hash chain + trace ทุกขั้น (ตั้งใจแลก) · ลูป 14 ms เทียบกับเวลาโมเดล ~30 วิ ไม่มีผล · ไม่รวมเวลาเครือข่าย/โมเดล
 

@@ -28,7 +28,7 @@
 ```sh
 make -C backend test
 ```
-→ **317 passed ~4.5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+→ **326 passed ~5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
 
 | วัด | คำสั่ง | ผล |
 |---|---|---|
@@ -55,7 +55,7 @@ make -C backend test
 - ซ้อม 2 เครื่องจริงบน hotspot (Neo → M5)
 - benchmark 47 เคสของ Beer บน M5 (นัดวันที่ 22)
 - UI ยังอ่านรูปแบบ v0.1 (`analysis.summary`, `proposal.source_ip` ฯลฯ) จะพังบางหน้าจนกว่าฝั่ง frontend อัปเดต
-- ยังไม่มีกฎ `SUSPICIOUS_LOGIN` / honeypot (โมเดลจำแนกได้ แต่ detection ยังไม่สร้าง incident ประเภทนี้)
+- ยังไม่มีกฎ honeypot · กฎ `SUSPICIOUS_LOGIN` เพิ่มแล้ว (success หลัง failed ≥5 / 60 วิ)
 - ยังไม่จำกัดขนาด body ระดับ server · rate limit อยู่ในหน่วยความจำ
 - smoke + benchmark รอบนี้ไม่ได้เปิด Ollama (ผลกับโมเดลจริงยังเป็น 3 รอบด้านบน)
 - Dockerfile ยังไม่ทำ (Docker Desktop ไม่ได้เปิด + CI เป็นไฟล์ร่วม รอคุยกัน)
@@ -85,4 +85,4 @@ make -C backend test
 
 - B08: ส่วน backend เสร็จ (detection P/R/F1, SOC timings, report API, benchmark) · เหลือรวมกับผลโมเดลของ Beer บน M5 (นัด 22 ต.ค.)
 - B09: runbook ฝั่ง backend เสร็จ (`docs/backend-runbook.md`) · เหลือซ้อม 2 เครื่องจริง (ต้องรอ UI อ่าน v0.2)
-- ค้าง: push/PR เข้า dev หลังตั้ง GitHub ruleset · กฎ suspicious login/honeypot
+- ค้าง: กฎ honeypot
