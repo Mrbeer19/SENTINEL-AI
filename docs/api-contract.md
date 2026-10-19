@@ -48,6 +48,7 @@ OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จา
 | `sentinel-http-auth-bruteforce` | `HTTP_AUTH_BRUTE_FORCE` | `HTTP_AUTH` failed ≥5 / 60 วิ / IP | T1110.001 | HIGH |
 | `sentinel-ssh-auth-bruteforce` | `SSH_BRUTE_FORCE` | `SSH_AUTH` failed ≥5 / 60 วิ / IP (log replay) | T1110.001 | HIGH |
 | `sentinel-port-scan` | `PORT_SCAN` | `CONNECTION` ≥8 พอร์ตต่างกัน / 60 วิ / IP | T1046 | MEDIUM |
+| `sentinel-traffic-anomaly` | `TRAFFIC_ANOMALY` | `CONNECTION` ≥100 ครั้ง / 60 วิ / IP (พอร์ตใดก็ได้) · สเปก scenario E (เสริม) | T1498 | MEDIUM |
 | `sentinel-suspicious-login` | `SUSPICIOUS_LOGIN` | login **success** หลัง failed ≥5 ช่องทางเดียวกัน (HTTP/SSH) / 60 วิ / IP · `event_count` = จำนวน failed | T1078 | HIGH |
 
 - หน้าต่างเวลานับย้อนจาก **เวลาของ event** (UTC)
@@ -165,7 +166,8 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 - `POST /api/demo/login` `{ "username": "student", "password": "wrong" }` → 200 / 401 / 403 (โดนบล็อก) · ใช้ IP จาก connection · บัญชีถูก = `student` / `sentinel-demo`
 - `POST /api/demo/traffic` `{}` → 200 `{source_ip, decision: "allowed", rule_id: null}` / **403** `decision: "denied"` · local เท่านั้นส่ง `source_ip` จำลองได้
 - `POST /api/demo/reset` (local) → `{rules_disabled, incidents_closed}` ปิดกฎ active, ปิด incident ที่ยังเปิด, ปฏิเสธ proposal ค้าง · ไม่ลบประวัติ
-- `POST /api/simulations` `{ "scenario": "http_brute_force | ssh_brute_force_logs | port_scan | normal", "source_ip": "192.0.2.25" }`
+- `POST /api/simulations` `{ "scenario": "http_brute_force | ssh_brute_force_logs | port_scan | suspicious_login | traffic_anomaly | normal", "source_ip": "192.0.2.25" }` → ส่ง event ทั้งหมดทันที · จำนวน event: 6 / 6 / 9 / 7 / 120 / 2
+- **ส่งทีละ event (ดูสดบน dashboard):** `POST /api/simulations/start` body เดียวกัน + `interval_ms` (50–10000, ค่าเริ่มต้น 500) → **202** state · รันได้ทีละอัน ซ้อน = 409 · `POST /api/simulations/stop` → state (`stopped: true`) · `GET /api/simulations/state` → `{running, scenario, source_ip, sent, total, interval_ms, started_at, finished_at, stopped, incident_ids, source_note}` · ทุก event ส่ง WS stage `simulation` พร้อม state
 - `GET /api/traffic` → 100 ล่าสุด
 
 ## Audit
@@ -181,7 +183,7 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 - `GET /api/health` (เปิดให้ Neo) → `status, version, model, model_ready, ai_mode`
 - `GET /api/metrics` · `GET /api/reports/{id}` (incident detail + events + traffic + audit)
 - `WS /ws` → `{ "v": 2, "stage": "...", "ts": "...", "payload": {...} }`
-- stage: `connected | event | incident | analysis_step | analysis | approval | firewall | traffic | verification | reset`
+- stage: `connected | event | incident | analysis_step | analysis | approval | firewall | traffic | verification | reset | simulation`
 - `analysis_step.payload` = trace row 1 แถว · reconnect แล้ว refetch REST
 
 ## Access และ errors

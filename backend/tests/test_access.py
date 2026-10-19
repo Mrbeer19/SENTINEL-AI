@@ -16,7 +16,8 @@ SOC_ROUTES = [
     ("get", "/api/incidents", None), ("get", "/api/incidents/1", None), ("post", "/api/incidents/1/analyze", None),
     ("get", "/api/proposals", None), ("post", "/api/proposals/1/approve", REVIEW), ("post", "/api/proposals/1/reject", REVIEW),
     ("get", "/api/rules", None), ("delete", "/api/rules/1", None), ("get", "/api/traffic", None),
-    ("post", "/api/simulations", {"scenario": "normal"}), ("post", "/api/demo/reset", None), ("get", "/api/metrics", None),
+    ("post", "/api/simulations", {"scenario": "normal"}), ("post", "/api/simulations/start", {"scenario": "normal"}),
+    ("post", "/api/simulations/stop", None), ("get", "/api/simulations/state", None), ("post", "/api/demo/reset", None), ("get", "/api/metrics", None),
     ("get", "/api/reports/1", None), ("get", "/api/audit", None), ("get", "/api/audit/verify", None),
 ]
 

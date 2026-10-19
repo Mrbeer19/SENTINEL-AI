@@ -100,7 +100,8 @@ def test_proposal_keeps_source_ip_alias(client):
 
 
 @pytest.mark.parametrize("scenario,count,kind", [("http_brute_force", 6, "HTTP_AUTH_BRUTE_FORCE"), ("ssh_brute_force_logs", 6, "SSH_BRUTE_FORCE"),
-                                                 ("port_scan", 9, "PORT_SCAN"), ("normal", 2, None)])
+                                                 ("port_scan", 9, "PORT_SCAN"), ("suspicious_login", 7, "SUSPICIOUS_LOGIN"),
+                                                 ("traffic_anomaly", 120, "TRAFFIC_ANOMALY"), ("normal", 2, None)])
 def test_simulation_scenarios(client, scenario, count, kind):
     result = client.post("/api/simulations", json={"scenario": scenario, "source_ip": ATTACKER}).json()
     assert result["events_created"] == count and (result["incident"] or {}).get("kind") == kind

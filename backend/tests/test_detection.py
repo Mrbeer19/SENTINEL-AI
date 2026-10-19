@@ -221,3 +221,10 @@ def test_custom_rules_dir_drives_detection(tmp_path, make_app):
     client = connect(make_app(SENTINEL_RULES_DIR=str(rules)))
     results = send(client, 2)
     assert results[0]["incident"] is None and results[1]["incident"]["kind"] == "X"
+
+
+@pytest.mark.parametrize("connections,fires", [(99, False), (100, True)])
+def test_connection_flood_opens_traffic_anomaly(client, connections, fires):
+    for _ in range(connections):
+        client.post("/api/events", json=event(event_type="CONNECTION", outcome="attempt", destination_port=443))
+    assert ("TRAFFIC_ANOMALY" in kinds(client)) is fires and "PORT_SCAN" not in kinds(client)

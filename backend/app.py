@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import secrets
 import time
@@ -68,8 +69,31 @@ class TrafficIn(BaseModel):
 
 
 class SimulationIn(BaseModel):
-    scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "normal"]
+    scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "suspicious_login", "traffic_anomaly", "normal"]
     source_ip: IPvAnyAddress = "192.0.2.25"
+
+
+class SimulationRunIn(SimulationIn):
+    interval_ms: int = Field(default=500, ge=50, le=10_000)
+
+
+def scenario_samples(scenario: str) -> list[tuple[str, str, int | None]]:
+    """(event_type, outcome, destination_port) for each event a scenario sends."""
+    if scenario == "http_brute_force":
+        return [("HTTP_AUTH", "failed", None)] * 6
+    if scenario == "ssh_brute_force_logs":
+        return [("SSH_AUTH", "failed", None)] * 6
+    if scenario == "port_scan":
+        return [("CONNECTION", "attempt", port) for port in range(8000, 8009)]
+    if scenario == "suspicious_login":
+        return [("HTTP_AUTH", "failed", None)] * 6 + [("HTTP_AUTH", "success", None)]
+    if scenario == "traffic_anomaly":
+        return [("CONNECTION", "attempt", 443)] * 120
+    return [("HTTP_AUTH", "success", None), ("CONNECTION", "attempt", 443)]
+
+
+def source_note(scenario: str) -> str:
+    return "Synthetic log replay; not a live SSH attack" if scenario == "ssh_brute_force_logs" else "Controlled app-level simulation"
 
 
 def clean_username(value: str | None) -> tuple[str | None, bool]:
@@ -90,6 +114,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     api.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
     docs_paths = {api.docs_url, api.redoc_url, api.openapi_url, api.swagger_ui_oauth2_redirect_url}
     sockets: set[WebSocket] = set()
+    run = {"task": None, "state": {"running": False, "scenario": None, "source_ip": None, "sent": 0, "total": 0,
+                                   "interval_ms": None, "started_at": None, "finished_at": None, "stopped": False, "incident_ids": []}}
     hits: dict[str, deque] = defaultdict(deque)
 
     def trusted(peer: str, headers) -> bool:
@@ -373,21 +399,61 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     def list_traffic():
         return store.rows("SELECT * FROM traffic ORDER BY id DESC LIMIT 100")
 
+    def sample_event(sim: SimulationIn, sample: tuple) -> EventIn:
+        kind, outcome, port = sample
+        return EventIn(source_ip=sim.source_ip, event_type=kind, outcome=outcome, destination_port=port,
+                       label="normal" if sim.scenario == "normal" else "attack")
+
     @api.post("/api/simulations")
     async def simulate(sim: SimulationIn):
-        ip = str(sim.source_ip)
-        if sim.scenario == "http_brute_force":
-            samples = [("HTTP_AUTH", "failed", None)] * 6
-        elif sim.scenario == "ssh_brute_force_logs":
-            samples = [("SSH_AUTH", "failed", None)] * 6
-        elif sim.scenario == "port_scan":
-            samples = [("CONNECTION", "attempt", port) for port in range(8000, 8009)]
-        else:
-            samples = [("HTTP_AUTH", "success", None), ("CONNECTION", "attempt", 443)]
+        samples = scenario_samples(sim.scenario)
         result = None
-        for kind, outcome, port in samples:
-            result = await ingest(EventIn(source_ip=ip, event_type=kind, outcome=outcome, destination_port=port, label="normal" if sim.scenario == "normal" else "attack"))
-        return {"scenario": sim.scenario, "events_created": len(samples), "incident": result["incident"] if result else None, "source_note": "Synthetic log replay; not a live SSH attack" if sim.scenario == "ssh_brute_force_logs" else "Controlled app-level simulation"}
+        for sample in samples:
+            result = await ingest(sample_event(sim, sample))
+        return {"scenario": sim.scenario, "events_created": len(samples), "incident": result["incident"] if result else None, "source_note": source_note(sim.scenario)}
+
+    async def paced(sim: SimulationRunIn, samples: list) -> None:
+        state = run["state"]
+        try:
+            for sample in samples:
+                result = await ingest(sample_event(sim, sample))
+                state["sent"] += 1
+                if result["incident"] and result["incident"]["id"] not in state["incident_ids"]:
+                    state["incident_ids"].append(result["incident"]["id"])
+                await broadcast("simulation", dict(state))
+                if state["sent"] < state["total"]:
+                    await asyncio.sleep(sim.interval_ms / 1000)
+        finally:
+            state["running"], state["finished_at"] = False, utcnow()
+            await broadcast("simulation", dict(state))
+
+    @api.post("/api/simulations/start", status_code=202)
+    async def simulation_start(sim: SimulationRunIn):
+        """Send a scenario one event at a time so the dashboard shows it arriving live. One run at a time."""
+        if run["state"]["running"]:
+            raise HTTPException(409, "a simulation is already running; stop it first")
+        samples = scenario_samples(sim.scenario)
+        run["state"] = {"running": True, "scenario": sim.scenario, "source_ip": str(sim.source_ip), "sent": 0, "total": len(samples),
+                        "interval_ms": sim.interval_ms, "started_at": utcnow(), "finished_at": None, "stopped": False, "incident_ids": [],
+                        "source_note": source_note(sim.scenario)}
+        run["task"] = asyncio.create_task(paced(sim, samples))
+        return dict(run["state"])
+
+    @api.post("/api/simulations/stop")
+    async def simulation_stop():
+        task = run["task"]
+        if task and not task.done():
+            run["state"]["stopped"] = True
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        return dict(run["state"])
+
+    @api.get("/api/simulations/state")
+    def simulation_state():
+        return dict(run["state"])
 
     @api.get("/api/metrics")
     def metrics():
