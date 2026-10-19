@@ -28,7 +28,7 @@
 ```sh
 make -C backend test
 ```
-→ **308 passed ~4.5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+→ **317 passed ~4.5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
 
 | วัด | คำสั่ง | ผล |
 |---|---|---|
@@ -60,12 +60,12 @@ make -C backend test
 - smoke + benchmark รอบนี้ไม่ได้เปิด Ollama (ผลกับโมเดลจริงยังเป็น 3 รอบด้านบน)
 - Dockerfile ยังไม่ทำ (Docker Desktop ไม่ได้เปิด + CI เป็นไฟล์ร่วม รอคุยกัน)
 
-## สิ่งที่เจอระหว่างเทส (ยังไม่แก้ — รอตัดสิน)
+## สิ่งที่เจอระหว่างเทส
 
-1. **`/docs`, `/redoc`, `/openapi.json` เปิดให้เครื่องใน LAN โดยไม่ต้องมี key** — เครื่องยิงเห็นแผนผัง API ทั้งหมด (เรียกจริงยังโดน 403) · แก้ได้ 1 จุดใน middleware ถ้าตกลงว่าจะปิด
-2. **event ที่ `username` ยาวเกิน 80 ตัวถูกปฏิเสธทั้งแถว (422)** — เคส `dev-18-inj_attack` ใน dataset มี username 116 ตัว · ทาง `/api/demo/login` ไม่มีผล (request ไม่ถึงการตรวจรหัส) แต่ถ้าวันหน้ามีตัวส่ง log ที่ไม่ตัดเอง event จะหาย = detection พลาด · ทางเลือก: backend ตัดเหลือ 80 แทนการปฏิเสธ (ต้องแก้ contract)
+1. ✅ **แก้แล้ว** `/docs`, `/redoc`, `/openapi.json` เคยเปิดให้เครื่องใน LAN อ่านแผนผัง API ได้ → ตอนนี้ต้อง localhost หรือ `X-Admin-Key` (Beer ตกลง 20 ต.ค.)
+2. ✅ **แก้แล้ว** event ที่ `username` ยาวเกิน 80 ตัวเคยถูกปฏิเสธทั้งแถว (เจอในเคส `dev-18` ชื่อยาว 116 ตัว) = ผู้โจมตีใส่ชื่อยาวแล้วหลบการตรวจจับได้ → ตอนนี้เก็บ 80 ตัวแรก + `username_truncated = 1` ทั้ง `/api/events` และ `/api/demo/login` · เกิน 1024 ตัวยัง 422 · contract อัปเดตแล้ว
 3. **ลบ audit แถวล่าสุดแล้ว verify ยัง valid** — ข้อจำกัดของ hash chain (อยู่ใน threat model แล้ว) · ลดได้โดยใส่จำนวนแถว + hash ล่าสุดในรายงาน/สไลด์ตอนจบเดโม
-4. `scripts/smoke_local.py` (ของ Beer) ยังอ่านรูปแบบ v0.1 ใช้กับ v0.2 ไม่ได้ → ใช้ `backend/scripts/smoke.py` แทน
+4. ✅ `scripts/smoke_local.py` (v0.1) Beer ลบใน PR #3 · ใช้ `make -C backend smoke` แทน · `docs/demo-runbook.md` เลิกใช้ `--host 0.0.0.0` แล้ว (Beer ให้แก้ใน PR นี้)
 
 ## สิ่งที่เพื่อนต้องใช้หรือทำต่อ (Beer)
 

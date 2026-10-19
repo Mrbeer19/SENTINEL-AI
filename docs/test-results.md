@@ -4,7 +4,7 @@
 
 | ตรวจ | ผล |
 |---|---|
-| Backend integration/policy/model-adapter/WebSocket | 7 passed (v0.1) → **308 passed (v0.2, 20 ต.ค.)** ดูหัวข้อ Backend v0.2 |
+| Backend integration/policy/model-adapter/WebSocket | 7 passed (v0.1) → **317 passed (v0.2, 20 ต.ค.)** ดูหัวข้อ Backend v0.2 |
 | Discord board dependency/claim/self-review/owner-review/persistence | 5 passed |
 | Frontend `npm run build` | passed, Vite 8.3.4 |
 | Frontend dependency install audit | 0 vulnerabilities ณเวลาติดตั้ง |
@@ -51,17 +51,17 @@ npm run build
 
 ### เทสอัตโนมัติ — `make -C backend test`
 
-**308 passed ~4.5 วิ** รันซ้ำ 4 รอบผลเท่ากัน ทุกเทสปิด Ollama และชี้ไป port ปิด (เทสที่ต้องใช้โมเดลใช้ตัวจำลองที่กำหนดคำตอบเอง) จึงยืนยัน backend ไม่ใช่ความแม่นของโมเดล
+**317 passed ~4.5 วิ** รันซ้ำ 4 รอบผลเท่ากัน ทุกเทสปิด Ollama และชี้ไป port ปิด (เทสที่ต้องใช้โมเดลใช้ตัวจำลองที่กำหนดคำตอบเอง) จึงยืนยัน backend ไม่ใช่ความแม่นของโมเดล
 
 | ไฟล์ | เทส | ครอบคลุม |
 |---|---|---|
 | `test_detection.py` | 41 | threshold ทุกกฎ, หน้าต่าง 60 วิ (60 ติด/61 ไม่ติด), แยกตาม IP/ชนิด, CRITICAL ที่ 3 เท่า, ไฟล์กฎผิดรูปถูกปฏิเสธ |
 | `test_policy.py` | 36 | ตาราง action × severity 8 แบบ, loopback/multicast/protected, target ≠ source, ตรวจซ้ำตอน approve |
 | `test_agent.py` | 58 | args ของ tool 5 ตัว, ขอบเขต IP/incident, log ≤40, output strict 10 แบบ, เพดาน 6 tool/4 รอบ, fallback เมื่อ HTTP error/timeout |
-| `test_lifecycle.py` | 37 | เส้นสถานะครบจาก audit, ตัดสินซ้ำ 409, reviewer, unblock/expiry, demo login, ไม่เก็บ password, reset |
+| `test_lifecycle.py` | 38 | เส้นสถานะครบจาก audit, ตัดสินซ้ำ 409, reviewer, unblock/expiry, demo login (รวมชื่อยาว 500 ตัว), ไม่เก็บ password, reset |
 | `test_audit.py` | 19 | แก้/ลบ/สลับ/ปลอมแถว → จับได้, เขียนพร้อมกัน 4 thread chain ไม่แตก |
-| `test_access.py` | 54 | endpoint SOC ทุกตัว × ไม่มี key/มี key, rate limit ต่อ IP + เลื่อนหน้าต่าง, WS, CORS |
-| `test_contract.py` | 31 | รูป response ตาม `docs/api-contract.md` v0.2, validation 422, WS stage ตามลำดับ |
+| `test_access.py` | 58 | endpoint SOC ทุกตัว × ไม่มี key/มี key, `/docs` `/openapi.json` ปิดจาก LAN, rate limit ต่อ IP + เลื่อนหน้าต่าง, WS, CORS |
+| `test_contract.py` | 35 | รูป response ตาม `docs/api-contract.md` v0.2, validation 422, username ยาว = ตัด + flag, WS stage ตามลำดับ |
 | `test_soc_store.py` | 10 | MTTD/MTTR/TTV, median/p90, migrate DB v0.1 → v0.2 |
 | `test_app.py` + `test_v02.py` | 22 | ชุดเดิม |
 
@@ -88,7 +88,7 @@ workload เดียวกันทั้งสองเวอร์ชัน (
 | ingest p95 | 1.49 ms | 1.64 ms | +0.15 ms |
 | incident ที่เปิด | 70 | 70 | เท่ากัน |
 | ลูปเต็ม 1 incident (median) | 8.5 ms | 13.8 ms | +5 ms |
-| เทส | 7 | 308 | |
+| เทส | 7 | 317 | |
 
 v0.2 ช้าลงเพราะเขียน audit hash chain + trace ทุกขั้น (ตั้งใจแลก) · ลูป 14 ms เทียบกับเวลาโมเดล ~30 วิ ไม่มีผล · ไม่รวมเวลาเครือข่าย/โมเดล
 

@@ -7,7 +7,7 @@
 ```sh
 make -C backend venv            # สร้าง backend/.venv + ติดตั้ง requirements
 cp backend/.env.example backend/.env
-make -C backend test            # ต้องได้ 308 passed
+make -C backend test            # ต้องได้ 317 passed
 ```
 
 โมเดล (ทำครั้งเดียว ~3.7 GB): `brew install ollama` → `ollama serve` (ค้างไว้อีกหน้าต่าง) → `ollama pull qwen3.5:4b`
@@ -77,12 +77,13 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 | analyze ได้ `rule_fallback` ทั้งที่เปิดโมเดล | โมเดลตอบ JSON ผิด 2 ครั้ง / timeout 90 วิ / ชื่อโมเดลไม่ตรง | ดู trace แถว `invalid_output` · `ollama list` |
 | approve ได้ `400 … protected` | IP นั้นถูกเพิ่มเป็น protected หลังเสนอ | ถูกต้องตาม policy (ตรวจซ้ำตอนอนุมัติ) |
 | `/api/audit/verify` `valid:false` | มีคนแก้ DB ตรง | `broken_at` บอกแถวแรกที่ถูกแก้ |
-| ส่ง event ที่ username ยาวเกิน 80 ตัวแล้วได้ 422 | contract จำกัด ≤80 | ตัวส่ง log ต้องตัดเหลือ 80 ก่อนส่ง (ดูรายงาน backend) |
+| เครื่องยิงเปิด `/docs` ได้ 403 | ปิดไว้ตั้งใจ (Beer ตกลง 20 ต.ค.) | เปิดดูบน M5 ที่ `127.0.0.1:8000/docs` |
+| event มี `username_truncated = 1` | username ยาวเกิน 80 ตัว (มักเป็นการลองยัดข้อความ) | ปกติ · เก็บ 80 ตัวแรกและยังนับเข้ากฎตรวจจับ · เกิน 1024 ตัว = 422 |
 
 ## 7. ตรวจผล/วัดผล (ไม่ต้องเปิด server)
 
 ```sh
-make -C backend test    # 308 เทส ~5 วิ
+make -C backend test    # 317 เทส ~5 วิ
 make -C backend eval    # replay 47 เคสใน datasets/ ผ่านกฎตรวจจับ → precision/recall/F1
 make -C backend bench   # v0.1 เทียบ v0.2 workload เดียวกัน
 ```
