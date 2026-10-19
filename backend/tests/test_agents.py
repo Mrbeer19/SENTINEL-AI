@@ -49,12 +49,13 @@ def test_planner_never_sees_log_text(make_app, script_model):
     assert HIJACK not in planner and "SYSTEM OVERRIDE" not in planner and "untrusted_log_records" not in planner
 
 
-def test_planner_gets_protection_and_firewall_facts(make_app, script_model, monkeypatch):
+def test_planner_gets_fixed_fields_only(make_app, script_model, monkeypatch):
     monkeypatch.setenv("SENTINEL_PROTECTED_IPS", ATTACKER)
     bodies, result = run(make_app, script_model, rounds=[LOGS], finals=[analysis()])
-    facts = json.loads(planner_bodies(bodies)[0]["messages"][-1]["content"].split("Threat assessment: ", 1)[1].split("\n\n")[0])
-    assert facts["source"] == {"protected": True, "firewall_status": "ALLOWED"}
-    assert facts["assessment"]["threat_type"] == "HTTP_AUTH_BRUTE_FORCE" and "evidence" not in facts["assessment"]
+    lines = planner_bodies(bodies)[0]["messages"][-1]["content"].split("\n")
+    facts, verdict = json.loads(lines[0].removeprefix("Incident: ")), json.loads(lines[1].removeprefix("Threat analysis: "))
+    assert facts == {"kind": "HTTP_AUTH_BRUTE_FORCE", "event_count": 5, "protected": True}
+    assert set(verdict) == {"threat_type", "severity", "confidence"}
     assert result["proposal"] is None and result["status"] == "needs_review"  # policy still refuses
 
 

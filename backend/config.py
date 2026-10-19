@@ -49,7 +49,7 @@ def load_settings() -> Settings:
         ollama_disabled=os.getenv("SENTINEL_DISABLE_OLLAMA") == "1",
         admin_key=os.getenv("SENTINEL_ADMIN_KEY", ""),
         protected_ips=ALWAYS_PROTECTED | parse_ips(os.getenv("SENTINEL_PROTECTED_IPS", "")),
-        prompt_path=Path(os.getenv("SENTINEL_PROMPT_PATH", REPO / "model" / "prompts" / "analyst_system_v1.md")),
+        prompt_path=Path(os.getenv("SENTINEL_PROMPT_PATH", REPO / "model" / "prompts" / "investigator_v1.md")),
         analyst_prompt_path=Path(os.getenv("SENTINEL_ANALYST_PROMPT_PATH", REPO / "model" / "prompts" / "threat_analyst_v1.md")),
         planner_prompt_path=Path(os.getenv("SENTINEL_PLANNER_PROMPT_PATH", REPO / "model" / "prompts" / "defense_planner_v1.md")),
         rules_dir=Path(os.getenv("SENTINEL_RULES_DIR", ROOT / "rules")),

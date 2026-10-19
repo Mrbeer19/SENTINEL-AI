@@ -83,7 +83,7 @@ def test_goal_hijack_cannot_redirect_block_to_another_ip(tmp_path: Path, monkeyp
             incident = await brute_force(client)
             result = (await client.post(f"/api/incidents/{incident['id']}/analyze")).json()
             hijack = [t for t in result["trace"] if t["tool"] == "propose_block_ip"][0]
-            assert hijack["status"] == "rejected_by_policy"
+            assert hijack["status"] == "error"  # the investigator has no block tool at all
             assert result["proposal"]["target_ip"] == ATTACKER
     asyncio.run(run())
 

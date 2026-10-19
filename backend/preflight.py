@@ -46,7 +46,9 @@ def main() -> int:
         results.append(check(True, f"{len(rules.rules)} detection rules loaded (version {rules.version})"))
     except (OSError, ValueError, KeyError) as exc:
         results.append(check(False, "detection rules load", str(exc)))
-    results.append(check(settings.prompt_path.exists(), f"system prompt {settings.prompt_path.name}", "check SENTINEL_PROMPT_PATH"))
+    for path, env in ((settings.prompt_path, "SENTINEL_PROMPT_PATH"), (settings.analyst_prompt_path, "SENTINEL_ANALYST_PROMPT_PATH"),
+                      (settings.planner_prompt_path, "SENTINEL_PLANNER_PROMPT_PATH")):
+        results.append(check(path.exists(), f"agent prompt {path.name}", f"merge the prompt files (PR #7) or set {env}"))
     try:
         DEFAULT_DB.parent.mkdir(parents=True, exist_ok=True)
         con = sqlite3.connect(DEFAULT_DB, isolation_level=None)
