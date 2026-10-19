@@ -1,6 +1,6 @@
 # Backend v0.2 — Obeto
 
-**Phase / ผู้รับผิดชอบ:** B00–B07 (ส่วน backend) · Obeto
+**Phase / ผู้รับผิดชอบ:** B00–B07 + ส่วนที่ทำได้ก่อนของ B08–B09 · Obeto · อัปเดต 20 ต.ค. (รอบ 2)
 **สถานะ:** ผ่านบางส่วน — โค้ด + เทสครบตาม contract v0.2 · ยังไม่ได้ซ้อม 2 เครื่อง และ UI ยังเป็น v0.1
 **Branch:** `feature/ai-backend/pitchakorn-pkt` (แตกจาก `beer/model-eval-v2`)
 
@@ -15,18 +15,26 @@
 - audit log hash chain + `GET /api/audit/verify`
 - เครื่องอื่นเข้าได้แค่ health + demo endpoints (rate limit) · ที่เหลือต้อง localhost หรือ `X-Admin-Key`
 - `python -m backend.preflight --host <IP>` ตรวจเครื่องก่อนเดโม
+- SOC metrics: MTTD / time to proposal / MTTR / time to verify ใน `/api/metrics.soc` และ `report.soc_timings`
+- `backend/Makefile` + `backend/scripts/` (smoke, bench, eval) + `docs/backend-runbook.md`
 
 ## ไฟล์ที่เปลี่ยน
 
-`backend/` ทั้งหมด (app, agent, config, detection, policy, store, preflight, rules, tests, requirements, .env.example) · `docs/api-contract.md` (v0.2) · `docs/threat-model.md` (ใหม่) · รายงานนี้
-ไม่ได้แตะ `frontend/`, `model/`, `datasets/`, ร่าง contract, plan, prompts, bot
+`backend/` ทั้งหมด (app, agent, config, detection, policy, store, soc, preflight, rules, tests, scripts, Makefile, requirements, .env.example) · `docs/api-contract.md` (v0.2) · `docs/threat-model.md` (ใหม่) · `docs/backend-runbook.md` (ใหม่) · `docs/test-results.md` (เพิ่มหัวข้อ Backend v0.2 + แถว backend) · รายงานนี้
+ไม่ได้แตะ `frontend/`, `model/`, `datasets/` (อ่านอย่างเดียว), `scripts/`, ร่าง contract, plan, prompts, bot, `docs/demo-runbook.md`
 
 ## ทดสอบจริง
 
 ```sh
-python -m pytest backend/tests -q --basetemp backend/tests/.tmp
+make -C backend test
 ```
-→ **22 passed** (7 ข้อเดิมปรับเป็น v0.2 + 15 ข้อใหม่: protected env, goal hijack, action→status ×3, BLOCK_IP/CRITICAL, retry, fallback, เปิด incident ใหม่, reset, audit tamper, timezone, remote read/WS, rate limit, rule YAML)
+→ **308 passed ~4.5 วิ** (เดิม 22) แยกตามไฟล์ใน `docs/test-results.md` หัวข้อ Backend v0.2 · ไม่มีเทสไหนเจอบั๊กของ backend
+
+| วัด | คำสั่ง | ผล |
+|---|---|---|
+| detection บน 47 เคสที่ติด label | `make -C backend eval` | test 28 เคส: P/R/F1 = 1.0, FP 0 (ชุดข้อมูลออกแบบให้ตรง threshold — ไม่ใช่ traffic จริง) |
+| v0.1 → v0.2 workload เดียวกัน | `make -C backend bench` | ingest 718 → 655 events/วิ (−9%) · ลูปเต็ม 8.5 → 13.8 ms · incident เท่ากัน 70 |
+| server จริง | `make -C backend smoke` | `SMOKE PASS` (rule_fallback) · `--require-model` ไม่มีโมเดล → FAIL ชัดเจน |
 
 รันจริงกับโมเดลบน **MacBook Pro M5 16GB · Ollama 0.40.5 (MLX) · qwen3.5:4b** — `http_brute_force` 1 incident ต่อรอบ:
 
@@ -49,6 +57,15 @@ python -m pytest backend/tests -q --basetemp backend/tests/.tmp
 - UI ยังอ่านรูปแบบ v0.1 (`analysis.summary`, `proposal.source_ip` ฯลฯ) จะพังบางหน้าจนกว่าฝั่ง frontend อัปเดต
 - ยังไม่มีกฎ `SUSPICIOUS_LOGIN` / honeypot (โมเดลจำแนกได้ แต่ detection ยังไม่สร้าง incident ประเภทนี้)
 - ยังไม่จำกัดขนาด body ระดับ server · rate limit อยู่ในหน่วยความจำ
+- smoke + benchmark รอบนี้ไม่ได้เปิด Ollama (ผลกับโมเดลจริงยังเป็น 3 รอบด้านบน)
+- Dockerfile ยังไม่ทำ (Docker Desktop ไม่ได้เปิด + CI เป็นไฟล์ร่วม รอคุยกัน)
+
+## สิ่งที่เจอระหว่างเทส (ยังไม่แก้ — รอตัดสิน)
+
+1. **`/docs`, `/redoc`, `/openapi.json` เปิดให้เครื่องใน LAN โดยไม่ต้องมี key** — เครื่องยิงเห็นแผนผัง API ทั้งหมด (เรียกจริงยังโดน 403) · แก้ได้ 1 จุดใน middleware ถ้าตกลงว่าจะปิด
+2. **event ที่ `username` ยาวเกิน 80 ตัวถูกปฏิเสธทั้งแถว (422)** — เคส `dev-18-inj_attack` ใน dataset มี username 116 ตัว · ทาง `/api/demo/login` ไม่มีผล (request ไม่ถึงการตรวจรหัส) แต่ถ้าวันหน้ามีตัวส่ง log ที่ไม่ตัดเอง event จะหาย = detection พลาด · ทางเลือก: backend ตัดเหลือ 80 แทนการปฏิเสธ (ต้องแก้ contract)
+3. **ลบ audit แถวล่าสุดแล้ว verify ยัง valid** — ข้อจำกัดของ hash chain (อยู่ใน threat model แล้ว) · ลดได้โดยใส่จำนวนแถว + hash ล่าสุดในรายงาน/สไลด์ตอนจบเดโม
+4. `scripts/smoke_local.py` (ของ Beer) ยังอ่านรูปแบบ v0.1 ใช้กับ v0.2 ไม่ได้ → ใช้ `backend/scripts/smoke.py` แทน
 
 ## สิ่งที่เพื่อนต้องใช้หรือทำต่อ (Beer)
 
@@ -66,4 +83,6 @@ python -m pytest backend/tests -q --basetemp backend/tests/.tmp
 
 ## เฟสถัดไป
 
-B08–B09 เริ่มได้หลัง UI อ่าน v0.2 ได้ · ระหว่างนี้: benchmark บน M5 + กฎ suspicious login
+- B08: ส่วน backend เสร็จ (detection P/R/F1, SOC timings, report API, benchmark) · เหลือรวมกับผลโมเดลของ Beer บน M5 (นัด 22 ต.ค.)
+- B09: runbook ฝั่ง backend เสร็จ (`docs/backend-runbook.md`) · เหลือซ้อม 2 เครื่องจริง (ต้องรอ UI อ่าน v0.2)
+- ค้าง: push/PR เข้า dev หลังตั้ง GitHub ruleset · กฎ suspicious login/honeypot
