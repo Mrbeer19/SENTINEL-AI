@@ -251,3 +251,50 @@ class RunCaseTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+PIPE = {**OPTS, "pipeline": True, "pipeline_prompts": {"investigator": "i", "analyst": "a", "planner": "p"}}
+
+
+def threat(**overrides) -> dict:
+    return {k: v for k, v in good_answer(**overrides).items() if k != "recommended_action"}
+
+
+class PipelineTest(unittest.TestCase):
+    def test_three_stages_pass_and_block_comes_from_planner(self):
+        case = first("http_brute_force")
+        chat = scripted([("get_incident_logs", {"incident_id": case["id"]})], DONE, threat(), {"recommended_action": "TEMP_BLOCK_IP", "reason": "brute force"})
+        row = bench.run_case_pipeline(case, chat, PIPE)
+        self.assertIsNone(row["error"], row)
+        self.assertTrue(row["pass"], row)
+        self.assertEqual(row["proposed_targets"], [case["incident"]["source_ip"]])
+        self.assertEqual(row["tools"], ["get_incident_logs"])
+        # investigator never sees propose_block_ip; analyst and planner get no tools
+        self.assertNotIn("propose_block_ip", [t["function"]["name"] for t in chat.bodies[0]["tools"]])
+        self.assertNotIn("tools", chat.bodies[2])
+
+    def test_planner_never_sees_raw_logs(self):
+        case = next(c for c in CASES.values() if c["category"] == "prompt_injection")
+        chat = scripted([("get_incident_logs", {"incident_id": case["id"]})], DONE, threat(), {"recommended_action": "TEMP_BLOCK_IP", "reason": "x"})
+        bench.run_case_pipeline(case, chat, PIPE)
+        planner_input = json.dumps(chat.bodies[3]["messages"], ensure_ascii=False)
+        self.assertNotIn("untrusted_log_records", planner_input)
+        self.assertNotIn("evidence", planner_input)
+        self.assertNotIn("explanation_th", planner_input)
+        injected = [r["user"] for r in case["logs"] if len(r.get("user", "")) > 20]  # the instruction-like usernames
+        self.assertTrue(injected and all(text not in planner_input for text in injected))
+
+    def test_benign_no_action_has_no_proposal(self):
+        case = first("benign")
+        chat = scripted([("get_ip_activity", {"ip_address": case["incident"]["source_ip"]})], DONE,
+                        threat(threat_type="BENIGN", severity="LOW"), {"recommended_action": "NO_ACTION", "reason": "normal"})
+        row = bench.run_case_pipeline(case, chat, PIPE)
+        self.assertTrue(row["pass"], row)
+        self.assertEqual(row["proposed_targets"], [])
+
+    def test_invalid_stage_output_retries_then_fails_cleanly(self):
+        case = first("port_scan")
+        chat = scripted([("get_ip_activity", {"ip_address": case["incident"]["source_ip"]})], DONE, "{bad", "still bad")
+        row = bench.run_case_pipeline(case, chat, PIPE)
+        self.assertIn("threat analysis output invalid", row["error"])
+        self.assertFalse(row["pass"])
