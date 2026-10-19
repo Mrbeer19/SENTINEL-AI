@@ -82,7 +82,9 @@ blocked → closed (ปลดกฎก่อน verify)
 
 ## Analysis
 
-`POST /api/incidents/{id}/analyze` รอจนเสร็จแล้วคืน incident detail (บน M5 ~30 วิ) ระหว่างนั้นส่ง WS `analysis_step` ทุกขั้น เรียกซ้ำเมื่อมีผลแล้ว = คืนผลเดิม · incident ที่จบแล้ว → 409
+**agent 3 ตัว (LangGraph)** — `investigation` เรียก tool เก็บหลักฐาน → `threat_analysis` (ไม่มี tool) ตอบ `threat_type, severity, confidence, evidence, explanation_th` → `defense_planning` (ไม่มี tool **ไม่เห็น evidence / explanation / log**) เห็นแค่ `threat_type, severity, confidence` + `kind, rule severity, event_count` + `protected, firewall_status` ตอบ `recommended_action, reason` → backend รวมเป็น `analysis` 6 key ด้านล่าง → policy → คน · ขั้นไหนล้ม (โมเดลล่ม / JSON ผิด 2 ครั้ง) = `rule_fallback` ทั้งผล · `reason` ของ planner ใช้เป็น `proposal.reason` · prompt: `SENTINEL_PROMPT_PATH` (investigation), `SENTINEL_ANALYST_PROMPT_PATH` (`model/prompts/threat_analyst_v1.md`), `SENTINEL_PLANNER_PROMPT_PATH` (`defense_planner_v1.md`) ไม่มีไฟล์ = ข้อความในโค้ด · `prompt_version` = 3 ส่วนต่อด้วย ` + `
+
+`POST /api/incidents/{id}/analyze` รอจนเสร็จแล้วคืน incident detail (บน M5 ~20 วิ) ระหว่างนั้นส่ง WS `analysis_step` ทุกขั้น เรียกซ้ำเมื่อมีผลแล้ว = คืนผลเดิม · incident ที่จบแล้ว → 409
 
 ```json
 {
@@ -143,8 +145,9 @@ blocked → closed (ปลดกฎก่อน verify)
 
 | field | ค่า |
 |---|---|
-| `operation` | `invoke_agent` (ทั้งรอบ) · `chat` (เรียกโมเดล 1 ครั้ง) · `execute_tool` — ตามชื่อ OpenTelemetry GenAI |
-| `tool` | ชื่อ tool / ชื่อโมเดล / `investigation` / `rule_fallback` |
+| `agent` | `investigation \| threat_analysis \| defense_planning \| rule_fallback` (แถวเก่าก่อน 3 agent = `null`) |
+| `operation` | `invoke_agent` (จบ 1 agent) · `chat` (เรียกโมเดล 1 ครั้ง) · `execute_tool` — ตามชื่อ OpenTelemetry GenAI |
+| `tool` | ชื่อ tool / ชื่อโมเดล / ชื่อ agent (แถว `invoke_agent`) |
 | `status` | `ok \| error \| rejected_by_policy \| invalid_output \| fallback` |
 | `source` | `model \| fallback` |
 | `duration_ms`, `input`, `output` (JSON string), `created_at` | |

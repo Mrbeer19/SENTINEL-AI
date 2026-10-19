@@ -15,6 +15,7 @@
 - audit log hash chain + `GET /api/audit/verify`
 - เครื่องอื่นเข้าได้แค่ health + demo endpoints (rate limit) · ที่เหลือต้อง localhost หรือ `X-Admin-Key`
 - `python -m backend.preflight --host <IP>` ตรวจเครื่องก่อนเดโม
+- **agent 3 ตัว (LangGraph)** investigation → threat_analysis → defense_planning · planner ไม่เห็นข้อความจาก log · โมเดลจริงบน M5 19.4–22.2 วิ/incident (ตัวเดียว 22–23) planner ~1 วิ 5.8 GB
 - กฎ 5 ตัว: HTTP/SSH brute force, port scan, **suspicious login** (success หลัง failed ≥5), **traffic anomaly** (≥100 connection/60 วิ)
 - scenario 6 แบบตามสเปก A–E + `POST /api/simulations/start|stop`, `GET /api/simulations/state` ส่งทีละ event ให้ dashboard เห็นสด
 - `POST /api/logs` แปลง log sshd ดิบเป็น event (สเปก D: log parser)
