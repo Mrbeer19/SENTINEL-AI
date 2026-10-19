@@ -15,6 +15,27 @@ export function verification(report, rules) {
   return { rule, before, after, verified: report.status === 'verified' && !!after }
 }
 
+// Same thresholds as backend/rules/*.yml: the first event at which the rule's 60-second count was met.
+const RULES = {
+  HTTP_AUTH_BRUTE_FORCE: { match: e => e.outcome === 'failed', count: 5 },
+  SSH_BRUTE_FORCE: { match: e => e.outcome === 'failed', count: 5 },
+  PORT_SCAN: { distinctPorts: 8 },
+  TRAFFIC_ANOMALY: { count: 100 },
+  SUSPICIOUS_LOGIN: { success: true, count: 5 },
+}
+
+export function thresholdEvent(events, kind) {
+  const rule = RULES[kind]
+  if (!rule) return null
+  const at = (e) => new Date(e.timestamp).getTime()
+  return events.find((e, i) => {
+    const window = events.slice(0, i + 1).filter(x => at(e) - at(x) <= 60000)
+    if (rule.distinctPorts) return new Set(window.map(x => x.destination_port)).size >= rule.distinctPorts
+    if (rule.success) return e.outcome === 'success' && window.filter(x => x.outcome === 'failed' && x.event_type === e.event_type).length >= rule.count
+    return (!rule.match || rule.match(e)) && window.filter(rule.match || (() => true)).length >= rule.count
+  }) || null
+}
+
 export function detailStages(report) {
   const s = report.status
   const analyzed = !!report.analysis
@@ -53,8 +74,7 @@ export default function IncidentDetail({ ctx, id }) {
   const analysis = parseAnalysis(report.analysis)
   const p = report.proposal
   const v = verification(report, ctx.data.rules)
-  // The event that crossed the threshold is the latest one recorded at or before the incident was opened.
-  const thresholdId = [...events].reverse().find(e => new Date(e.timestamp) <= new Date(report.created_at))?.id
+  const thresholdId = thresholdEvent(events, report.kind)?.id
 
   return <div className="grid detail">
     <div className="pageHead span3">
@@ -80,11 +100,11 @@ export default function IncidentDetail({ ctx, id }) {
 
     <Panel title="Evidence Timeline" icon="rules" className="span2" actions={<span className="muted small">{events.length} events · {report.kind === 'SSH_BRUTE_FORCE' ? 'synthetic log replay' : 'stored events'}</span>}>
       {events.length ? <div className="tableWrap tall"><table>
-        <thead><tr><th>Time</th><th>Event type</th><th>Outcome</th><th>Port</th><th>Label</th><th /></tr></thead>
+        <thead><tr><th>Time</th><th>Event type</th><th>Outcome</th><th>Port</th><th>Username</th><th /></tr></thead>
         <tbody>{events.map(e => <tr key={e.id} className={e.id === thresholdId ? 'flag' : ''}>
           <td className="mono">{fmtTime(e.timestamp)}</td><td>{e.event_type}</td>
           <td><span className={`code-pill ${e.outcome === 'failed' ? 'coral' : e.outcome === 'success' ? 'mint' : 'amber'}`}>{e.outcome}</span></td>
-          <td className="mono">{e.destination_port ?? '—'}</td><td className="muted">{e.label}</td>
+          <td className="mono">{e.destination_port ?? '—'}</td><td className="mono userCell">{e.username ?? '—'}</td>
           <td>{e.id === thresholdId && <span className="coral small">Detection threshold reached</span>}</td>
         </tr>)}</tbody></table></div> : <Empty>ไม่พบ event</Empty>}
     </Panel>
