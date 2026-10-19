@@ -15,7 +15,7 @@ import agent_bench as bench  # noqa: E402
 import generate_cases  # noqa: E402
 
 CASES = {case["id"]: case for case in json.loads(bench.DEFAULT_CASES.read_text(encoding="utf-8"))["cases"]}
-OPTS = {"model": "fake", "temperature": 0, "num_ctx": 4096, "rule_hint": False, "format_schema": False, "retry": True, "max_rounds": 6, "system_prompt": "test"}
+OPTS = {"model": "fake", "temperature": 0, "num_ctx": 4096, "rule_hint": False, "format_schema": False, "retry": True, "max_rounds": 4, "system_prompt": "test"}
 
 
 def first(category: str, split: str = "dev") -> dict:
@@ -55,10 +55,13 @@ def scripted(*steps):
 
 
 def flow(*steps):
-    """Tool rounds (lists) first, then DONE, then the final answers."""
+    """Tool rounds (lists) first, then DONE, then the final answers.
+
+    Like backend v0.2, a round that proposes a block ends the loop, so no DONE follows it."""
     rounds = [step for step in steps if isinstance(step, list)]
     finals = [step for step in steps if not isinstance(step, list)]
-    return scripted(*rounds, DONE, *finals)
+    proposed = rounds and any(name == "propose_block_ip" for name, _ in rounds[-1])
+    return scripted(*rounds, *([] if proposed else [DONE]), *finals)
 
 
 class DatasetTest(unittest.TestCase):
@@ -113,9 +116,42 @@ class SchemaTest(unittest.TestCase):
 
     def test_parse_fenced_and_wrapped_json(self):
         self.assertEqual(bench.parse_json_reply("```json\n{\"a\": 1}\n```"), {"a": 1})
-        self.assertEqual(bench.parse_json_reply("Result: {\"a\": 1} done"), {"a": 1})
+        self.assertEqual(bench.parse_json_reply("Result: {\"a\": 1} done", lenient=True), {"a": 1})
         with self.assertRaises(ValueError):
-            bench.parse_json_reply("no json here")
+            bench.parse_json_reply("Result: {\"a\": 1} done")  # backend v0.2 rejects text around the object
+        with self.assertRaises(ValueError):
+            bench.parse_json_reply("no json here", lenient=True)
+
+
+class BackendParityTest(unittest.TestCase):
+    def test_logs_are_wrapped_and_shaped_like_backend_events(self):
+        case = next(c for c in CASES.values() if c["category"] == "prompt_injection" and any(len(r.get("user", "")) > 64 for r in c["logs"]))
+        out = bench.run_tool(case, "get_incident_logs", {"incident_id": case["incident"]["id"]})
+        self.assertEqual(set(out), {"incident_id", "untrusted_log_records", "returned"})
+        records = out["untrusted_log_records"]
+        self.assertTrue(all(set(r) <= {"t", "src", "type", "outcome", "port", "user"} for r in records))
+        self.assertTrue(all(len(r.get("user", "")) <= bench.USERNAME_LIMIT for r in records))
+        self.assertEqual(records[0]["outcome"], "failed")
+
+    def test_ssh_line_becomes_outcome_and_user(self):
+        record = {"t": "x", "src": "192.0.2.1", "type": "SSH_AUTH", "line": "sshd[42]: Failed password for invalid user oracle from 192.0.2.1 port 50000 ssh2"}
+        self.assertEqual(bench.backend_log(record), {"t": "x", "src": "192.0.2.1", "type": "SSH_AUTH", "outcome": "failed", "user": "oracle"})
+
+    def test_proposal_ends_tool_loop(self):
+        case = first("http_brute_force")
+        src = case["incident"]["source_ip"]
+        chat = scripted([("propose_block_ip", {"ip_address": src, "minutes": 10, "reason": "x"})], good_answer())
+        row = bench.run_case(case, chat, OPTS)
+        self.assertIsNone(row["error"])
+        self.assertEqual(len(chat.bodies), 2)
+        self.assertNotIn("tools", chat.bodies[1])
+
+    def test_tool_calls_capped_at_backend_limit(self):
+        case = first("port_scan")
+        src = case["incident"]["source_ip"]
+        many = [("get_ip_activity", {"ip_address": src})] * 4
+        row = bench.run_case(case, scripted(many, many, good_answer(threat_type="PORT_SCAN", severity="MEDIUM")), OPTS)
+        self.assertEqual(len(row["tools"]), bench.MAX_TOOL_CALLS)
 
 
 class RunCaseTest(unittest.TestCase):

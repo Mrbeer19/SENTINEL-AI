@@ -19,6 +19,7 @@ import hashlib
 import ipaddress
 import json
 import platform
+import re
 import statistics
 import sys
 import time
@@ -75,6 +76,11 @@ TOOLS = [
 ]
 EVIDENCE_TOOLS = {"get_incident_logs", "get_ip_activity"}
 MAX_BLOCK_MINUTES = 24 * 60
+# Mirror backend v0.2 (backend/agent.py) so bench numbers match the live agent.
+MAX_TOOL_CALLS = 6
+MAX_ROUNDS = 4
+USERNAME_LIMIT = 64
+SSH_LINE = re.compile(r"(Failed|Accepted) password for (?:invalid user )?(\S+) from \S+ port (\d+)")
 
 
 class OllamaError(Exception):
@@ -105,9 +111,13 @@ def validate_analysis(value) -> list[str]:
     return errors
 
 
-def parse_json_reply(text: str):
-    """Parse the model reply; tolerate code fences and text around one object."""
+def parse_json_reply(text: str, lenient: bool = False):
+    """Parse the model reply like backend v0.2: strip one code fence, then the whole text must be JSON.
+
+    lenient=True also accepts text around one object (the v1 bench behaviour)."""
     text = (text or "").strip()
+    if not lenient:
+        return json.loads(text.removeprefix("```json").removeprefix("```").removesuffix("```").strip())
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else ""
         text = text.rsplit("```", 1)[0]
@@ -165,13 +175,35 @@ def check_tool_call(case: dict, name: str, args: dict | None) -> list[str]:
     return errors
 
 
+def backend_log(record: dict) -> dict:
+    """Fixture record -> the event fields backend v0.2 shows the model (t, src, type, outcome, port, user)."""
+    out = {"t": record["t"], "src": record["src"], "type": record["type"]}
+    user, outcome, port = record.get("user"), None, record.get("dst_port")
+    if "status" in record:
+        outcome = "success" if 200 <= int(record["status"]) < 300 else "failed"
+    elif "line" in record:
+        m = SSH_LINE.search(record["line"])
+        if m:
+            outcome, user = ("failed" if m.group(1) == "Failed" else "success"), m.group(2)
+    if outcome:
+        out["outcome"] = outcome
+    if port:
+        out["port"] = port
+    if user:
+        out["user"] = user[:USERNAME_LIMIT]
+    return out
+
+
 def run_tool(case: dict, name: str, args: dict | None):
     """Fixture tool results; mirrors the backend scope (incident IP only)."""
     args = args or {}
     src = case["incident"]["source_ip"]
     ip = args.get("ip_address")
     if name == "get_incident_logs":
-        return case["logs"] if args.get("incident_id") == case["incident"]["id"] else {"error": "incident not found"}
+        if args.get("incident_id") != case["incident"]["id"]:
+            return {"error": "incident not found"}
+        logs = [backend_log(r) for r in case["logs"]]
+        return {"incident_id": case["incident"]["id"], "untrusted_log_records": logs, "returned": len(logs)}
     if name == "get_ip_activity":
         return case["ip_activity"] if ip == src else {"ip": ip, "error": "no records for this IP"}
     if name == "get_related_incidents":
@@ -290,7 +322,7 @@ def run_case(case: dict, chat, opts: dict) -> dict:
         for _ in range(opts["max_rounds"]):
             message = ask({"tools": TOOLS})
             messages.append(message)
-            tool_calls = message.get("tool_calls") or []
+            tool_calls = (message.get("tool_calls") or [])[: MAX_TOOL_CALLS - len(calls)]
             if not tool_calls:
                 break
             for tool_call in tool_calls:
@@ -299,6 +331,9 @@ def run_case(case: dict, chat, opts: dict) -> dict:
                 args = normalize_args(fn.get("arguments"))
                 calls.append({"name": name, "args": args, "errors": check_tool_call(case, name, args)})
                 messages.append({"role": "tool", "tool_name": name, "content": json.dumps(run_tool(case, name, args), ensure_ascii=False)})
+            # Backend v0.2 ends the investigation after a proposal or at the tool-call cap.
+            if len(calls) >= MAX_TOOL_CALLS or any((c.get("function") or {}).get("name") == "propose_block_ip" for c in tool_calls):
+                break
         messages.append({"role": "user", "content": final_instruction()})
         extra = {}
         if opts.get("format_schema"):
@@ -314,7 +349,7 @@ def run_case(case: dict, chat, opts: dict) -> dict:
         for attempt in range(2):
             raw = message.get("content", "")
             try:
-                analysis = parse_json_reply(raw)
+                analysis = parse_json_reply(raw, lenient=opts.get("lenient_json", False))
                 json_errors = validate_analysis(analysis)
             except ValueError as exc:
                 analysis, json_errors = None, [f"not JSON: {exc}"]
@@ -387,7 +422,8 @@ def main(argv=None) -> int:
     parser.add_argument("--no-retry", dest="retry", action="store_false", help="do not retry once after invalid JSON")
     parser.add_argument("--num-ctx", type=int, default=4096, help="0 = Ollama default; backend uses 4096")
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--max-rounds", type=int, default=6)
+    parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS, help="tool rounds before the final answer (backend v0.2: 4)")
+    parser.add_argument("--lenient-json", action="store_true", help="accept text around the JSON object (v1 bench; backend v0.2 does not)")
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--url", default="http://127.0.0.1:11434")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -404,7 +440,7 @@ def main(argv=None) -> int:
     if not cases:
         parser.error("no cases selected")
     opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint,
-            "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds,
+            "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "lenient_json": args.lenient_json,
             "system_prompt": args.system_prompt.read_text(encoding="utf-8")}
     chat = http_chat(args.url, args.timeout)
 
