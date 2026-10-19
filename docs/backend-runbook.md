@@ -40,7 +40,6 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 ```
 
 ผ่าน = บรรทัดสุดท้าย `SMOKE PASS` และ `analysis_mode` เป็น `ollama` (บน M5 ~26–33 วิ) · smoke ปลดบล็อกให้เองหลังจบ
-`scripts/smoke_local.py` ของเดิมยังอ่านรูปแบบ v0.1 (`analysis` เป็น string) ใช้กับ v0.2 ไม่ได้ → ใช้ `backend/scripts/smoke.py`
 
 ## 4. เส้นเดโมจริง (เครื่องยิง → M5)
 
