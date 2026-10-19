@@ -54,6 +54,8 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 | 5 | เครื่องยิง | `… --action traffic` | `403` `"decision":"denied"` → สถานะ `verified` |
 | 6 | M5 | `curl -s localhost:8000/api/audit/verify` | `"valid": true` |
 
+ฝั่งเครื่องยิงใช้ `curl` ตาม `scripts/neo/README.md` (ของ Beer, branch `beer/dashboard-v1`) แทน `lab_client.py` ได้ ผลที่ต้องเห็นเหมือนตารางนี้ · **ฝั่ง M5 ให้รันด้วย `make -C backend run-lan HOST=<IP M5>` ไม่ใช่ `--host 0.0.0.0`**
+
 ทางเลือกที่ต้องโชว์ได้: **Reject** ที่ขั้น 4 → ขั้น 5 ได้ `200` ไม่โดนบล็อก · **ปิด Ollama** ก่อนขั้น 3 → `analysis_mode = rule_fallback`, `confidence = null`, proposal `source = rule_fallback` (ยังต้องคนอนุมัติ)
 
 ## 5. reset และข้อมูล

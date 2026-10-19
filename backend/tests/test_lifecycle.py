@@ -196,7 +196,8 @@ def test_demo_login_from_blocked_ip_is_refused_before_checking_password(make_app
 def test_demo_login_never_stores_the_password(tmp_path, make_app):
     client = connect(make_app(), peer="192.168.1.50")
     client.post("/api/demo/login", json={"username": "student", "password": "hunter2-secret"})
-    assert b"hunter2-secret" not in (tmp_path / "soc.db").read_bytes()
+    stored = b"".join(path.read_bytes() for path in tmp_path.glob("soc.db*"))  # WAL keeps new writes in soc.db-wal
+    assert b"student" in stored and b"hunter2-secret" not in stored
 
 
 # ---- reset ----
