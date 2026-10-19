@@ -133,6 +133,13 @@ class BackendParityTest(unittest.TestCase):
         self.assertTrue(all(len(r.get("user", "")) <= bench.USERNAME_LIMIT for r in records))
         self.assertEqual(records[0]["outcome"], "failed")
 
+    def test_logs_capped_at_backend_limit(self):
+        case = max(CASES.values(), key=lambda c: len(c["logs"]))
+        out = bench.run_tool(case, "get_incident_logs", {"incident_id": case["incident"]["id"]})
+        self.assertGreater(len(case["logs"]), bench.LOG_LIMIT)
+        self.assertEqual(out["returned"], bench.LOG_LIMIT)
+        self.assertEqual(out["untrusted_log_records"][-1]["t"], case["logs"][-1]["t"])  # most recent kept
+
     def test_ssh_line_becomes_outcome_and_user(self):
         record = {"t": "x", "src": "192.0.2.1", "type": "SSH_AUTH", "line": "sshd[42]: Failed password for invalid user oracle from 192.0.2.1 port 50000 ssh2"}
         self.assertEqual(bench.backend_log(record), {"t": "x", "src": "192.0.2.1", "type": "SSH_AUTH", "outcome": "failed", "user": "oracle"})

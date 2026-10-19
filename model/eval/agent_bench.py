@@ -80,6 +80,7 @@ MAX_BLOCK_MINUTES = 24 * 60
 MAX_TOOL_CALLS = 6
 MAX_ROUNDS = 4
 USERNAME_LIMIT = 64
+LOG_LIMIT = 40  # backend returns the 40 most recent events
 SSH_LINE = re.compile(r"(Failed|Accepted) password for (?:invalid user )?(\S+) from \S+ port (\d+)")
 
 
@@ -201,7 +202,7 @@ def run_tool(case: dict, name: str, args: dict | None):
     if name == "get_incident_logs":
         if args.get("incident_id") != case["incident"]["id"]:
             return {"error": "incident not found"}
-        logs = [backend_log(r) for r in case["logs"]]
+        logs = [backend_log(r) for r in case["logs"][-LOG_LIMIT:]]
         return {"incident_id": case["incident"]["id"], "untrusted_log_records": logs, "returned": len(logs)}
     if name == "get_ip_activity":
         return case["ip_activity"] if ip == src else {"ip": ip, "error": "no records for this IP"}
