@@ -4,8 +4,8 @@
 
 Each case's logs are POSTed to /api/events of a fresh app (own SQLite file, Ollama disabled) with their original
 timestamps. Ground truth is the case's `rule_hint`: one of the three rule kinds → an incident of that kind must
-open; anything else (FAILED_LOGIN_LOW, null) → no incident. Usernames are cut to 80 characters as the
-contract asks every event source to do (longer → the API refuses the whole event with 422). The model is not involved; it is evaluated
+open; anything else (FAILED_LOGIN_LOW, null) → no incident. Logs are sent as-is (dev-18 carries a 116-character
+username: the API cuts it to 80 and sets username_truncated). The model is not involved; it is evaluated
 separately by model/eval/agent_bench.py.
 """
 
@@ -41,7 +41,7 @@ def to_event(log: dict, category: str) -> dict:
     else:
         outcome, user = "attempt", None
     return {"source_ip": log["src"], "event_type": log["type"], "outcome": outcome, "timestamp": log["t"],
-            "destination_port": log.get("dst_port"), "username": user[:80] if user else None, "label": "normal" if category in NORMAL else "attack"}
+            "destination_port": log.get("dst_port"), "username": user, "label": "normal" if category in NORMAL else "attack"}
 
 
 def replay(case: dict, workdir: Path) -> list[str]:

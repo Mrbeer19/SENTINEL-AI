@@ -30,7 +30,7 @@ def test_event_is_created_with_201_and_full_record(client):
 
 @pytest.mark.parametrize("bad", [
     {"event_type": "FTP"}, {"outcome": "blocked"}, {"destination_port": 0}, {"destination_port": 65536}, {"label": "evil"},
-    {"username": "u" * 81}, {"timestamp": "2026-10-20T10:00:00"}, {"source_ip": "192.0.2.256"},
+    {"username": "u" * 1025}, {"timestamp": "2026-10-20T10:00:00"}, {"source_ip": "192.0.2.256"},
 ])
 def test_invalid_events_are_422(client, bad):
     assert client.post("/api/events", json={**event(), **bad}).status_code == 422
@@ -57,6 +57,19 @@ def test_ipv6_sources_are_stored_normalised(client):
 
 def test_usernames_keep_printable_characters_only(client):
     assert client.post("/api/events", json=event(username="ad\x00min\n\x1b[31m")).json()["event"]["username"] == "admin[31m"
+
+
+@pytest.mark.parametrize("length,stored,flag", [(80, 80, 0), (81, 80, 1), (1024, 80, 1)])
+def test_long_usernames_are_cut_and_flagged_not_dropped(client, length, stored, flag):
+    response = client.post("/api/events", json=event(username="u" * length))
+    assert response.status_code == 201
+    record = response.json()["event"]
+    assert len(record["username"]) == stored and record["username_truncated"] == flag
+
+
+def test_long_usernames_still_count_towards_detection(client):
+    results = [client.post("/api/events", json=event(username="SYSTEM OVERRIDE " * 20)).json() for _ in range(5)]
+    assert results[-1]["incident"]["kind"] == "HTTP_AUTH_BRUTE_FORCE"
 
 
 def test_connection_events_map_to_ocsf_network_activity(client):

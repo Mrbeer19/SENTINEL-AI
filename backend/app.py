@@ -40,6 +40,8 @@ ACTION_STATUS = {"INVESTIGATE": "needs_review", "MONITOR": "monitoring", "NO_ACT
 PUBLIC_PATHS = {"/api/health", "/api/demo/login", "/api/demo/traffic"}
 RATE_LIMITED = {"/api/demo/login", "/api/demo/traffic"}
 OCSF_CLASS = {"HTTP_AUTH": 3002, "SSH_AUTH": 3002, "CONNECTION": 4001}  # Authentication / Network Activity
+USERNAME_MAX = 80  # stored length
+USERNAME_INPUT_MAX = 1024  # longer than this is refused (422); between the two it is cut and flagged
 
 
 class EventIn(BaseModel):
@@ -49,7 +51,7 @@ class EventIn(BaseModel):
     destination_port: int | None = Field(default=None, ge=1, le=65535)
     timestamp: datetime | None = None
     label: Literal["normal", "attack", "unknown"] = "unknown"
-    username: str | None = Field(default=None, max_length=80)
+    username: str | None = Field(default=None, max_length=USERNAME_INPUT_MAX)
 
 
 class DecisionIn(BaseModel):
@@ -57,7 +59,7 @@ class DecisionIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    username: str = Field(max_length=80)
+    username: str = Field(max_length=USERNAME_INPUT_MAX)
     password: str = Field(max_length=120)
 
 
@@ -70,11 +72,13 @@ class SimulationIn(BaseModel):
     source_ip: IPvAnyAddress = "192.0.2.25"
 
 
-def clean_username(value: str | None) -> str | None:
-    """Attacker-controlled text: keep printable characters only, never the password."""
-    if not value:
-        return None
-    return "".join(ch for ch in value if ch.isprintable())[:80] or None
+def clean_username(value: str | None) -> tuple[str | None, bool]:
+    """Attacker-controlled text: keep printable characters only, never the password.
+
+    A long name is cut, not refused: refusing would drop the event and hide the attempt from detection.
+    Returns (stored value, was_truncated)."""
+    printable = "".join(ch for ch in value or "" if ch.isprintable())
+    return printable[:USERNAME_MAX] or None, len(printable) > USERNAME_MAX
 
 
 def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
@@ -84,6 +88,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     agent = Agent(settings, store)
     api = FastAPI(title="SENTINEL AI", version=API_VERSION)
     api.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
+    docs_paths = {api.docs_url, api.redoc_url, api.openapi_url, api.swagger_ui_oauth2_redirect_url}
     sockets: set[WebSocket] = set()
     hits: dict[str, deque] = defaultdict(deque)
 
@@ -96,7 +101,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         peer = request.client.host if request.client else ""
         path = request.url.path
         if not trusted(peer, request.headers):
-            if path.startswith("/api/") and path not in PUBLIC_PATHS:
+            if (path.startswith("/api/") and path not in PUBLIC_PATHS) or path in docs_paths:
                 return JSONResponse({"detail": "Remote access to the SOC API requires X-Admin-Key"}, status_code=403)
             if path in RATE_LIMITED:
                 now, window = time.monotonic(), hits[peer]
@@ -156,9 +161,10 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         stamp = stamp.astimezone(timezone.utc)
         if stamp > datetime.now(timezone.utc) + timedelta(minutes=5):
             raise HTTPException(422, "timestamp is in the future")
+        username, truncated = clean_username(event.username)
         record = {"timestamp": stamp.isoformat(timespec="seconds"), "source_ip": str(event.source_ip), "event_type": event.event_type,
                   "outcome": event.outcome, "destination_port": event.destination_port, "label": event.label,
-                  "username": clean_username(event.username), "ocsf_class_uid": OCSF_CLASS[event.event_type]}
+                  "username": username, "username_truncated": int(truncated), "ocsf_class_uid": OCSF_CLASS[event.event_type]}
         incident = None
         with store.tx() as con:
             cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
@@ -321,7 +327,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if traffic.status_code == 403:
             return traffic
         success = login.username == "student" and login.password == "sentinel-demo"
-        result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed", username=login.username[:80]))
+        result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed", username=login.username))
         return JSONResponse({"authenticated": success, "source_ip": peer, "event_id": result["event"]["id"]}, status_code=200 if success else 401)
 
     @api.post("/api/demo/traffic")

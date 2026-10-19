@@ -114,3 +114,11 @@ def test_cors_allows_only_the_dev_dashboard(client):
     other = client.options("/api/incidents", headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "GET"})
     assert allowed.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert "access-control-allow-origin" not in other.headers
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"])
+def test_api_docs_are_hidden_from_the_lab(make_app, path):
+    app = make_app(SENTINEL_ADMIN_KEY=KEY)
+    assert connect(app, REMOTE).get(path).status_code == 403
+    assert connect(app, REMOTE, {"X-Admin-Key": KEY}).get(path).status_code == 200
+    assert connect(app).get(path).status_code == 200

@@ -1,6 +1,6 @@
 # API contract — v0.2
 
-OpenAPI ที่ `/docs` และ `/openapi.json` สะท้อน schema ปัจจุบัน ก่อนแก้ field/status ให้แก้ contract, backend และ tests ใน PR เดียวกัน แล้วแจ้งฝั่ง frontend เจ้าของ contract: Obeto · ร่างที่ใช้รวม: `docs/api-contract-v0.2-draft.md` (Beer)
+OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จาก localhost หรือมี `X-Admin-Key` เท่านั้น) สะท้อน schema ปัจจุบัน ก่อนแก้ field/status ให้แก้ contract, backend และ tests ใน PR เดียวกัน แล้วแจ้งฝั่ง frontend เจ้าของ contract: Obeto · ร่างที่ใช้รวม: `docs/api-contract-v0.2-draft.md` (Beer)
 
 ## เปลี่ยนจาก v0.1
 
@@ -36,8 +36,8 @@ OpenAPI ที่ `/docs` และ `/openapi.json` สะท้อน schema �
 
 - `event_type` = `HTTP_AUTH | SSH_AUTH | CONNECTION` · `outcome` = `failed | success | attempt` · port 1–65535 (optional)
 - `timestamp` ต้องมี timezone ไม่เกินอนาคต 5 นาที **เก็บเป็น UTC เสมอ** (`+00:00`) ไม่ส่ง = เวลารับ
-- `username` optional ≤80 ตัว เก็บเฉพาะตัวพิมพ์ได้ ไม่เก็บ password · `label` ใช้ประเมินเท่านั้น ไม่ส่งให้โมเดล
-- Record เพิ่ม `id` และ `ocsf_class_uid` ([OCSF](#ocsf)) · `GET /api/events?limit=100` ใหม่ก่อน สูงสุด 500
+- `username` optional รับได้ ≤1024 ตัว (เกิน = 422) **เก็บแค่ 80 ตัวแรก** ตัวพิมพ์ได้เท่านั้น · ถูกตัดเมื่อไหร่ `username_truncated = 1` (event ไม่หายจากการตรวจจับ) · ไม่เก็บ password · `label` ใช้ประเมินเท่านั้น ไม่ส่งให้โมเดล
+- Record เพิ่ม `id`, `ocsf_class_uid` ([OCSF](#ocsf)) และ `username_truncated` (0/1 · แถวเก่าก่อนเพิ่ม field = `null`) · `GET /api/events?limit=100` ใหม่ก่อน สูงสุด 500
 
 ## Detection
 
@@ -188,7 +188,7 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 |---|---|
 | localhost (M5) | ทุก endpoint |
 | เครื่องอื่นที่มี `X-Admin-Key` = `SENTINEL_ADMIN_KEY` | ทุก endpoint รวม `/ws` |
-| เครื่องอื่น (Neo) | `/api/health`, `/api/demo/login`, `/api/demo/traffic` เท่านั้น · จำกัด 30 ครั้ง / 10 วิ / IP (429) |
+| เครื่องอื่น (Neo) | `/api/health`, `/api/demo/login`, `/api/demo/traffic` เท่านั้น · จำกัด 30 ครั้ง / 10 วิ / IP (429) · `/docs` `/redoc` `/openapi.json` = 403 |
 
 ห้ามเปิด Vite dev server ให้ LAN เพราะ proxy ทำให้ request ดูเหมือน localhost · ตรวจเครื่องก่อนเดโม: `python -m backend.preflight --host <M5 LAN IP>`
 

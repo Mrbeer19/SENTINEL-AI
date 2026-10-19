@@ -193,6 +193,15 @@ def test_demo_login_from_blocked_ip_is_refused_before_checking_password(make_app
     assert local.get(f"/api/incidents/{incident['id']}").json()["status"] == "verified"
 
 
+def test_demo_login_with_a_very_long_name_is_still_recorded(make_app):
+    app = make_app()
+    remote = connect(app, peer="192.168.1.50")
+    for _ in range(5):
+        assert remote.post("/api/demo/login", json={"username": "x" * 500, "password": "wrong"}).status_code == 401
+    incident = connect(app).get("/api/incidents").json()[0]
+    assert incident["source_ip"] == "192.168.1.50" and incident["event_count"] == 5
+
+
 def test_demo_login_never_stores_the_password(tmp_path, make_app):
     client = connect(make_app(), peer="192.168.1.50")
     client.post("/api/demo/login", json={"username": "student", "password": "hunter2-secret"})

@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_events_source_ts ON events(source_ip, timestamp);
 
 # v1 (MVP 0.1) → v2 columns. Added in place so an existing demo DB keeps its history.
 V2_COLUMNS = {
-    "events": {"username": "TEXT", "ocsf_class_uid": "INTEGER"},
+    "events": {"username": "TEXT", "ocsf_class_uid": "INTEGER", "username_truncated": "INTEGER"},
     "incidents": {"rule_id": "TEXT", "attack_technique": "TEXT", "analysis_meta": "TEXT", "updated_at": "TEXT"},
     "proposals": {"target_ip": "TEXT", "source": "TEXT", "d3fend": "TEXT", "reason": "TEXT", "policy_notes": "TEXT"},
     "traces": {"operation": "TEXT", "status": "TEXT", "duration_ms": "INTEGER", "source": "TEXT"},
