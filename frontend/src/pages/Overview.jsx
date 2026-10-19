@@ -1,22 +1,20 @@
 import React, { useState } from 'react'
-import { Badge, Empty, Icon, Panel, go, SeverityBadge, Stat, StatusBadge, fmtTime, incId, isActiveRule, kindName, perMinute, useNow } from '../ui.jsx'
+import { Badge, Empty, Icon, Panel, go, SeverityBadge, Stat, StatusBadge, fmtTime, incId, isActiveRule, isOpenIncident, kindName, perMinute, targetIp, useNow } from '../ui.jsx'
 import ActivityChart from '../components/ActivityChart.jsx'
 import NetworkTopology from '../components/NetworkTopology.jsx'
 import { NextStep } from '../components/WorkflowGuide.jsx'
-
-const OPEN = ['detected', 'awaiting_approval', 'blocked']
 
 export default function Overview({ ctx }) {
   const { data } = ctx
   const now = useNow(5000)
   const [minutes, setMinutes] = useState(15)
-  const open = data.incidents.filter(i => OPEN.includes(i.status))
+  const open = data.incidents.filter(isOpenIncident)
   const pending = data.proposals.filter(p => p.status === 'pending')
   const activeRules = data.rules.filter(r => isActiveRule(r, now))
   const eventSeries = perMinute(data.events, 'timestamp', 15, now)
   const trafficSeries = perMinute(data.traffic, 'created_at', minutes, now)
   const latest = data.incidents[0]
-  const nextIncident = data.incidents.find(i => i.status === 'awaiting_approval') || data.incidents.find(i => i.status === 'detected') || data.incidents.find(i => i.status === 'blocked' && activeRules.some(r => data.proposals.find(p => p.id === r.proposal_id)?.incident_id === i.id)) || data.incidents.find(i => i.status === 'blocked') || latest
+  const nextIncident = data.incidents.find(i => i.status === 'awaiting_approval') || data.incidents.find(i => i.status === 'analyzing') || data.incidents.find(i => i.status === 'detected') || data.incidents.find(i => i.status === 'needs_review') || data.incidents.find(i => i.status === 'blocked' && activeRules.some(r => data.proposals.find(p => p.id === r.proposal_id)?.incident_id === i.id)) || data.incidents.find(i => i.status === 'blocked') || latest
 
   return <><NextStep ctx={ctx} incident={nextIncident} overview /><div className="grid overview">
     <div className="stats four">
@@ -40,7 +38,7 @@ export default function Overview({ ctx }) {
       <Panel title="Action Requires Approval" icon="alert" className={pending.length ? 'attention' : ''}>
         {pending.length ? <div className="approvalTeaser">
           <b>Temporary app-level block</b>
-          <span className="mono">{pending[0].source_ip} · {pending[0].duration_seconds / 60} minutes</span>
+          <span className="mono">{targetIp(pending[0])} · {pending[0].duration_seconds / 60} minutes{pending[0].source === 'rule_fallback' ? ' · rule fallback' : ''}</span>
           {pending.length > 1 && <small className="muted">+{pending.length - 1} more pending</small>}
           <a className="btn primary" href={`#/approvals/${pending[0].id}`}><Icon name="check" size={17} />Review approval<Icon name="chevron" size={15} /></a>
           <small className="muted"><Icon name="info" size={14} /> No action runs before approval</small>
@@ -73,7 +71,7 @@ export function AgentSteps({ incident }) {
     ['Incident detected', true],
     [incident.analysis_mode === 'rule_fallback' ? 'Rule-based evidence review' : 'Read evidence with tools', analyzed],
     ['Structured analysis', analyzed],
-    [incident.status === 'rejected' ? 'Rejected by human' : 'Human decision', decided],
+    [incident.status === 'rejected' ? 'Rejected by human' : !incident.proposal && analyzed && ['needs_review', 'monitoring', 'closed'].includes(incident.status) ? 'No block proposed' : 'Human decision', decided || (analyzed && ['monitoring', 'closed'].includes(incident.status))],
   ]
   return <ol className="miniSteps">{steps.map(([label, done], i) => <li key={label} className={done ? 'done' : (steps[i - 1]?.[1] ? 'current' : '')}><span className="stepIndex">{done ? <Icon name="ok" size={15} /> : i + 1}</span><span className="miniStepLabel">{label}</span>{done && <span className="stepComplete">Done</span>}</li>)}
     {incident.analysis_mode && <li className="note"><Badge tone={incident.analysis_mode === 'rule_fallback' ? 'warn' : 'good'}>{incident.analysis_mode === 'rule_fallback' ? 'Rule fallback' : 'Local model'}</Badge></li>}

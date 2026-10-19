@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { useReport } from '../api.js'
-import { Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, StatusBadge, fmtDateTime, fmtTime, go, incId, kindName, parseAnalysis, ruleId } from '../ui.jsx'
+import React, { useEffect, useState } from 'react'
+import { getJson, useReport } from '../api.js'
+import { Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, StatusBadge, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, isReplayIp, kindName, noProposalNote, parseAnalysis, ruleId } from '../ui.jsx'
 import { VerificationView, verification } from './IncidentDetail.jsx'
 import { incidentEvents } from './Incidents.jsx'
 
@@ -53,13 +53,13 @@ function ReportView({ ctx, id }) {
         <a className="btn primary noprint" href={`/api/reports/${report.id}`} download={`sentinel-${incId(report.id)}.json`}><Icon name="download" />Export JSON</a>
         <button className="btn ghost noprint" onClick={() => window.print()}>Print report</button>
       </div>
-      <p className="muted">Source <span className="mono">{report.source_ip}</span> · opened {fmtDateTime(report.created_at)}</p>
+      <p className="muted">Source <span className="mono">{report.source_ip}</span>{isReplayIp(report.source_ip) && ' (local replay, not the Neo tester)'} · opened {fmtDateTime(report.created_at)}{report.rule_id && <> · rule <span className="mono">{report.rule_id}</span></>}{report.attack_technique && <> · ATT&amp;CK <span className="mono">{report.attack_technique}</span></>}</p>
       <ol className="reportSteps">
         <li><span>1</span><b>Detection</b><time>{fmtTime(report.created_at)}</time><p>{stage('detected')?.detail || `${report.event_count} events from ${report.source_ip}`}</p></li>
         <li className={report.analysis ? '' : 'todo'}><span>2</span><b>Investigation</b><time>{fmtTime(stage('analysis')?.created_at)}</time>
-          <p>{report.analysis ? <>{analysis?.json?.summary || 'Rule fallback text recorded.'} Tools: {[...new Set(report.trace.map(t => t.tool))].map(t => <code key={t}>{t}</code>)}</> : 'Not investigated yet.'}</p>
+          <p>{report.analysis ? <>{analysis?.json?.explanation_th || analysis?.text} {analysis?.json?.recommended_action && <>Recommended: <b>{actionLabel[analysis.json.recommended_action] || analysis.json.recommended_action}</b>. </>}Tools: {report.trace.some(t => (t.operation || 'execute_tool') === 'execute_tool') ? [...new Set(report.trace.filter(t => (t.operation || 'execute_tool') === 'execute_tool').map(t => t.tool))].map(t => <code key={t}>{t}</code>) : <span className="muted">none (model not used)</span>}</> : 'Not investigated yet.'}</p>
           {report.analysis_mode && <ModeBadge mode={report.analysis_mode} />}</li>
-        <li className={decision ? '' : 'todo'}><span>3</span><b>Human decision</b><time>{fmtTime(decision?.created_at)}</time><p>{decision ? decision.detail : p ? 'Awaiting decision.' : 'No proposal yet.'}</p></li>
+        <li className={decision ? '' : 'todo'}><span>3</span><b>Human decision</b><time>{fmtTime(decision?.created_at)}</time><p>{decision ? decision.detail : p ? 'Awaiting decision.' : report.analysis && noProposalNote[report.status] ? `No block proposed · ${noProposalNote[report.status]}.` : 'No proposal yet.'}</p></li>
         <li className={v.verified ? '' : 'todo'}><span>4</span><b>Verification</b><time>{fmtTime(v.after?.created_at)}</time><p>{v.verified ? `New request from ${report.source_ip} returned 403 (${ruleId(v.rule.id)}). Block verified.` : 'Not verified yet.'}</p></li>
       </ol>
       <h3 className="sub">Request before / after</h3>
@@ -79,10 +79,28 @@ function ReportView({ ctx, id }) {
           <li>Controlled local lab, not a production environment</li>
           <li>App-level enforcement only; host firewall unchanged</li>
           {report.kind === 'SSH_BRUTE_FORCE' && <li>SSH events are synthetic log replay</li>}
-          {report.analysis_mode === 'rule_fallback' && <li>Analysis is rule fallback, not a model result</li>}
+          {isFallback(report) && <li>Analysis is rule fallback, not a model result</li>}
+          {isReplayIp(report.source_ip) && <li>Source is a documentation-range IP replayed on the M5, not traffic from the Neo tester</li>}
+          {report.analysis_meta?.model && !isFallback(report) && <li>Model {report.analysis_meta.model} · prompt {report.analysis_meta.prompt_version || '—'}</li>}
           <li>Approved rules require a new denied request to count as verified</li>
         </ul>
       </Panel>
     </div>
+    <AuditChain version={ctx.version} />
   </div>
+}
+
+// Hash-chained audit log (contract v0.2): GET /api/audit/verify → { valid, entries, broken_at }.
+function AuditChain({ version }) {
+  const [state, setState] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    getJson('/api/audit/verify').then(r => { if (!cancelled) setState(r) }).catch(err => { if (!cancelled) setState({ error: err.message }) })
+    return () => { cancelled = true }
+  }, [version])
+  return <Panel title="Audit Chain" icon="shield" className="noprint">
+    {!state ? <Loading label="กำลังตรวจ audit chain…" /> : state.error ? <Banner tone="warn" icon="info">ตรวจ audit chain ไม่ได้ · {state.error}</Banner>
+      : state.valid ? <p><b className="mint">Intact</b> · {state.entries} entries, each hash links to the previous one</p>
+        : <Banner tone="bad" icon="x">Audit chain broken at entry {state.broken_at} · a stored record was changed or removed</Banner>}
+  </Panel>
 }

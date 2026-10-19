@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, fmtDateTime, fmtTime, go, incId, kindName, parseAnalysis, proposalTone, propId } from '../ui.jsx'
+import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, kindEvidence, kindName, parseAnalysis, proposalTone, propId, targetIp } from '../ui.jsx'
 
 export default function Approvals({ ctx, id }) {
   const { proposals, incidents } = ctx.data
@@ -8,7 +8,7 @@ export default function Approvals({ ctx, id }) {
   const [query, setQuery] = useState('')
   const byStatus = (s) => proposals.filter(p => p.status === s)
   const list = (tab === 'pending' ? byStatus('pending') : proposals.filter(p => p.status !== 'pending'))
-    .filter(p => !query || [propId(p.id), incId(p.incident_id), p.source_ip].some(v => v.toLowerCase().includes(query.toLowerCase())))
+    .filter(p => !query || [propId(p.id), incId(p.incident_id), targetIp(p)].some(v => v.toLowerCase().includes(query.toLowerCase())))
   const selected = list.find(p => p.id === id) || list[0]
   const routeStatus = proposals.find(p => p.id === id)?.status
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function Approvals({ ctx, id }) {
         const inc = incident(p)
         return <li key={p.id}><button className={`queueItem ${p.status} ${selected?.id === p.id ? 'on' : ''}`} onClick={() => go('approvals', p.id)} aria-current={selected?.id === p.id}>
           <Icon name={p.status === 'pending' ? 'clock' : p.status === 'approved' ? 'ok' : 'x'} size={26} />
-          <span><b>{propId(p.id)} <Badge tone={proposalTone[p.status]}>{p.status}</Badge></b><strong>{inc ? kindName(inc.kind) : 'Incident'}</strong><small>{incId(p.incident_id)} · <span className="mono">{p.source_ip}</span></small><small>Temporary app-level block</small></span>
+          <span><b>{propId(p.id)} <Badge tone={proposalTone[p.status]}>{p.status}</Badge></b><strong>{inc ? kindName(inc.kind) : 'Incident'}</strong><small>{incId(p.incident_id)} · <span className="mono">{targetIp(p)}</span></small><small>{actionLabel[p.action] || 'Temporary app-level block'}{p.source === 'rule_fallback' && ' · rule fallback'}</small></span>
           <time>{fmtTime(p.created_at)}</time>
         </button></li>
       })}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'pending' ? <>ไม่มีข้อเสนอรออนุมัติ · <a href="#/incidents">ดูเหตุการณ์ที่ต้องวิเคราะห์</a></> : 'ยังไม่มีประวัติการตัดสินใจ'}</Empty>}
@@ -65,7 +65,7 @@ function Review({ ctx, proposal: p }) {
   return <div className="review">
     <div className="reviewHead"><h2><Icon name="clock" size={24} />Review {propId(p.id)}</h2><Badge tone={proposalTone[p.status]}>{p.status}</Badge></div>
     <div className="facts slim">
-      <div><span>Source IP</span><b className="mono">{p.source_ip}</b></div>
+      <div><span>Target IP</span><b className="mono">{targetIp(p)}</b></div>
       <div><span>TTL</span><b>{p.duration_seconds / 60} minutes</b></div>
       <div><span>Related incident</span><a href={`#/incident/${p.incident_id}`}>{incId(p.incident_id)}</a></div>
       <div><span>Requested</span><b>{fmtDateTime(p.created_at)}</b></div>
@@ -76,19 +76,23 @@ function Review({ ctx, proposal: p }) {
         <h3><Icon name="shield" />Evidence Summary</h3>
         {error && <Banner tone="bad">โหลดหลักฐานไม่สำเร็จ · กดรีเฟรชก่อนตัดสินใจ</Banner>}
         {loading && !report ? <Loading label="กำลังโหลดหลักฐาน…" /> : report ? <>
-          <p><b>{report.event_count} {report.kind === 'PORT_SCAN' ? 'distinct ports' : 'failed logins'} in 60 seconds</b></p>
+          <p><b>{kindEvidence(report)} in 60 seconds</b>{report.attack_technique && <span className="muted small"> · ATT&amp;CK {report.attack_technique}</span>}</p>
           <ModeBadge mode={report.analysis_mode} />
-          {analysis?.json ? <p className="muted">{analysis.json.summary}</p> : analysis?.text && <p className="muted">{analysis.text}</p>}
-          <h4>Read-only tools used</h4>
-          {report.trace.length ? <ul className="tools">{[...new Set(report.trace.map(t => t.tool))].map(name => <li key={name}><Icon name="ok" size={16} /><code>{name}</code></li>)}</ul> : <p className="muted small">ไม่มี tool call</p>}
+          {(isFallback(report) || p.source === 'rule_fallback') && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล · ตรวจหลักฐานเองก่อนตัดสินใจ</Banner>}
+          {analysis?.json ? <p className="muted">{analysis.json.explanation_th}</p> : analysis?.text && <p className="muted">{analysis.text}</p>}
+          {p.reason && <p className="small"><b>Reason:</b> {p.reason}</p>}
+          <h4>Tools used</h4>
+          {report.trace.some(t => (t.operation || 'execute_tool') === 'execute_tool') ? <ul className="tools">{[...new Set(report.trace.filter(t => (t.operation || 'execute_tool') === 'execute_tool').map(t => t.tool))].map(name => <li key={name}><Icon name="ok" size={16} /><code>{name}</code></li>)}</ul> : <p className="muted small">ไม่มี tool call</p>}
         </> : <p className="muted">โหลดหลักฐานไม่ได้</p>}
       </section>
       <section className="box">
         <h3><Icon name="trace" />Execution Scope</h3>
-        <div className="scope"><Icon name="server" size={28} /><div><b>Blocks requests to this demo application only.</b><span>Adds a temporary app-level rule for <span className="mono">{p.source_ip}</span>. No macOS firewall changes.</span></div></div>
+        <div className="scope"><Icon name="server" size={28} /><div><b>Blocks requests to this demo application only.</b><span>Adds a temporary app-level rule for <span className="mono">{targetIp(p)}</span>. No macOS firewall changes.{p.d3fend && <> MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering).</>}</span></div></div>
         <h4>Server-side policy</h4>
         <ul className="policy">
-          <li>Loopback and protected addresses are refused by the server (HTTP 400)</li>
+          <li>Target must be the incident source IP; loopback and protected addresses are refused (HTTP 400)</li>
+          <li>BLOCK_IP (1 hour) only for CRITICAL incidents; otherwise reduced to a 10-minute temporary block</li>
+          {p.policy_notes?.map((n, i) => <li key={i}><b>Policy note:</b> {n}</li>)}
           <li>Rule expires automatically after {p.duration_seconds / 60} minutes</li>
           <li>A decision can only be made once (HTTP 409)</li>
         </ul>
@@ -104,7 +108,7 @@ function Review({ ctx, proposal: p }) {
       </div>
       {confirm && <section ref={confirmation} tabIndex={-1} className="decisionConfirm" role="region" aria-label="ตรวจทานการตัดสินใจ">
         <h3>{confirm === 'approve' ? 'ยืนยันบล็อก IP นี้หรือไม่?' : 'ยืนยันปฏิเสธข้อเสนอนี้หรือไม่?'}</h3>
-        <p>{confirm === 'approve' ? <>แอปสาธิตจะปฏิเสธคำขอจาก <b className="mono">{p.source_ip}</b> เป็นเวลา <b>{p.duration_seconds / 60} นาที</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{p.source_ip}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
+        <p>{confirm === 'approve' ? <>แอปสาธิตจะปฏิเสธคำขอจาก <b className="mono">{targetIp(p)}</b> เป็นเวลา <b>{p.duration_seconds / 60} นาที</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{targetIp(p)}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
         <p className="muted small">บันทึกการตัดสินใจโดย {reviewer.trim()} · ข้อเสนอนี้ตัดสินใจได้ครั้งเดียว</p>
         <div className="decisionActions"><button className={`btn ${confirm === 'approve' ? 'primary' : 'danger'}`} disabled={ctx.busy || !!ctx.error || !valid} onClick={() => decide(confirm)}>{ctx.busy ? 'กำลังบันทึก…' : confirm === 'approve' ? 'ยืนยันบล็อก IP' : 'ยืนยันปฏิเสธ'}</button><button className="btn ghost" disabled={ctx.busy} onClick={() => { setConfirm(null); confirmTrigger.current?.focus() }}>กลับไปตรวจทาน</button></div>
       </section>}

@@ -1,6 +1,12 @@
 import React from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, fmtTime, go, incId, kindName, parseAnalysis, parseJson, propId } from '../ui.jsx'
+import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, actionLabel, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, parseJson, propId, targetIp } from '../ui.jsx'
+
+// Trace rows follow OpenTelemetry GenAI names (contract v0.2): invoke_agent > chat / execute_tool.
+const statusTone = { ok: 'good', error: 'bad', rejected_by_policy: 'bad', invalid_output: 'warn', fallback: 'warn' }
+const statusText = { ok: 'ok', error: 'error', rejected_by_policy: 'Rejected by policy', invalid_output: 'Invalid output', fallback: 'Fallback' }
+const opText = { invoke_agent: 'Agent run', chat: 'Model call', execute_tool: 'Tool' }
+const ms = (v) => v == null ? '' : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v} ms`
 
 export default function AgentTrace({ ctx, id }) {
   const incidents = ctx.data.incidents
@@ -13,7 +19,10 @@ export default function AgentTrace({ ctx, id }) {
 
   const analysis = parseAnalysis(report.analysis)
   const p = report.proposal
-  const fallback = report.analysis_mode === 'rule_fallback'
+  const fallback = isFallback(report)
+  const trace = report.trace || []
+  const tools = trace.filter(t => (t.operation || 'execute_tool') === 'execute_tool')
+  const blockedByPolicy = trace.filter(t => t.status === 'rejected_by_policy')
   const analyze = () => ctx.act(`/api/incidents/${current}/analyze`, { ok: (r) => `วิเคราะห์เสร็จ · โหมด ${r.analysis_mode}` })
 
   return <div className="grid trace">
@@ -27,32 +36,38 @@ export default function AgentTrace({ ctx, id }) {
       <span className="muted small">Model <b className="mono">{ctx.data.health?.model || '—'}</b> · Runtime local Ollama · Source <b className="mono">{report.source_ip}</b></span>
     </div>
 
-    {fallback && <div className="span3"><Banner tone="warn" icon="info">โมเดลใช้ไม่ได้หรือผลไม่ผ่าน validation รอบนี้จึงเป็น <b>rule fallback</b> — trace ด้านล่างเป็นการอ่านหลักฐานของ backend อาจมี tool call ของโมเดลที่ทำไปก่อนล้มปนอยู่ ไม่ใช่ผลวิเคราะห์ของ AI</Banner></div>}
+    {fallback && <div className="span3"><Banner tone="warn" icon="info">โมเดลใช้ไม่ได้หรือผลไม่ผ่าน validation รอบนี้จึงเป็น <b>rule fallback</b> ไม่ใช่ผลวิเคราะห์ของ AI · แถวที่มาจาก fallback ติดป้าย <b>fallback</b> แยกจากแถวของโมเดล</Banner></div>}
+    {blockedByPolicy.length > 0 && <div className="span3"><Banner tone="bad" icon="shield"><b>Policy ปฏิเสธคำขอของโมเดล {blockedByPolicy.length} ครั้ง</b> · เช่น เสนอบล็อก IP ที่ไม่ใช่ต้นทางของ incident หรือ IP ที่ได้รับการป้องกัน — backend ไม่ทำตาม</Banner></div>}
 
     <Panel title="Investigation Steps" icon="trace">
       <ol className="vsteps">
         <li className="done"><b>Read incident</b><small>{kindName(report.kind)} from {report.source_ip}</small></li>
-        {report.trace.map(t => <li key={t.id} className="done"><b className="mono">{t.tool}</b><small>{fmtTime(t.created_at)} · read only</small></li>)}
-        <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback text' : 'Validated JSON') : 'Not run yet'}</small></li>
-        <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : 'No proposal yet'}</small></li>
+        {trace.map(t => <li key={t.id} className={t.status && t.status !== 'ok' ? 'current' : 'done'}>
+          <b className="mono">{t.tool}</b>
+          <small>{fmtTime(t.created_at)} · {opText[t.operation] || 'Tool'}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}{t.source === 'fallback' && ' · fallback'}{t.status && !['ok', 'fallback'].includes(t.status) && ` · ${statusText[t.status] || t.status}`}</small>
+        </li>)}
+        <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback (not AI)' : 'Validated JSON') : report.status === 'analyzing' || ctx.busy ? 'Running… (~30 s on the M5)' : 'Not run yet'}</small></li>
+        <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : report.analysis && noProposalNote[report.status] ? `No block proposed · ${noProposalNote[report.status]}` : 'No proposal yet'}</small></li>
       </ol>
-      {!report.analysis && <button className="btn primary block" disabled={ctx.busy || !!ctx.error} onClick={analyze}>{ctx.busy ? 'กำลังวิเคราะห์หลักฐาน…' : 'เริ่มวิเคราะห์'}</button>}
+      {!report.analysis && report.status === 'closed' && <p className="muted small">ปิดเหตุการณ์ก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p>}
+      {!report.analysis && report.status !== 'closed' && <button className="btn primary block" disabled={ctx.busy || !!ctx.error || report.status === 'analyzing'} onClick={analyze}>{ctx.busy || report.status === 'analyzing' ? 'กำลังวิเคราะห์หลักฐาน… (บน M5 ประมาณ 30 วินาที)' : 'เริ่มวิเคราะห์'}</button>}
     </Panel>
 
     <div className="stack">
-      {report.trace.length ? report.trace.map(t => <ToolCall key={t.id} t={t} />) : <Panel title="Tool Execution" icon="terminal"><Empty>ยังไม่มี tool call</Empty></Panel>}
+      {tools.length ? tools.map(t => <ToolCall key={t.id} t={t} />) : <Panel title="Tool Execution" icon="terminal"><Empty>ยังไม่มี tool call</Empty></Panel>}
     </div>
 
     <div className="stack">
-      <Panel title="Structured Analysis" icon="rules" actions={<CopyButton text={report.analysis || ''} />}>
+      <Panel title="Structured Analysis" icon="rules" actions={<CopyButton text={report.analysis ? JSON.stringify(report.analysis, null, 2) : ''} />}>
         {analysis?.json ? <Code label="Analysis JSON">{JSON.stringify(analysis.json, null, 2)}</Code> : analysis?.text ? <p className="analysisText">{analysis.text}</p> : <Empty>ยังไม่มีผลวิเคราะห์</Empty>}
       </Panel>
       <Panel title={p?.status === 'approved' ? 'Approved by human' : p?.status === 'rejected' ? 'Rejected by human' : 'No action executed'} icon="alert" className={p?.status === 'pending' ? 'attention' : ''}>
         {p ? <>
           <p className="muted">{p.status === 'pending' ? 'A temporary app-level block has been proposed. Review the proposal before execution.' : `Decision recorded by ${p.reviewer}.`}</p>
-          <KeyVals items={[['Incident', `${incId(report.id)} · ${kindName(report.kind)}`], ['Source', <span className="mono">{p.source_ip}</span>], ['Action', 'Temporary app-level block'], ['Expires', `${p.duration_seconds / 60} minutes after approval`]]} />
+          {p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอจาก rule fallback ไม่ใช่โมเดล</Banner>}
+          <KeyVals items={[['Incident', `${incId(report.id)} · ${kindName(report.kind)}`], ['Target', <span className="mono">{targetIp(p)}</span>], ['Action', actionLabel[p.action] || p.action], ['Expires', `${p.duration_seconds / 60} minutes after approval`]]} />
           {p.status === 'pending' && <a className="btn amber block" href={`#/approvals/${p.id}`}>Review {propId(p.id)}</a>}
-        </> : <Empty>ยังไม่มีข้อเสนอ</Empty>}
+        </> : <Empty>{report.analysis && noProposalNote[report.status] ? `ไม่มีข้อเสนอบล็อก · ${noProposalNote[report.status]}` : 'ยังไม่มีข้อเสนอ'}</Empty>}
       </Panel>
     </div>
   </div>
@@ -60,11 +75,14 @@ export default function AgentTrace({ ctx, id }) {
 
 function ToolCall({ t }) {
   const input = parseJson(t.input)
-  const output = parseJson(t.output)
-  return <Panel title={<><span className="mono">{t.tool}</span><Badge tone="info">Read only</Badge></>} icon="terminal" actions={<span className="muted small">{fmtTime(t.created_at)}</span>}>
+  const raw = parseJson(t.output)
+  // get_incident_logs wraps records as untrusted data; show them as a table.
+  const output = Array.isArray(raw?.untrusted_log_records) ? raw.untrusted_log_records : raw
+  const status = t.status || 'ok'
+  return <Panel title={<><span className="mono">{t.tool}</span>{t.tool === 'propose_block_ip' ? <Badge tone="warn">Proposal pre-check</Badge> : <Badge tone="info">Read only</Badge>}{status !== 'ok' && <Badge tone={statusTone[status] || 'warn'}>{statusText[status] || status}</Badge>}{t.source === 'fallback' && <Badge tone="warn">fallback</Badge>}</>} icon="terminal" actions={<span className="muted small">{fmtTime(t.created_at)}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}</span>}>
     <h3 className="sub">Input</h3>
     <Code>{JSON.stringify(input, null, 2)}</Code>
-    <h3 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}</small>}</h3>
+    <h3 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}{output !== raw && ' · untrusted log data'}</small>}</h3>
     {Array.isArray(output) ? (output.length ? <div className="tableWrap short"><table>
       <thead><tr>{Object.keys(output[0]).map(k => <th key={k}>{k}</th>)}</tr></thead>
       <tbody>{output.slice(0, 30).map((row, i) => <tr key={i}>{Object.entries(row).map(([k, v]) => <td key={k} className="mono">{k.endsWith('timestamp') || k.endsWith('_at') ? fmtTime(v) : String(v ?? '—')}</td>)}</tr>)}</tbody>

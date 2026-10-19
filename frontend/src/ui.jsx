@@ -43,19 +43,42 @@ export const kindLabel = {
   HTTP_AUTH_BRUTE_FORCE: 'HTTP Brute Force',
   SSH_BRUTE_FORCE: 'SSH Brute Force (log replay)',
   PORT_SCAN: 'Port Scan',
+  SUSPICIOUS_LOGIN: 'Login after repeated failures',
+  TRAFFIC_ANOMALY: 'Traffic Anomaly',
 }
 export const kindName = (kind) => kindLabel[kind] || kind
 
-export const kindEvidence = (incident) => incident.kind === 'PORT_SCAN' ? `${incident.event_count} distinct ports` : `${incident.event_count} failed ${incident.kind === 'SSH_BRUTE_FORCE' ? 'replayed logins' : 'logins'}`
+export const kindEvidence = (incident) => incident.kind === 'PORT_SCAN' ? `${incident.event_count} distinct ports` : incident.kind === 'SUSPICIOUS_LOGIN' ? `success after ${incident.event_count} failures` : incident.kind === 'TRAFFIC_ANOMALY' ? `${incident.event_count} connections` : `${incident.event_count} failed ${incident.kind === 'SSH_BRUTE_FORCE' ? 'replayed logins' : 'logins'}`
 
-// Incident status from the backend: detected → awaiting_approval → blocked → verified, or rejected.
+// Incident status (contract v0.2): detected → analyzing → awaiting_approval → blocked → verified,
+// or analyzing → needs_review | monitoring | closed; awaiting_approval → rejected; blocked → closed.
 export const incidentStatus = {
   detected: { label: 'Needs analysis', tone: 'info' },
+  analyzing: { label: 'Analyzing', tone: 'info' },
   awaiting_approval: { label: 'Pending approval', tone: 'warn' },
+  needs_review: { label: 'Needs human review', tone: 'warn' },
+  monitoring: { label: 'Monitoring', tone: 'info' },
   blocked: { label: 'Approved · not verified', tone: 'warn' },
   verified: { label: 'Verified blocked', tone: 'good' },
   rejected: { label: 'Rejected', tone: 'muted' },
+  closed: { label: 'Closed', tone: 'muted' },
 }
+export const TERMINAL = ['verified', 'rejected', 'closed']
+export const isOpenIncident = (incident) => !TERMINAL.includes(incident.status)
+// Analysis finished without a block proposal (INVESTIGATE / MONITOR / NO_ACTION, or policy refused it).
+export const noProposalNote = { needs_review: 'Needs human review', monitoring: 'Monitoring only', closed: 'No action needed' }
+
+export const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
+
+export const actionLabel = {
+  NO_ACTION: 'No action', MONITOR: 'Monitor', INVESTIGATE: 'Investigate further',
+  TEMP_BLOCK_IP: 'Temporary app-level block', BLOCK_IP: 'App-level block (1 hour)',
+}
+// Documentation ranges (RFC 5737) are what Demo Lab replays use; they never come from a real tester machine.
+export const isReplayIp = (ip) => /^(192\.0\.2|198\.51\.100|203\.0\.113)\./.test(ip || '')
+
+// v0.2 sends target_ip; source_ip stays as an alias until v0.3.
+export const targetIp = (proposal) => proposal?.target_ip || proposal?.source_ip
 
 export function Badge({ tone = 'muted', children, icon }) {
   return <span className={`badge ${tone}`}>{icon && <Icon name={icon} size={14} />}{children}</span>
@@ -67,8 +90,8 @@ export function StatusBadge({ status }) {
 }
 
 export function SeverityBadge({ value }) {
-  const v = String(value || '').toLowerCase()
-  return <span className={`sev ${v === 'high' ? 'bad' : v === 'medium' ? 'warn' : 'muted'}`}>{v ? v.toUpperCase() : '—'}</span>
+  const v = String(value || '').toUpperCase()
+  return <span className={`sev ${v === 'CRITICAL' || v === 'HIGH' ? 'bad' : v === 'MEDIUM' ? 'warn' : 'muted'}`}>{v || '—'}</span>
 }
 
 export const proposalTone = { pending: 'warn', approved: 'good', rejected: 'bad' }
@@ -154,14 +177,30 @@ export function perMinute(items, field, minutes = 15, now = Date.now()) {
   return buckets
 }
 
+// Analysis is an object in v0.2 (model and rule fallback alike). Older string JSON is mapped onto the same keys.
 export function parseAnalysis(value) {
   if (!value) return null
-  try { return { json: JSON.parse(value) } } catch { return { text: value } }
+  let a = value
+  if (typeof value === 'string') {
+    try { a = JSON.parse(value) } catch { return { text: value } }
+  }
+  if (!a || typeof a !== 'object') return { text: String(value) }
+  return { json: {
+    threat_type: a.threat_type ?? a.classification ?? 'UNKNOWN',
+    severity: String(a.severity || '').toUpperCase(),
+    confidence: typeof a.confidence === 'number' ? a.confidence : null,
+    evidence: Array.isArray(a.evidence) ? a.evidence : [],
+    recommended_action: a.recommended_action ?? a.recommendation ?? '',
+    explanation_th: a.explanation_th ?? a.summary ?? '',
+  } }
 }
+
+// True when a result must not be presented as model output (contract v0.2).
+export const isFallback = (incident) => incident?.analysis_mode === 'rule_fallback' || parseAnalysis(incident?.analysis)?.json?.confidence === null
 
 export const parseJson = (value) => { try { return JSON.parse(value) } catch { return value } }
 
-export const modeLabel = { ollama: 'Local model', ollama_no_tools: 'Local model · no tools', rule_fallback: 'Rule fallback (not AI)' }
+export const modeLabel = { ollama: 'Local model', ollama_retry: 'Local model · retried', ollama_no_tools: 'Local model · no tools', rule_fallback: 'Rule fallback (not AI)' }
 
 export function ModeBadge({ mode }) {
   if (!mode) return <Badge tone="muted">Not analyzed</Badge>

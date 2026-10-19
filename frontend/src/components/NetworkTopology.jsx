@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Icon, parseAnalysis } from '../ui.jsx'
+import { Icon, isFallback, isOpenIncident, parseAnalysis } from '../ui.jsx'
 import GlobeCanvas from './GlobeCanvas.jsx'
 
 const DEMO_PLACES = [
@@ -18,12 +18,12 @@ export default function NetworkTopology({ data, activeRules, connected }) {
   const incident = data.incidents.find(item => item.source_ip === ip)
   const blocked = ip && activeRules.some(rule => rule.source_ip === ip)
   const analysis = parseAnalysis(incident?.analysis)?.json
-  const modelFinding = ['ollama', 'ollama_no_tools'].includes(incident?.analysis_mode) && analysis && analysis.classification !== 'UNKNOWN' && ['high', 'medium'].includes(analysis.severity)
-  const state = !ip ? 'Awaiting client' : blocked ? 'App-level block' : incident && incident.status !== 'rejected' ? 'Incident detected' : 'Requests allowed'
-  const tone = !ip ? 'quiet' : blocked ? 'coral' : incident && incident.status !== 'rejected' ? 'amber' : 'mint'
+  const modelFinding = !isFallback(incident) && ['ollama', 'ollama_retry', 'ollama_no_tools'].includes(incident?.analysis_mode) && analysis && !['UNKNOWN', 'BENIGN'].includes(analysis.threat_type) && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(analysis.severity)
+  const state = !ip ? 'Awaiting client' : blocked ? 'App-level block' : incident && isOpenIncident(incident) ? 'Incident detected' : 'Requests allowed'
+  const tone = !ip ? 'quiet' : blocked ? 'coral' : incident && isOpenIncident(incident) ? 'amber' : 'mint'
   const preview = mapMode !== 'live', sample = mapMode === 'sample'
   const place = DEMO_PLACES[placeIndex]
-  const threat = sample ? sampleThreat : !!incident && incident.status !== 'rejected' && ['high', 'medium'].includes(incident.severity)
+  const threat = sample ? sampleThreat : !!incident && isOpenIncident(incident) && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(String(incident.severity).toUpperCase())
   const markerIp = sample ? '203.0.113.42' : ip
   const previewMarkers = markerIp ? [{ ...place, threat, label: markerIp }] : []
   return <div className={`networkView worldView ${preview ? 'preview' : ''}`}>

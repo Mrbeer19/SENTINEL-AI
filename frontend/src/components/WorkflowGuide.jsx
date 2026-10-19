@@ -31,7 +31,7 @@ export function NextStep({ ctx, incident, overview = false }) {
     href = '#/lab'; label = 'เปิด Demo Lab'
   } else if (p?.status === 'pending') {
     step = 2; tone = 'warn'; title = 'มีข้อเสนอรอคนตรวจทาน'
-    note = `ตรวจหลักฐานและ Source IP ${p.source_ip} ก่อนตัดสินใจ ยังไม่มีการบล็อกจากข้อเสนอนี้`
+    note = `ตรวจหลักฐานและ IP เป้าหมาย ${p.target_ip || p.source_ip} ก่อนตัดสินใจ ยังไม่มีการบล็อกจากข้อเสนอนี้${p.source === 'rule_fallback' ? ' · ข้อเสนอนี้มาจาก rule fallback ไม่ใช่โมเดล' : ''}`
     href = `#/approvals/${p.id}`; label = 'ตรวจข้อเสนอ'
   } else if (incident.status === 'rejected') {
     step = 4; title = 'ปฏิเสธข้อเสนอแล้ว'
@@ -46,6 +46,22 @@ export function NextStep({ ctx, incident, overview = false }) {
     note = active ? `ต้องมีคำขอใหม่จาก IP ${incident.source_ip} ที่ได้ HTTP 403 · ทดสอบจริงส่งจาก Neo ส่วน IP จำลองให้ส่งจาก Demo Lab` : 'การอนุมัติอย่างเดียวไม่ยืนยันว่าบล็อกสำเร็จ ดูบันทึกเดิมหรือเริ่มการทดสอบรอบใหม่'
     href = active ? (overview ? `#/incident/${incident.id}` : `#/rules/${rule.id}`) : `#/reports/${incident.id}`
     label = active ? (overview ? 'ดูผลการทดสอบ' : 'ดูกฎที่ทำงาน') : 'ดูรายงาน'
+  } else if (incident.status === 'analyzing') {
+    step = 1; title = 'กำลังวิเคราะห์หลักฐาน'
+    note = 'โมเดลบน M5 กำลังเรียก tool อ่านหลักฐาน (ประมาณ 30 วินาที) · ขั้นที่ทำแล้วขึ้นใน Agent Trace ทันที'
+    href = `#/trace/${incident.id}`; label = 'ดู Agent Trace'
+  } else if (incident.status === 'needs_review') {
+    step = 2; tone = 'warn'; title = 'วิเคราะห์แล้ว · ไม่มีข้อเสนอบล็อก ต้องให้คนตรวจต่อ'
+    note = 'ผลแนะนำให้สืบเพิ่ม หรือ policy ไม่อนุญาตให้บล็อก (เหตุผลอยู่ใน Audit Timeline) · ไม่มีการสร้างกฎ'
+    href = `#/incident/${incident.id}`; label = 'ดูผลวิเคราะห์'
+  } else if (incident.status === 'monitoring') {
+    step = 4; title = 'วิเคราะห์แล้ว · ให้เฝ้าดูต่อ'
+    note = 'ผลแนะนำให้ติดตามโดยยังไม่บล็อก · ไม่มีการสร้างกฎ'
+    href = `#/reports/${incident.id}`; label = 'ดูรายงาน'
+  } else if (incident.status === 'closed') {
+    step = 4; title = 'ปิดเหตุการณ์แล้ว'
+    note = rule ? 'กฎถูกปลดก่อนมีคำขอใหม่มายืนยันผล หรือปิดจาก demo reset' : 'ไม่ต้องดำเนินการ หรือปิดจาก demo reset · ไม่มีการสร้างกฎ'
+    href = `#/reports/${incident.id}`; label = 'ดูรายงาน'
   } else if (!incident.analysis) {
     step = 1; title = 'ตรวจพบเหตุการณ์ · เริ่มวิเคราะห์ได้'
     note = `${incident.source_ip} · ระบบจะอ่านหลักฐานและเสนอการตอบสนอง ยังไม่มีการสร้างกฎในขั้นตอนนี้`
@@ -59,10 +75,10 @@ export function NextStep({ ctx, incident, overview = false }) {
     <div className="nextStepIcon"><Icon name={tone === 'good' ? 'ok' : step === 3 ? 'terminal' : 'trace'} size={22} /></div>
     <div className="nextStepContent"><div className="nextStepMeta">ขั้นตอนถัดไป{incident && <a href={`#/incident/${incident.id}`}>{incId(incident.id)}</a>}</div><h2>{title}</h2><p>{note}</p>
       <ol className="workflowProgress" aria-label="ลำดับการทำงาน">{STEPS.map((name, index) => {
-        const skipped = incident?.status === 'rejected' && index === 3
+        const skipped = (['rejected', 'needs_review', 'monitoring'].includes(incident?.status) || (incident?.status === 'closed' && !rule)) && index === 3
         return <li key={name} aria-current={index === step ? 'step' : undefined} className={skipped ? 'skipped' : index === step ? 'current' : index < step ? 'done' : ''}>{index + 1}. {name}{skipped && ' (ไม่ต้องทำ)'}</li>
       })}</ol>
     </div>
-    {analyze ? <button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={() => ctx.act(`/api/incidents/${incident.id}/analyze`, { ok: r => r.analysis_mode === 'rule_fallback' ? 'วิเคราะห์เสร็จด้วย rule fallback · ตรวจข้อเสนอก่อนอนุมัติ' : 'วิเคราะห์ด้วยโมเดลเสร็จแล้ว · ตรวจข้อเสนอก่อนอนุมัติ' })}><Icon name="brain" />{ctx.busy ? 'กำลังวิเคราะห์…' : label}</button> : <a className="btn primary" href={href}>{label}<Icon name="chevron" size={15} /></a>}
+    {analyze ? <button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={() => ctx.act(`/api/incidents/${incident.id}/analyze`, { ok: r => r.analysis_mode === 'rule_fallback' ? 'วิเคราะห์เสร็จด้วย rule fallback · ตรวจข้อเสนอก่อนอนุมัติ' : 'วิเคราะห์ด้วยโมเดลเสร็จแล้ว · ตรวจข้อเสนอก่อนอนุมัติ' })}><Icon name="brain" />{ctx.busy ? 'กำลังวิเคราะห์… (~30 วินาที)' : label}</button> : <a className="btn primary" href={href}>{label}<Icon name="chevron" size={15} /></a>}
   </section>
 }
