@@ -10,12 +10,14 @@ from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
 from backend import logparse, policy, soc
@@ -40,6 +42,7 @@ TRANSITIONS = {
 ACTION_STATUS = {"INVESTIGATE": "needs_review", "MONITOR": "monitoring", "NO_ACTION": "closed"}
 PUBLIC_PATHS = {"/api/health", "/api/demo/login", "/api/demo/traffic"}
 RATE_LIMITED = {"/api/demo/login", "/api/demo/traffic"}
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 OCSF_CLASS = {"HTTP_AUTH": 3002, "SSH_AUTH": 3002, "CONNECTION": 4001}  # Authentication / Network Activity
 USERNAME_MAX = 80  # stored length
 USERNAME_INPUT_MAX = 1024  # longer than this is refused (422); between the two it is cut and flagged
@@ -118,11 +121,20 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     agent = Agent(settings, store)
     api = FastAPI(title="SENTINEL AI", version=API_VERSION)
     api.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
+    # DNS rebinding: a hostile name resolving to 127.0.0.1 still carries its own Host header.
+    api.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(settings.allowed_hosts))
     docs_paths = {api.docs_url, api.redoc_url, api.openapi_url, api.swagger_ui_oauth2_redirect_url}
     sockets: set[WebSocket] = set()
     run = {"task": None, "state": {"running": False, "scenario": None, "source_ip": None, "sent": 0, "total": 0,
                                    "interval_ms": None, "started_at": None, "finished_at": None, "stopped": False, "incident_ids": []}}
     hits: dict[str, deque] = defaultdict(deque)
+
+    def same_site(origin: str | None) -> bool:
+        """CSRF / WebSocket hijack guard. Browsers send Origin; curl and the Neo terminal do not."""
+        if origin is None:
+            return True
+        parts = urlsplit(origin)
+        return parts.scheme in {"http", "https"} and parts.hostname in settings.allowed_hosts
 
     def trusted(peer: str, headers) -> bool:
         provided = headers.get("X-Admin-Key", "")
@@ -132,11 +144,17 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def access_control(request: Request, call_next):
         peer = request.client.host if request.client else ""
         path = request.url.path
+        if request.method in UNSAFE_METHODS and not same_site(request.headers.get("origin")):
+            return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
         if not trusted(peer, request.headers):
             if (path.startswith("/api/") and path not in PUBLIC_PATHS) or path in docs_paths:
                 return JSONResponse({"detail": "Remote access to the SOC API requires X-Admin-Key"}, status_code=403)
             if path in RATE_LIMITED:
-                now, window = time.monotonic(), hits[peer]
+                now = time.monotonic()
+                if len(hits) > 1000:  # forget peers whose window has passed
+                    for stale in [ip for ip, seen in hits.items() if not seen or now - seen[-1] > settings.demo_rate_window_s]:
+                        del hits[stale]
+                window = hits[peer]
                 while window and now - window[0] > settings.demo_rate_window_s:
                     window.popleft()
                 if len(window) >= settings.demo_rate_limit:
@@ -517,7 +535,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     @api.websocket("/ws")
     async def websocket(socket: WebSocket):
         peer = socket.client.host if socket.client else ""
-        if not trusted(peer, socket.headers):
+        if not same_site(socket.headers.get("origin")) or not trusted(peer, socket.headers):
             await socket.close(code=1008)
             return
         await socket.accept()

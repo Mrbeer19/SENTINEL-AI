@@ -15,10 +15,12 @@ ATTACKER = "192.0.2.25"
 @pytest.fixture(autouse=True)
 def isolated_env(monkeypatch):
     for name in ("SENTINEL_MODEL", "SENTINEL_OLLAMA_FORMAT", "SENTINEL_OLLAMA_TIMEOUT", "SENTINEL_ADMIN_KEY", "SENTINEL_PROTECTED_IPS",
-                 "SENTINEL_PROMPT_PATH", "SENTINEL_RULES_DIR", "SENTINEL_DEMO_RATE_LIMIT", "SENTINEL_DEMO_RATE_WINDOW"):
+                 "SENTINEL_PROMPT_PATH", "SENTINEL_RULES_DIR", "SENTINEL_DEMO_RATE_LIMIT", "SENTINEL_DEMO_RATE_WINDOW",
+                 "SENTINEL_ALLOWED_HOSTS"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SENTINEL_DISABLE_OLLAMA", "1")
     monkeypatch.setenv("OLLAMA_URL", "http://127.0.0.1:9")  # closed port: a stray real call fails fast
+    monkeypatch.setenv("SENTINEL_ALLOWED_HOSTS", "testserver,test")  # Host of TestClient / httpx base_url in tests
 
 
 @pytest.fixture

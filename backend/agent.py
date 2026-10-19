@@ -75,8 +75,15 @@ def final_instruction() -> str:
 
 
 def parse_analysis(text: str) -> Analysis:
+    """Strip a code fence; if the model wrapped the object in prose, take the outermost {...}. The schema stays strict."""
     text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return Analysis.model_validate_json(text)
+    try:
+        return Analysis.model_validate_json(text)
+    except ValidationError:
+        start, end = text.find("{"), text.rfind("}")
+        if start <= 0 and end in (-1, len(text) - 1):
+            raise  # nothing around the object to strip: the object itself is wrong
+        return Analysis.model_validate_json(text[start:end + 1])
 
 
 def rule_fallback(incident: dict, evidence_count: int) -> Analysis:
