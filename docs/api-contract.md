@@ -48,9 +48,11 @@ OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จา
 | `sentinel-http-auth-bruteforce` | `HTTP_AUTH_BRUTE_FORCE` | `HTTP_AUTH` failed ≥5 / 60 วิ / IP | T1110.001 | HIGH |
 | `sentinel-ssh-auth-bruteforce` | `SSH_BRUTE_FORCE` | `SSH_AUTH` failed ≥5 / 60 วิ / IP (log replay) | T1110.001 | HIGH |
 | `sentinel-port-scan` | `PORT_SCAN` | `CONNECTION` ≥8 พอร์ตต่างกัน / 60 วิ / IP | T1046 | MEDIUM |
+| `sentinel-suspicious-login` | `SUSPICIOUS_LOGIN` | login **success** หลัง failed ≥5 ช่องทางเดียวกัน (HTTP/SSH) / 60 วิ / IP · `event_count` = จำนวน failed | T1078 | HIGH |
 
 - หน้าต่างเวลานับย้อนจาก **เวลาของ event** (UTC)
 - ≥3 เท่าของเกณฑ์ → `CRITICAL`
+- brute force ที่เข้าได้ในที่สุด = **2 incident** จาก IP เดียวกัน: `*_BRUTE_FORCE` (ตอน failed ครั้งที่ 5) + `SUSPICIOUS_LOGIN` (ตอน success) · UI แสดงแยกกัน อนุมัติบล็อกอันไหนก็บล็อก IP เดียวกัน
 - incident ที่ยังเปิดของ (IP, kind) เดิมจะถูกอัปเดต `event_count` · incident ที่จบแล้ว (`verified | rejected | closed`) ไม่ถูกใช้ซ้ำ → เปิดใหม่
 
 ## Incident

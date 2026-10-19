@@ -119,6 +119,53 @@ def test_incident_creation_is_audited_with_rules_version(client):
     assert entry["actor"] == "detection" and RuleSet(RULES).version in entry["detail"]
 
 
+# ---- suspicious login (success after failures) ----
+
+def kinds(client):
+    return sorted(i["kind"] for i in client.get("/api/incidents").json())
+
+
+@pytest.mark.parametrize("event_type", ["HTTP_AUTH", "SSH_AUTH"])
+@pytest.mark.parametrize("failures,opens", [(4, False), (5, True)])
+def test_success_after_failures_opens_suspicious_login(client, event_type, failures, opens):
+    send(client, failures, event_type=event_type)
+    result = client.post("/api/events", json=event(event_type=event_type, outcome="success")).json()
+    assert (result["incident"] is not None and result["incident"]["kind"] == "SUSPICIOUS_LOGIN") is opens
+
+
+def test_suspicious_login_keeps_the_brute_force_incident(client):
+    send(client, 9)
+    client.post("/api/events", json=event(outcome="success"))
+    assert kinds(client) == ["HTTP_AUTH_BRUTE_FORCE", "SUSPICIOUS_LOGIN"]
+
+
+def test_failures_on_another_channel_do_not_count(client):
+    send(client, 6, event_type="SSH_AUTH")
+    assert client.post("/api/events", json=event(event_type="HTTP_AUTH", outcome="success")).json()["incident"] is None
+
+
+def test_failures_outside_the_window_do_not_count(client):
+    base = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(seconds=10)
+    for _ in range(5):
+        client.post("/api/events", json=event(timestamp=(base - timedelta(seconds=61)).isoformat()))
+    assert client.post("/api/events", json=event(outcome="success", timestamp=base.isoformat())).json()["incident"] is None
+
+
+def test_suspicious_login_technique_and_rule(client):
+    send(client, 5)
+    incident = client.post("/api/events", json=event(outcome="success")).json()["incident"]
+    assert incident["rule_id"] == "sentinel-suspicious-login" and incident["attack_technique"] == "T1078"
+
+
+def test_demo_login_success_after_brute_force_is_flagged(make_app):
+    app = make_app()
+    remote = connect(app, peer="192.168.1.50")
+    for _ in range(5):
+        remote.post("/api/demo/login", json={"username": "student", "password": "wrong"})
+    assert remote.post("/api/demo/login", json={"username": "student", "password": "sentinel-demo"}).status_code == 200
+    assert kinds(connect(app)) == ["HTTP_AUTH_BRUTE_FORCE", "SUSPICIOUS_LOGIN"]
+
+
 # ---- rule files ----
 
 @pytest.mark.parametrize("text,seconds", [("30s", 30), ("5m", 300), ("1h", 3600)])

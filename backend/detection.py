@@ -25,7 +25,7 @@ class Rule:
     level: str
     attack_technique: str | None
     selection: dict[str, str]
-    correlation: str  # event_count | value_count
+    correlation: str  # event_count | value_count | failures_before
     field: str | None
     window: timedelta
     threshold: int
@@ -54,7 +54,7 @@ def _parse(path: Path) -> Rule:
     if set(selection) - SELECTABLE:
         raise ValueError(f"{path.name}: selection may only use {sorted(SELECTABLE)}")
     corr = doc["correlation"]
-    if corr["type"] not in {"event_count", "value_count"} or corr.get("group-by") != ["source_ip"]:
+    if corr["type"] not in {"event_count", "value_count", "failures_before"} or corr.get("group-by") != ["source_ip"]:
         raise ValueError(f"{path.name}: unsupported correlation")
     if corr["type"] == "value_count" and corr.get("field") != "destination_port":
         raise ValueError(f"{path.name}: value_count only supports destination_port")
@@ -82,12 +82,19 @@ class RuleSet:
             if any(str(event.get(key)) != value for key, value in rule.selection.items()):
                 continue
             start = (end - rule.window).isoformat(timespec="seconds")
-            where = " AND ".join(f"{key}=?" for key in rule.selection)
-            measure = "COUNT(DISTINCT destination_port)" if rule.correlation == "value_count" else "COUNT(*)"
-            count = con.execute(
-                f"SELECT {measure} FROM events WHERE source_ip=? AND {where} AND timestamp>=? AND timestamp<=?",
-                (event["source_ip"], *rule.selection.values(), start, event["timestamp"]),
-            ).fetchone()[0]
+            if rule.correlation == "failures_before":
+                # The matching event is the success; count the failures on the same channel that led up to it.
+                count = con.execute(
+                    "SELECT COUNT(*) FROM events WHERE source_ip=? AND event_type=? AND outcome='failed' AND timestamp>=? AND timestamp<=?",
+                    (event["source_ip"], event["event_type"], start, event["timestamp"]),
+                ).fetchone()[0]
+            else:
+                where = " AND ".join(f"{key}=?" for key in rule.selection)
+                measure = "COUNT(DISTINCT destination_port)" if rule.correlation == "value_count" else "COUNT(*)"
+                count = con.execute(
+                    f"SELECT {measure} FROM events WHERE source_ip=? AND {where} AND timestamp>=? AND timestamp<=?",
+                    (event["source_ip"], *rule.selection.values(), start, event["timestamp"]),
+                ).fetchone()[0]
             if count >= rule.threshold:
                 matches.append(Match(rule, count))
         return matches
