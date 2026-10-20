@@ -17,6 +17,10 @@ import os
 import random
 from pathlib import Path
 
+# Must be set before torch touches CUDA: without it the r2 Kaggle run hit OOM at step 155/160
+# with 2.3 GB reserved but unusable (fragmentation from samples of very different lengths).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, Trainer, TrainingArguments
