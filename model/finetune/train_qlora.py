@@ -1,7 +1,7 @@
 """QLoRA fine-tune of Qwen3.5-4B for the 3 SENTINEL agents (RTX 4060 8 GB).
 
 Run (D:\\ai-env):  python model/finetune/train_qlora.py --base D:\\ai-models\\Qwen3.5-4B --out D:\\ai-models\\sentinel-lora-r1
-Run on Kaggle (free T4 x2, one process per GPU via torchrun): model/finetune/kaggle_train.ipynb
+Run on Kaggle (free T4 x2, fp32, one process per GPU via torchrun): model/finetune/kaggle_train.ipynb
 
 Loss is computed on the agents' own turns only (tool calls, summary, JSON), never on the
 system prompt, the incident or tool results. Samples longer than --max-len are dropped, not cut,
@@ -112,9 +112,10 @@ def main():
     # Keep the effective batch (grad_accum samples per step) the same whatever the GPU count.
     grad_accum = max(1, args.grad_accum // world)
 
-    # bf16 needs Ampere or newer; the Kaggle T4 (sm75) runs fp16 instead.
+    # bf16 needs Ampere or newer. On the Kaggle T4 (sm75) fp16 gives NaN gradients for Qwen3.5
+    # (every step skipped, lr stuck at 0), so compute in fp32 there: slower but it learns.
     bf16 = torch.cuda.get_device_capability()[0] >= 8
-    dtype = torch.bfloat16 if bf16 else torch.float16
+    dtype = torch.bfloat16 if bf16 else torch.float32
     model = AutoModelForCausalLM.from_pretrained(
         args.base, dtype=dtype, low_cpu_mem_usage=True, device_map={"": rank},
         quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=dtype, bnb_4bit_use_double_quant=True))
@@ -129,7 +130,7 @@ def main():
         args=TrainingArguments(
             output_dir=args.out, per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=grad_accum,
             num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="cosine", warmup_steps=max(1, steps // 20),
-            logging_steps=5, eval_strategy="epoch", save_strategy="steps", save_steps=args.save_steps, save_total_limit=2, bf16=bf16, fp16=not bf16,
+            logging_steps=5, eval_strategy="epoch", save_strategy="steps", save_steps=args.save_steps, save_total_limit=2, bf16=bf16,
             gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False}, ddp_find_unused_parameters=False,
             optim="paged_adamw_8bit", report_to=[], dataloader_num_workers=0, remove_unused_columns=False),
         train_dataset=train, eval_dataset=val, data_collator=collate(tok.pad_token_id or tok.eos_token_id))
