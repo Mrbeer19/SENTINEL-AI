@@ -13,7 +13,7 @@ import sys
 import httpx
 
 from backend.app import DEFAULT_DB
-from backend.config import ALWAYS_PROTECTED, load_settings
+from backend.config import ALWAYS_PROTECTED, load_settings, same_model
 from backend.detection import RuleSet
 
 
@@ -35,7 +35,7 @@ def main() -> int:
     try:
         tags = httpx.get(f"{settings.ollama_url}/api/tags", timeout=3).json().get("models", [])
         results.append(check(True, f"Ollama reachable at {settings.ollama_url}"))
-        results.append(check(any(m.get("name") == settings.model for m in tags), f"model {settings.model} installed", f"ollama pull {settings.model}"))
+        results.append(check(any(same_model(m.get("name", ""), settings.model) for m in tags), f"model {settings.model} installed", f"ollama pull {settings.model}"))
     except (httpx.HTTPError, ValueError):
         results.append(check(False, f"Ollama reachable at {settings.ollama_url}", "start it: ollama serve"))
     extra = settings.protected_ips - ALWAYS_PROTECTED
