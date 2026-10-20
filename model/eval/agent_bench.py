@@ -32,11 +32,13 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "datasets" / "sentinel_cases_v1.json"
 DEFAULT_PROMPT = ROOT / "model" / "prompts" / "analyst_system_v1.md"
 # 3-agent pipeline (Investigation → Threat Analysis → Defense Planning), chosen 20 Oct 2026.
-PIPELINE_PROMPTS = {
-    "investigator": ROOT / "model" / "prompts" / "investigator_v1.md",
-    "analyst": ROOT / "model" / "prompts" / "threat_analyst_v1.md",
-    "planner": ROOT / "model" / "prompts" / "defense_planner_v1.md",
-}
+def pipeline_prompts(version: str = "v1") -> dict:
+    return {"investigator": ROOT / "model" / "prompts" / f"investigator_{version}.md",
+            "analyst": ROOT / "model" / "prompts" / f"threat_analyst_{version}.md",
+            "planner": ROOT / "model" / "prompts" / f"defense_planner_{version}.md"}
+
+
+PIPELINE_PROMPTS = pipeline_prompts("v1")
 DEFAULT_OUT = Path(__file__).resolve().parent / "results"
 
 THREAT_TYPES = ["HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY", "BENIGN", "UNKNOWN"]
@@ -559,6 +561,7 @@ def main(argv=None) -> int:
     parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS, help="tool rounds before the final answer (backend v0.2: 4)")
     parser.add_argument("--strict-json", action="store_true", help="reject text around the JSON object (backend before PR #6)")
     parser.add_argument("--pipeline", action="store_true", help="3 agents: investigator (read tools) → threat analyst → defense planner")
+    parser.add_argument("--prompt-version", default="v1", help="prompt files model/prompts/*_<version>.md for --pipeline")
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--url", default="http://127.0.0.1:11434")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -577,15 +580,15 @@ def main(argv=None) -> int:
     opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint,
             "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "strict_json": args.strict_json,
             "system_prompt": args.system_prompt.read_text(encoding="utf-8"), "pipeline": args.pipeline,
-            "pipeline_prompts": {k: v.read_text(encoding="utf-8") for k, v in PIPELINE_PROMPTS.items()}}
+            "pipeline_prompts": {k: v.read_text(encoding="utf-8") for k, v in pipeline_prompts(args.prompt_version).items()}}
     chat = http_chat(args.url, args.timeout)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    out = args.out_dir / f"{args.model.replace(':', '_').replace('/', '_')}{'-pipeline' if args.pipeline else ''}-{args.split}-{stamp}.jsonl"
+    out = args.out_dir / f"{args.model.replace(':', '_').replace('/', '_')}{'-pipeline-' + args.prompt_version if args.pipeline else ''}-{args.split}-{stamp}.jsonl"
     header = {"type": "header", "started": stamp, "model": args.model, "split": args.split, "runs": args.runs,
               "options": {k: v for k, v in opts.items() if k not in ("system_prompt", "pipeline_prompts")},
-              "pipeline_prompts_sha256": {k: sha256(v) for k, v in PIPELINE_PROMPTS.items()} if args.pipeline else None,
+              "pipeline_prompts_sha256": {k: sha256(v) for k, v in pipeline_prompts(args.prompt_version).items()} if args.pipeline else None, "prompt_version": args.prompt_version if args.pipeline else None,
               "system_prompt": str(args.system_prompt.relative_to(ROOT)) if args.system_prompt.is_relative_to(ROOT) else args.system_prompt.name,
               "system_prompt_sha256": sha256(args.system_prompt), "cases_sha256": sha256(args.cases),
               "ollama_version": get_json(args.url, "/api/version"), "machine": args.machine,
