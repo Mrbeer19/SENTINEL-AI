@@ -22,7 +22,7 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend import policy
-from backend.config import Settings
+from backend.config import Settings, same_model
 from backend.store import Store, utcnow
 
 THREAT_TYPES = ("HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY", "BENIGN", "UNKNOWN")
@@ -246,7 +246,7 @@ class Agent:
         try:
             async with httpx.AsyncClient(timeout=3) as client:
                 tags = (await client.get(f"{self.settings.ollama_url}/api/tags")).json().get("models", [])
-            return next((m.get("digest") for m in tags if m.get("name") == self.settings.model), None)
+            return next((m.get("digest") for m in tags if same_model(m.get("name", ""), self.settings.model)), None)
         except (httpx.HTTPError, ValueError):
             return None
 
