@@ -1,6 +1,7 @@
 """QLoRA fine-tune of Qwen3.5-4B for the 3 SENTINEL agents (RTX 4060 8 GB).
 
 Run (D:\\ai-env):  python model/finetune/train_qlora.py --base D:\\ai-models\\Qwen3.5-4B --out D:\\ai-models\\sentinel-lora-r1
+Run on Kaggle (free T4 16 GB): model/finetune/kaggle_train.ipynb
 
 Loss is computed on the agents' own turns only (tool calls, summary, JSON), never on the
 system prompt, the incident or tool results. Samples longer than --max-len are dropped, not cut,
@@ -104,9 +105,12 @@ def main():
     if args.limit:
         train, val = train[: args.limit], val[: max(4, args.limit // 4)]
 
+    # bf16 needs Ampere or newer; the Kaggle T4 (sm75) runs fp16 instead.
+    bf16 = torch.cuda.get_device_capability()[0] >= 8
+    dtype = torch.bfloat16 if bf16 else torch.float16
     model = AutoModelForCausalLM.from_pretrained(
-        args.base, dtype=torch.bfloat16, low_cpu_mem_usage=True, device_map={"": 0},
-        quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True))
+        args.base, dtype=dtype, low_cpu_mem_usage=True, device_map={"": 0},
+        quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=dtype, bnb_4bit_use_double_quant=True))
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
     model = get_peft_model(model, LoraConfig(r=args.rank, lora_alpha=2 * args.rank, lora_dropout=0.05, target_modules=TARGETS, task_type="CAUSAL_LM"))
     model.print_trainable_parameters()
@@ -118,7 +122,7 @@ def main():
         args=TrainingArguments(
             output_dir=args.out, per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
             num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="cosine", warmup_steps=max(1, steps // 20),
-            logging_steps=5, eval_strategy="epoch", save_strategy="steps", save_steps=args.save_steps, save_total_limit=2, bf16=True,
+            logging_steps=5, eval_strategy="epoch", save_strategy="steps", save_steps=args.save_steps, save_total_limit=2, bf16=bf16, fp16=not bf16,
             gradient_checkpointing=True, optim="paged_adamw_8bit", report_to=[], dataloader_num_workers=0, remove_unused_columns=False),
         train_dataset=train, eval_dataset=val, data_collator=collate(tok.pad_token_id or tok.eos_token_id))
     trainer.train(resume_from_checkpoint=args.resume and any(Path(args.out).glob("checkpoint-*")))
