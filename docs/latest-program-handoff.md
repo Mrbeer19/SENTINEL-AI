@@ -67,6 +67,7 @@ The recorded LAN and live-website demonstrations used **r2**. The website sideca
 - PR #15: real-server `/api/enforce`. Checks passed when inspected; Obeto review still required.
 - The frontend/integration handoff is based on #15 so the current backend service remains intact. Its PR targets the #15 branch to show only the new frontend/integration diff. Merge #15 into dev and retarget this PR to dev before merging it separately.
 - Source sidecar and usage: `integrations/sidecar/`.
+- A separate Caddy/SSH bridge source appeared during the handoff and is included in `integrations/rod_mai_rod/` for review. It is not the sidecar demonstration described above. This upload performs no VPS installation or scheduled-task change and supplies no fresh evidence that the bridge was deployed.
 
 Approval of another person's review cannot be supplied by a bot under that person's identity. These changes are uploaded for review; this handoff does not merge the pending backend/model PRs.
 
