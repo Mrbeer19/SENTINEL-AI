@@ -12,12 +12,12 @@ import DemoLab from './pages/DemoLab.jsx'
 import { WorkflowGuide } from './components/WorkflowGuide.jsx'
 
 const NAV = [
-  { key: 'overview', label: 'Overview', icon: 'home' },
-  { key: 'incidents', label: 'Incidents', icon: 'alert' },
-  { key: 'trace', label: 'Agent Trace', icon: 'trace' },
-  { key: 'approvals', label: 'Approvals', icon: 'check' },
-  { key: 'rules', label: 'Rules', icon: 'rules' },
-  { key: 'reports', label: 'Reports', icon: 'reports' },
+  { key: 'overview', label: 'ภาพรวมระบบ', icon: 'home' },
+  { key: 'incidents', label: 'เหตุการณ์', icon: 'alert' },
+  { key: 'trace', label: 'การวิเคราะห์', icon: 'trace' },
+  { key: 'approvals', label: 'รออนุมัติ', icon: 'check' },
+  { key: 'rules', label: 'จัดการบล็อก', icon: 'rules' },
+  { key: 'reports', label: 'รายงาน', icon: 'reports' },
 ]
 
 const PAGES = {
@@ -52,6 +52,7 @@ export default function App() {
   }, [])
 
   useEffect(() => { document.getElementById('main')?.focus({ preventScroll: true }) }, [route.page, route.id])
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [route.page])
 
   // Every write goes through here so buttons disable while a request is in flight.
   const act = useCallback(async (path, { method = 'POST', body = {}, accept, ok } = {}) => {
@@ -82,7 +83,7 @@ export default function App() {
     <a className="skip" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus() }}>ข้ามไปยังเนื้อหา</a>
     <aside className="sidebar">
       <a className="brand" href="#/overview" aria-label="SENTINEL AI overview"><span className="brandSymbol"><Icon name="shield" size={28} /></span><span>SENTINEL <b>AI</b><small>SECURITY OPERATIONS</small></span></a>
-      <div className="navLabel">WORKSPACE</div>
+      <div className="navLabel">/ CONTROL CENTER</div>
       <nav aria-label="Main">
         {NAV.map(item => <a key={item.key} href={`#/${item.key}`} className={active === item.key ? 'active' : ''} aria-current={active === item.key ? 'page' : undefined}>
           <Icon name={item.icon} size={20} /><span>{item.label}</span>{item.key === 'approvals' && pending > 0 && <em className="count" aria-label={`${pending} pending`}>{pending}</em>}
@@ -97,7 +98,7 @@ export default function App() {
 
     <main id="main" tabIndex={-1}>
       <div className="workspaceBar"><div className="workspaceCrumb"><Icon name="shield" size={15} /><span>Workspace</span><span className="crumbSlash">/</span><b>{NAV.find(item => item.key === active)?.label || (active === 'lab' ? 'Demo Lab' : 'Overview')}</b></div><div className="workspaceActions"><span className="lastUpdated">{updatedAt ? <>Updated <time dateTime={updatedAt}>{fmtTime(updatedAt)}</time></> : 'Waiting for server'}</span><button className={`refreshButton ${refreshing ? 'refreshing' : ''}`} onClick={live.refresh} disabled={refreshing} aria-label="Refresh live data" title="Refresh live data"><Icon name="refresh" size={16} /></button></div></div>
-      <header className="topbar">
+      <header className={`topbar ${route.page === 'overview' ? 'overviewTopbar' : ''}`}>
         <div><div className="eyebrow"><i className="dot mint" />LOCAL SECURITY WORKSPACE</div><h1>{title}</h1><p>{subtitle}</p></div>
         <div className="topStatus">
           <span className={`chip ${connected && !error ? 'good' : 'bad'}`}><i className="dot" />M5 Server · {error ? 'Offline' : connected ? 'Online' : 'Reconnecting'}</span>

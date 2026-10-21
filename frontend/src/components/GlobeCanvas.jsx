@@ -50,10 +50,10 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null }) {
       const spin = focusRef.current === null ? -.75 + elapsed * .000045 : -focusRef.current * RAD + Math.sin(elapsed * .00015) * .07
       ctx.clearRect(0, 0, width, height)
       const atmosphere = ctx.createRadialGradient(cx, cy, radius * .72, cx, cy, radius * 1.32)
-      atmosphere.addColorStop(0, 'rgba(0,235,218,0)'); atmosphere.addColorStop(.48, 'rgba(0,235,218,.15)'); atmosphere.addColorStop(1, 'rgba(0,235,218,0)')
+      atmosphere.addColorStop(0, 'rgba(134,78,219,0)'); atmosphere.addColorStop(.48, 'rgba(134,78,219,.15)'); atmosphere.addColorStop(1, 'rgba(134,78,219,0)')
       ctx.fillStyle = atmosphere; ctx.fillRect(cx - radius * 1.4, cy - radius * 1.4, radius * 2.8, radius * 2.8)
       const surface = ctx.createRadialGradient(cx - radius * .3, cy - radius * .4, 0, cx, cy, radius)
-      surface.addColorStop(0, '#07434a'); surface.addColorStop(.5, '#032b36'); surface.addColorStop(1, '#010a15')
+      surface.addColorStop(0, '#efebf5'); surface.addColorStop(.5, '#e4deef'); surface.addColorStop(1, '#c8bfd9')
       ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fillStyle = surface; ctx.fill()
       const line = (points, alpha = .1) => {
         ctx.beginPath(); let drawing = false
@@ -63,7 +63,7 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null }) {
           if (drawing) ctx.lineTo(cx + x * radius, cy + y * radius)
           else { ctx.moveTo(cx + x * radius, cy + y * radius); drawing = true }
         }
-        ctx.strokeStyle = `rgba(30,220,218,${alpha})`; ctx.lineWidth = .65; ctx.stroke()
+        ctx.strokeStyle = `rgba(100,74,140,${alpha})`; ctx.lineWidth = .65; ctx.stroke()
       }
       for (let lat = -60; lat <= 60; lat += 20) line(Array.from({ length: 121 }, (_, n) => vector(lat * RAD, n * Math.PI / 60)), .16)
       for (let lon = 0; lon < 180; lon += 20) line(Array.from({ length: 121 }, (_, n) => vector(n * Math.PI / 60, lon * RAD)), .13)
@@ -71,11 +71,11 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null }) {
       for (const point of dots) {
         const [x, y, z] = project(point, spin)
         if (z < -.03) continue
-        ctx.fillStyle = `rgba(71,242,225,${.23 + Math.max(0, z) * .63})`
+        ctx.fillStyle = `rgba(60,35,92,${.23 + Math.max(0, z) * .63})`
         const size = .65 + Math.max(0, z) * .55
         ctx.fillRect(cx + x * radius, cy + y * radius, size, size)
       }
-      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(75,255,238,.5)'; ctx.lineWidth = 1; ctx.shadowColor = '#11ead3'; ctx.shadowBlur = 13; ctx.stroke(); ctx.shadowBlur = 0
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(109,72,160,.5)'; ctx.lineWidth = 1; ctx.shadowColor = '#8950d8'; ctx.shadowBlur = 13; ctx.stroke(); ctx.shadowBlur = 0
       for (let ring = 0; ring < 3; ring++) {
         const tilt = -.8 + ring * .35, phase = ring * .7 + elapsed * .00009
         const r = radius * (1.12 + ring * .07)
@@ -85,10 +85,10 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null }) {
           const x = px * Math.cos(tilt) - py * Math.sin(tilt), y = px * Math.sin(tilt) + py * Math.cos(tilt)
           if (!n) ctx.moveTo(cx + x, cy + y); else ctx.lineTo(cx + x, cy + y)
         }
-        ctx.strokeStyle = `rgba(${ring % 2 ? '43,153,228' : '17,234,211'},${.12 + (ring === 2 ? .1 : 0)})`; ctx.lineWidth = .8; ctx.stroke()
+        ctx.strokeStyle = `rgba(${ring % 2 ? '45,35,62' : '136,79,214'},${.12 + (ring === 2 ? .1 : 0)})`; ctx.lineWidth = .8; ctx.stroke()
         const px = Math.cos(phase) * r, py = Math.sin(phase) * r * .42
         ctx.beginPath(); ctx.arc(cx + px * Math.cos(tilt) - py * Math.sin(tilt), cy + px * Math.sin(tilt) + py * Math.cos(tilt), 2, 0, Math.PI * 2)
-        ctx.fillStyle = '#8afff4'; ctx.shadowColor = '#11ead3'; ctx.shadowBlur = 11; ctx.fill(); ctx.shadowBlur = 0
+        ctx.fillStyle = '#bdff41'; ctx.shadowColor = '#8950d8'; ctx.shadowBlur = 11; ctx.fill(); ctx.shadowBlur = 0
       }
       for (const marker of markerRef.current) {
         const { latitude, longitude } = marker
@@ -96,10 +96,10 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null }) {
         const [x, y, z] = project(vector(latitude * RAD, longitude * RAD), spin)
         if (z <= 0) continue
         const px = cx + x * radius, py = cy + y * radius
-        const color = marker.threat || marker.blocked ? '#ff667c' : '#3affcf'
+        const color = marker.threat || marker.blocked ? '#ff667c' : '#5a9700'
         ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0
         ctx.beginPath(); ctx.arc(px, py, 8 + (Math.sin(elapsed * .003) + 1) * 3, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.globalAlpha = .45; ctx.stroke(); ctx.globalAlpha = 1
-        if (marker.label) { ctx.font = '14px system-ui'; ctx.fillStyle = '#edf7fa'; ctx.fillText(String(marker.label).slice(0, 45), px + 10, py - 8) }
+        if (marker.label) { ctx.font = '14px system-ui'; ctx.fillStyle = '#19131f'; ctx.fillText(String(marker.label).slice(0, 45), px + 10, py - 8) }
       }
     }
     const tick = now => {
