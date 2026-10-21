@@ -71,6 +71,10 @@ class TrafficIn(BaseModel):
     source_ip: IPvAnyAddress | None = None
 
 
+class EnforceIn(BaseModel):
+    client_ip: IPvAnyAddress
+
+
 class SimulationIn(BaseModel):
     scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "suspicious_login", "traffic_anomaly", "normal"]
     source_ip: IPvAnyAddress = "192.0.2.25"
@@ -404,13 +408,10 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed", username=login.username))
         return JSONResponse({"authenticated": success, "source_ip": peer, "event_id": result["event"]["id"]}, status_code=200 if success else 401)
 
-    @api.post("/api/demo/traffic")
-    async def demo_traffic(traffic: TrafficIn, request: Request):
-        peer = request.client.host if request.client else "127.0.0.1"
-        # Source override is only for local, controlled lab simulation.
-        if traffic.source_ip and peer not in LOCAL_PEERS:
-            raise HTTPException(403, "source override requires localhost")
-        source = str(traffic.source_ip) if traffic.source_ip else peer
+    async def record_source_decision(source: str) -> dict:
+        """Check the active block rules for one source IP, log the request, and flip the
+        incident to verified when a blocked source is denied. Shared by the demo traffic
+        endpoint and the real-server enforcement endpoint so both decide identically."""
         rule = store.one("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC LIMIT 1", (source, utcnow()))
         decision = "denied" if rule else "allowed"
         with store.tx() as con:
@@ -425,7 +426,26 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         await broadcast("traffic", result)
         if rule:
             await broadcast("verification", result)
-        return JSONResponse(result, status_code=403 if rule else 200)
+        return result
+
+    @api.post("/api/demo/traffic")
+    async def demo_traffic(traffic: TrafficIn, request: Request):
+        peer = request.client.host if request.client else "127.0.0.1"
+        # Source override is only for local, controlled lab simulation.
+        if traffic.source_ip and peer not in LOCAL_PEERS:
+            raise HTTPException(403, "source override requires localhost")
+        source = str(traffic.source_ip) if traffic.source_ip else peer
+        result = await record_source_decision(source)
+        return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
+
+    @api.post("/api/enforce")
+    async def enforce(body: EnforceIn):
+        """Enforcement hook for a real server behind SENTINEL. A trusted reverse proxy
+        (same admin key) reports the real client IP per request; the response says whether
+        to block it. Admin-only: the access-control middleware already refuses /api/enforce
+        from any non-local caller without X-Admin-Key, so only the proxy can reach it."""
+        result = await record_source_decision(str(body.client_ip))
+        return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
 
     @api.post("/api/demo/reset")
     async def demo_reset():
