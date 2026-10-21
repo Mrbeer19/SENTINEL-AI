@@ -18,6 +18,8 @@
 
 v2 และ obeto-v3 ใช้วัดเท่านั้น ห้ามนำเคสหรือข้อความไปใส่ข้อมูล fine-tune รันด้วย `--cases <ไฟล์> --split test`
 
+`cases_sha256` ใน JSONL ของ v2 (`88f416cd…`) คำนวณจากไฟล์ CRLF ที่สร้างบน Windows · ไฟล์ใน repo เป็น LF (`5c0dff4d…`) เนื้อหาเท่ากันทุกเคส · SSH ผิดแล้ว `Accepted` v2 รับทั้ง SUSPICIOUS_LOGIN และ SSH_BRUTE_FORCE ส่วน obeto-v3 รับแค่ SUSPICIOUS_LOGIN (นับแบบ v2: obeto-v3 r2 33/34, qwen 29/34)
+
 | ชุด | r2 | qwen3.5:4b | ผลดิบ |
 |---|---|---|---|
 | v2 (RTX 4060) | 38/40, FP 0, 6.1 วิ | 33/40, FP 5, 8.4 วิ | `results/v2/` |
