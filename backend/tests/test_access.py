@@ -19,6 +19,7 @@ SOC_ROUTES = [
     ("post", "/api/simulations", {"scenario": "normal"}), ("post", "/api/simulations/start", {"scenario": "normal"}),
     ("post", "/api/simulations/stop", None), ("get", "/api/simulations/state", None), ("post", "/api/demo/reset", None), ("get", "/api/metrics", None),
     ("get", "/api/reports/1", None), ("get", "/api/audit", None), ("get", "/api/audit/verify", None),
+    ("post", "/api/enforce", {"client_ip": "192.0.2.1"}),
 ]
 
 
