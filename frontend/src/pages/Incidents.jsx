@@ -78,7 +78,7 @@ export default function Incidents({ ctx }) {
             <td><SeverityBadge value={i.severity} /></td><td><StatusBadge status={i.status} /></td><td className="mono">{fmtTime(last?.timestamp || i.created_at)}</td>
           </tr>
         })}</tbody></table></div>
-        : filtered ? <NoResults onClear={clear} /> : <Empty>ยังไม่มี incident · เริ่มจาก <a href="#/lab">Demo Lab</a> หรือส่งคำขอทดสอบจาก Neo</Empty>}
+        : filtered ? <NoResults onClear={clear} /> : <Empty>ยังไม่มี incident · ระบบจะเพิ่มรายการเมื่อตรวจพบเหตุการณ์จาก rod-mai-rod</Empty>}
     </Panel>
 
     <Panel className="side">

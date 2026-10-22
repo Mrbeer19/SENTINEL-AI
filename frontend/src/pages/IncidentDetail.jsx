@@ -111,7 +111,7 @@ export default function IncidentDetail({ ctx, id }) {
 
     <div className="stack">
       <Panel title="Investigation Summary" icon="brain" actions={<ModeBadge mode={report.analysis_mode} />}>
-        {report.status === 'closed' && !analysis ? <p className="muted">ปิดเหตุการณ์ก่อนวิเคราะห์ (เช่น demo reset) · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} meta={report.analysis_meta} />}
+        {report.status === 'closed' && !analysis ? <p className="muted">เหตุการณ์ปิดก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} meta={report.analysis_meta} />}
       </Panel>
       <Panel title="Proposed Response" icon="shield">
         {p ? <>
@@ -161,8 +161,8 @@ export function VerificationView({ v, report }) {
     : report.status === 'rejected' || (!report.proposal && noProposalNote[report.status])
       ? <div className="verifyState muted"><Icon name="x" size={34} /><div><b>Not applicable</b><span>{report.status === 'rejected' ? 'Proposal was rejected, so no rule was created.' : 'No block was proposed, so there is nothing to verify.'}</span></div></div>
       : v.rule
-        ? <div className="verifyState warn"><Icon name="clock" size={34} /><div><b>Approved · not verified yet</b><span>{isActiveRule(v.rule) ? 'Send a new request from the tester (Neo) to prove the block.' : 'Rule expired before any new request was denied.'}</span></div></div>
-        : <div className="verifyState muted"><Icon name="clock" size={34} /><div><b>Not verified yet</b><span>Approve, then send a new request from Neo.</span></div></div>
+        ? <div className="verifyState warn"><Icon name="clock" size={34} /><div><b>Approved · not verified yet</b><span>{isActiveRule(v.rule) ? 'A new request from this source must be denied to verify the block.' : 'Rule expired or was removed before any new request was denied.'}</span></div></div>
+        : <div className="verifyState muted"><Icon name="clock" size={34} /><div><b>Not verified yet</b><span>Approve the proposal, then inspect the next request from this source.</span></div></div>
   return <div className="verify">
     {status}
     <div className="beforeAfter">
@@ -179,6 +179,6 @@ function RequestCard({ title, sub, t, waiting = 'No request recorded' }) {
   return <div className={`reqCard ${denied ? 'bad' : 'good'}`}>
     <small>{title} <em>({sub})</em></small>
     <b>{denied ? 'HTTP 403 · Denied' : 'Allowed'}</b>
-    <Code>{`demo app request\nsource ${t.source_ip}\n${fmtTime(t.created_at)} · ${t.decision}`}</Code>
+    <Code>{`app request\nsource ${t.source_ip}\n${fmtTime(t.created_at)} · ${t.decision}`}</Code>
   </div>
 }

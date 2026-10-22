@@ -15,6 +15,7 @@ export async function request(path, { method = 'GET', body, accept = [] } = {}) 
   } catch {
     throw new ApiError(0, 'เชื่อมต่อ server ไม่ได้')
   }
+  if (response.status === 401 && !path.startsWith('/api/auth/')) window.dispatchEvent(new Event('sentinel-auth-expired'))
   let payload = null
   try { payload = await response.json() } catch { payload = null }
   if (!response.ok && !accept.includes(response.status)) throw new ApiError(response.status, payload?.detail ?? `HTTP ${response.status}`)

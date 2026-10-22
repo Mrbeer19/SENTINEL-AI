@@ -94,4 +94,4 @@ def test_request_limits(client, body):
 
 def test_logs_endpoint_is_local_only(make_app):
     from conftest import connect
-    assert connect(make_app(), "192.168.1.90").post("/api/logs", json={"format": "sshd", "lines": [failed()]}).status_code == 403
+    assert connect(make_app(), "192.168.1.90").post("/api/logs", json={"format": "sshd", "lines": [failed()]}).status_code == 401

@@ -12,7 +12,7 @@ def test_end_to_end_approval_and_verification(tmp_path: Path, monkeypatch):
     async def run():
         app = create_app(tmp_path / "soc.db")
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             before = await client.post("/api/demo/traffic", json={"source_ip": "192.0.2.25"})
             assert before.json()["decision"] == "allowed"
             simulated = await client.post("/api/simulations", json={"scenario": "http_brute_force", "source_ip": "192.0.2.25"})
@@ -40,7 +40,7 @@ def test_policy_repeated_decision_unblock_and_persistence(tmp_path: Path, monkey
     monkeypatch.setenv("SENTINEL_DISABLE_OLLAMA", "1")
     path = tmp_path / "soc.db"
     async def run():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(path)), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(path)), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             for ip in ["192.0.2.10", "127.0.0.1"]:
                 result = (await client.post("/api/simulations", json={"scenario": "port_scan", "source_ip": ip})).json()
                 incident = (await client.post(f"/api/incidents/{result['incident']['id']}/analyze")).json()
@@ -54,7 +54,7 @@ def test_policy_repeated_decision_unblock_and_persistence(tmp_path: Path, monkey
                 rule = (await client.get("/api/rules")).json()[0]
                 assert (await client.delete(f"/api/rules/{rule['id']}")).status_code == 200
                 assert (await client.post("/api/demo/traffic", json={"source_ip": ip})).status_code == 200
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(path)), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(path)), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             assert len((await client.get("/api/incidents")).json()) == 2
             assert not (await client.get("/api/rules")).json()[0]["active"]
     asyncio.run(run())
@@ -65,12 +65,12 @@ def test_remote_peer_cannot_spoof_ip_or_manage_without_key(tmp_path: Path):
         app = create_app(tmp_path / "soc.db")
         transport = httpx.ASGITransport(app=app, client=("192.168.1.90", 1234))
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            assert (await client.post("/api/simulations", json={"scenario": "normal"})).status_code == 403
+            assert (await client.post("/api/simulations", json={"scenario": "normal"})).status_code == 401
             assert (await client.post("/api/demo/traffic", json={"source_ip": "192.0.2.25"})).status_code == 403
             for _ in range(5):
                 assert (await client.post("/api/demo/login", json={"username": "student", "password": "wrong"})).status_code == 401
-            assert (await client.get("/api/incidents")).status_code == 403
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as local:
+            assert (await client.get("/api/incidents")).status_code == 401
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as local:
             incident = (await local.get("/api/incidents")).json()[0]
             assert incident["source_ip"] == "192.168.1.90"
             assert incident["kind"] == "HTTP_AUTH_BRUTE_FORCE"
@@ -79,7 +79,7 @@ def test_remote_peer_cannot_spoof_ip_or_manage_without_key(tmp_path: Path):
 
 def test_threshold_validation_and_duplicate_incidents(tmp_path: Path):
     async def run():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(tmp_path / "soc.db")), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(tmp_path / "soc.db")), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             bad = {"source_ip": "not-an-ip", "event_type": "HTTP_AUTH", "outcome": "failed"}
             assert (await client.post("/api/events", json=bad)).status_code == 422
             event = {**bad, "source_ip": "192.0.2.44"}
@@ -112,7 +112,7 @@ def test_model_selected_tool_executes_and_output_is_validated(tmp_path: Path, mo
     monkeypatch.delenv("SENTINEL_DISABLE_OLLAMA", raising=False)
     monkeypatch.setattr(httpx.AsyncClient, "post", reply)
     async def run():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(tmp_path / "soc.db")), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(tmp_path / "soc.db")), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             sim = (await client.post("/api/simulations", json={"scenario": "http_brute_force"})).json()
             incident = (await client.post(f"/api/incidents/{sim['incident']['id']}/analyze")).json()
             assert incident["analysis_mode"] == "ollama"
@@ -125,7 +125,7 @@ def test_model_selected_tool_executes_and_output_is_validated(tmp_path: Path, mo
 
 def test_websocket_delivers_real_event(tmp_path: Path):
     from fastapi.testclient import TestClient
-    with TestClient(create_app(tmp_path / "soc.db")) as client:
+    with TestClient(create_app(tmp_path / "soc.db"),headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
         with client.websocket_connect("/ws") as socket:
             hello = socket.receive_json()
             assert hello["stage"] == "connected" and hello["v"] == 2
@@ -139,7 +139,7 @@ def test_reject_and_normal_traffic(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("SENTINEL_DISABLE_OLLAMA", "1")
     async def run():
         app = create_app(tmp_path / "soc.db")
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", headers={"X-Admin-Key":"test-fixture-machine-key"}) as client:
             normal = await client.post("/api/simulations", json={"scenario": "normal", "source_ip": "192.0.2.30"})
             assert normal.json()["incident"] is None
             ssh = await client.post("/api/simulations", json={"scenario": "ssh_brute_force_logs", "source_ip": "192.0.2.31"})

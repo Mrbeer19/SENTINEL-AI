@@ -5,14 +5,14 @@ const STEPS = ['ตรวจพบ', 'วิเคราะห์', 'ตัด�
 
 export function WorkflowGuide() {
   return <details className="workflowGuide">
-    <summary><Icon name="info" size={16} />เริ่มใช้งานอย่างไร<span>ดูขั้นตอน M5 / Neo</span></summary>
+    <summary><Icon name="info" size={16} />เริ่มใช้งานอย่างไร<span>ขั้นตอนตรวจและตอบสนอง</span></summary>
     <div className="guideBody">
-      <p><b>M5 เปิดแดชบอร์ดนี้</b> เพื่อตรวจเหตุการณ์และตัดสินใจ · <b>Neo ส่งคำขอผ่าน Terminal</b> ตามคู่มือที่แยกไว้</p>
+      <p>ตรวจการล็อกอินของ rod-mai-rod จาก VPS แล้ววิเคราะห์เหตุการณ์ที่ระบบตรวจพบก่อนตัดสินใจ</p>
       <ol>{[
-        ['ส่งคำขอทดสอบ', 'Neo ส่งคำขอไปยัง M5 หรือใช้ Demo Lab เพื่อเล่นเหตุการณ์จำลอง', '#/lab'],
-        ['เปิดเหตุการณ์และวิเคราะห์', 'ตรวจหลักฐาน แล้วกดเริ่มวิเคราะห์ ระบบระบุชัดเมื่อใช้ rule fallback', '#/incidents'],
-        ['คนตรวจและอนุมัติ', 'ตรวจ Source IP กับระยะเวลาก่อนยืนยัน กฎครอบคลุมแอปสาธิตเท่านั้น', '#/approvals'],
-        ['ส่งคำขอใหม่จาก Neo', 'ต้องเห็น HTTP 403 ในคำขอใหม่ จึงนับว่ายืนยันการบล็อกแล้ว', '#/rules'],
+        ['รับเหตุการณ์จริง', 'การล็อกอินของ rod-mai-rod จะปรากฏในประวัติและคิวเหตุการณ์', '#/overview'],
+        ['AI วิเคราะห์อัตโนมัติ', 'ระบบวิเคราะห์เหตุการณ์ใหม่อัตโนมัติ ตรวจหลักฐานและคำแนะนำ โดยระบบระบุชัดเมื่อใช้ rule fallback', '#/incidents'],
+        ['คนตรวจและอนุมัติ', 'ตรวจ Source IP กับระยะเวลาก่อนยืนยัน กฎครอบคลุม rod-mai-rod เท่านั้น', '#/approvals'],
+        ['ตรวจผลจากคำขอใหม่', 'ต้องเห็น HTTP 403 ในคำขอใหม่ จึงนับว่ายืนยันการบล็อกแล้ว', '#/rules'],
         ['ดูและส่งรายงาน', 'รวมหลักฐาน ผลวิเคราะห์ ผู้ตัดสินใจ และผลการทดสอบ', '#/reports'],
       ].map(([title, note, href], i) => <li key={title}><span>{i + 1}</span><div><a href={href}>{title}</a><p>{note}</p></div></li>)}</ol>
     </div>
@@ -26,9 +26,9 @@ export function NextStep({ ctx, incident, overview = false }) {
   const active = rule && isActiveRule(rule, now)
   let step = 0, title, note, href, label, analyze = false, tone = 'info'
   if (!incident) {
-    title = 'พร้อมรับเหตุการณ์ทดสอบ'
-    note = 'ให้ Neo ส่งคำขอเข้ามาที่ M5 หรือเริ่มด้วยเหตุการณ์จำลองใน Demo Lab'
-    href = '#/lab'; label = 'เปิด Demo Lab'
+    title = 'พร้อมรับเหตุการณ์จาก rod-mai-rod'
+    note = 'ระบบจะแสดงการล็อกอินจริงจาก VPS เมื่อมีคำขอใหม่'
+    href = '#/overview'; label = 'ดูประวัติการล็อกอิน'
   } else if (p?.status === 'pending') {
     step = 2; tone = 'warn'; title = 'มีข้อเสนอรอคนตรวจทาน'
     note = `ตรวจหลักฐานและ IP เป้าหมาย ${p.target_ip || p.source_ip} ก่อนตัดสินใจ ยังไม่มีการบล็อกจากข้อเสนอนี้${p.source === 'rule_fallback' ? ' · ข้อเสนอนี้มาจาก rule fallback ไม่ใช่โมเดล' : ''}`
@@ -43,7 +43,7 @@ export function NextStep({ ctx, incident, overview = false }) {
     href = `#/reports/${incident.id}`; label = 'ดูรายงาน'
   } else if (incident.status === 'blocked' || p?.status === 'approved') {
     step = 3; tone = 'warn'; title = active ? 'รอคำขอใหม่จากแหล่งเดิมเพื่อยืนยันผล' : 'กฎไม่ทำงานแล้ว · ยังยืนยันผลไม่ได้'
-    note = active ? `ต้องมีคำขอใหม่จาก IP ${incident.source_ip} ที่ได้ HTTP 403 · ทดสอบจริงส่งจาก Neo ส่วน IP จำลองให้ส่งจาก Demo Lab` : 'การอนุมัติอย่างเดียวไม่ยืนยันว่าบล็อกสำเร็จ ดูบันทึกเดิมหรือเริ่มการทดสอบรอบใหม่'
+    note = active ? `ต้องมีคำขอใหม่จาก IP ${incident.source_ip} ที่ได้ HTTP 403 จึงจะยืนยันผลได้` : 'การอนุมัติอย่างเดียวไม่ยืนยันว่าบล็อกสำเร็จ ดูบันทึกเดิมหรือรอคำขอใหม่'
     href = active ? (overview ? `#/incident/${incident.id}` : `#/rules/${rule.id}`) : `#/reports/${incident.id}`
     label = active ? (overview ? 'ดูผลการทดสอบ' : 'ดูกฎที่ทำงาน') : 'ดูรายงาน'
   } else if (incident.status === 'analyzing') {
@@ -60,7 +60,7 @@ export function NextStep({ ctx, incident, overview = false }) {
     href = `#/reports/${incident.id}`; label = 'ดูรายงาน'
   } else if (incident.status === 'closed') {
     step = 4; title = 'ปิดเหตุการณ์แล้ว'
-    note = rule ? 'กฎถูกปลดก่อนมีคำขอใหม่มายืนยันผล หรือปิดจาก demo reset' : 'ไม่ต้องดำเนินการ หรือปิดจาก demo reset · ไม่มีการสร้างกฎ'
+    note = rule ? 'กฎถูกปลดก่อนมีคำขอใหม่มายืนยันผล' : 'ไม่มีการสร้างกฎบล็อก'
     href = `#/reports/${incident.id}`; label = 'ดูรายงาน'
   } else if (!incident.analysis) {
     step = 1; title = 'ตรวจพบเหตุการณ์ · เริ่มวิเคราะห์ได้'

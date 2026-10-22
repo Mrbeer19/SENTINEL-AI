@@ -1,5 +1,4 @@
-"""Who may call what: localhost and admin-key holders run the SOC; LAN peers only reach the demo endpoints."""
-
+"""Who may call what: localhost and admin-key holders run the SOC; demo endpoints require lab mode."""
 import pytest
 from conftest import connect
 from fastapi.testclient import TestClient
@@ -10,6 +9,15 @@ import backend.app as app_module
 KEY = "k" * 24
 REMOTE = "192.168.1.90"
 REVIEW = {"reviewer": "teacher"}
+
+
+def test_live_mode_disables_demo_without_disabling_event_ingest(make_app):
+    client = connect(make_app(SENTINEL_ENABLE_DEMO="0"))
+    assert client.post("/api/demo/login", json={"username": "u", "password": "p"}).status_code == 404
+    assert client.post("/api/demo/traffic", json={}).status_code == 404
+    assert client.post("/api/simulations", json={"scenario": "normal"}).status_code == 404
+    assert client.get("/api/simulations/state").status_code == 404
+    assert client.post("/api/events", json={"source_ip": "198.18.0.1", "event_type": "HTTP_AUTH", "outcome": "failed"}).status_code in {200, 201}
 
 SOC_ROUTES = [
     ("get", "/api/events", None), ("post", "/api/events", {"source_ip": "192.0.2.1", "event_type": "HTTP_AUTH", "outcome": "failed"}),
@@ -30,7 +38,7 @@ def call(client, method, path, body):
 @pytest.mark.parametrize("method,path,body", SOC_ROUTES)
 def test_remote_peer_without_key_is_refused(make_app, method, path, body):
     response = call(connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE), method, path, body)
-    assert response.status_code == 403 and "X-Admin-Key" in response.json()["detail"]
+    assert response.status_code == 401 and "login" in response.json()["detail"]
 
 
 @pytest.mark.parametrize("method,path,body", SOC_ROUTES)
@@ -41,16 +49,16 @@ def test_remote_peer_with_key_passes_access_control(make_app, method, path, body
 
 @pytest.mark.parametrize("headers", [{"X-Admin-Key": "wrong"}, {"X-Admin-Key": KEY[:-1]}, {"X-Admin-Key": ""}, {"X-Admin": KEY}])
 def test_wrong_or_missing_key_is_refused(make_app, headers):
-    assert connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE, headers).get("/api/incidents").status_code == 403
+    assert connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE, headers).get("/api/incidents").status_code == 401
 
 
 def test_empty_key_setting_never_matches_empty_header(make_app):
-    assert connect(make_app(), REMOTE, {"X-Admin-Key": ""}).get("/api/incidents").status_code == 403
+    assert connect(make_app(), REMOTE, {"X-Admin-Key": ""}).get("/api/incidents").status_code == 401
 
 
 @pytest.mark.parametrize("peer", ["127.0.0.1", "::1", "testclient"])
-def test_local_peers_need_no_key(make_app, peer):
-    assert connect(make_app(), peer).get("/api/incidents").status_code == 200
+def test_local_peers_require_authentication(make_app, peer):
+    assert TestClient(make_app(), client=(peer,1234)).get("/api/incidents").status_code == 401
 
 
 @pytest.mark.parametrize("method,path,body", [("get", "/api/health", None), ("post", "/api/demo/traffic", {}),
@@ -121,7 +129,7 @@ def test_cors_allows_only_the_dev_dashboard(client):
 @pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"])
 def test_api_docs_are_hidden_from_the_lab(make_app, path):
     app = make_app(SENTINEL_ADMIN_KEY=KEY)
-    assert connect(app, REMOTE).get(path).status_code == 403
+    assert connect(app, REMOTE).get(path).status_code == 401
     assert connect(app, REMOTE, {"X-Admin-Key": KEY}).get(path).status_code == 200
     assert connect(app).get(path).status_code == 200
 
@@ -179,7 +187,7 @@ def test_websocket_from_another_site_is_refused(make_app):
 
 
 def test_websocket_from_the_dashboard_is_accepted(make_app):
-    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": "http://localhost:5173"}) as client:
+    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": "http://localhost:5173", "X-Admin-Key": "test-fixture-machine-key"}) as client:
         with client.websocket_connect("/ws") as socket:
             assert socket.receive_json()["stage"] == "connected"
 

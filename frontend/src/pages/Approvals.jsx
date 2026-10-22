@@ -57,7 +57,7 @@ function Review({ ctx, proposal: p }) {
   const pending = p.status === 'pending'
   const valid = reviewer.trim().length >= 2 && !!report && !error
   const decide = async (action) => {
-    const result = await ctx.act(`/api/proposals/${p.id}/${action}`, { body: { reviewer: reviewer.trim() }, ok: action === 'approve' ? 'อนุมัติแล้ว · ให้ Neo ส่งคำขอใหม่เพื่อยืนยัน HTTP 403' : 'ปฏิเสธแล้ว · ไม่มีการสร้างกฎ' })
+    const result = await ctx.act(`/api/proposals/${p.id}/${action}`, { body: { reviewer: reviewer.trim() }, ok: action === 'approve' ? 'อนุมัติแล้ว · รอคำขอใหม่เพื่อยืนยัน HTTP 403' : 'ปฏิเสธแล้ว · ไม่มีการสร้างกฎ' })
     if (result) { setConfirm(null); go('approvals', p.id) }
   }
   const analysis = parseAnalysis(report?.analysis)
@@ -87,7 +87,7 @@ function Review({ ctx, proposal: p }) {
       </section>
       <section className="box">
         <h3><Icon name="trace" />Execution Scope</h3>
-        <div className="scope"><Icon name="server" size={28} /><div><b>Blocks requests to this demo application only.</b><span>Adds a temporary app-level rule for <span className="mono">{targetIp(p)}</span>. No macOS firewall changes.{p.d3fend && <> MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering).</>}</span></div></div>
+        <div className="scope"><Icon name="server" size={28} /><div><b>กฎนี้ครอบคลุมเฉพาะ rod-mai-rod</b><span>เพิ่มกฎชั่วคราวสำหรับ <span className="mono">{targetIp(p)}</span> ในระบบป้องกันเว็บนี้เท่านั้น{p.d3fend && <> · MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering)</>}</span></div></div>
         <h4>Server-side policy</h4>
         <ul className="policy">
           <li>Target must be the incident source IP; loopback and protected addresses are refused (HTTP 400)</li>
@@ -108,7 +108,7 @@ function Review({ ctx, proposal: p }) {
       </div>
       {confirm && <section ref={confirmation} tabIndex={-1} className="decisionConfirm" role="region" aria-label="ตรวจทานการตัดสินใจ">
         <h3>{confirm === 'approve' ? 'ยืนยันบล็อก IP นี้หรือไม่?' : 'ยืนยันปฏิเสธข้อเสนอนี้หรือไม่?'}</h3>
-        <p>{confirm === 'approve' ? <>แอปสาธิตจะปฏิเสธคำขอจาก <b className="mono">{targetIp(p)}</b> เป็นเวลา <b>{p.duration_seconds / 60} นาที</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{targetIp(p)}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
+        <p>{confirm === 'approve' ? <>เว็บ rod-mai-rodจะปฏิเสธคำขอจาก <b className="mono">{targetIp(p)}</b> เป็นเวลา <b>{p.duration_seconds / 60} นาที</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{targetIp(p)}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
         <p className="muted small">บันทึกการตัดสินใจโดย {reviewer.trim()} · ข้อเสนอนี้ตัดสินใจได้ครั้งเดียว</p>
         <div className="decisionActions"><button className={`btn ${confirm === 'approve' ? 'primary' : 'danger'}`} disabled={ctx.busy || !!ctx.error || !valid} onClick={() => decide(confirm)}>{ctx.busy ? 'กำลังบันทึก…' : confirm === 'approve' ? 'ยืนยันบล็อก IP' : 'ยืนยันปฏิเสธ'}</button><button className="btn ghost" disabled={ctx.busy} onClick={() => { setConfirm(null); confirmTrigger.current?.focus() }}>กลับไปตรวจทาน</button></div>
       </section>}

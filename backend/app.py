@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import ipaddress
+from contextlib import asynccontextmanager, suppress
 import asyncio
 import json
 import secrets
@@ -21,12 +24,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
 from backend import logparse, policy, soc
+from backend.admin_auth import AdminAuth, COOKIE
 from backend.agent import Agent
 from backend.config import LOCAL_PEERS, ROOT, load_settings
 from backend.detection import Match, RuleSet
 from backend.store import Store, audit, utcnow, verify_audit
 
-DEFAULT_DB = ROOT / "data" / "sentinel.db"
+DEFAULT_DB = Path(os.getenv("SENTINEL_DB_PATH", str(ROOT / "data" / "sentinel.db")))
 API_VERSION = "0.2.0"
 WS_VERSION = 2
 
@@ -65,6 +69,11 @@ class DecisionIn(BaseModel):
 class LoginIn(BaseModel):
     username: str = Field(max_length=USERNAME_INPUT_MAX)
     password: str = Field(max_length=120)
+
+
+class AdminLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class TrafficIn(BaseModel):
@@ -121,9 +130,52 @@ def clean_username(value: str | None) -> tuple[str | None, bool]:
 def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     settings = load_settings()
     store = Store(db_path)
+    auth = AdminAuth(db_path)
     ruleset = RuleSet(settings.rules_dir)
     agent = Agent(settings, store)
-    api = FastAPI(title="SENTINEL AI", version=API_VERSION)
+    async def automatic_analysis():
+        while True:
+            # Reconcile events written by the legacy collector backend sharing this DB.
+            expired = store.rows("""SELECT i.id,i.source_ip,i.kind FROM incidents i
+                WHERE i.status='blocked' AND NOT EXISTS
+                (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id WHERE p.incident_id=i.id AND r.expires_at>?)
+                AND EXISTS (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id
+                            WHERE p.incident_id=i.id AND i.updated_at>r.expires_at) LIMIT 20""", (utcnow(),))
+            for old in expired:
+                with store.tx() as con:
+                    event = con.execute('SELECT * FROM events WHERE source_ip=? ORDER BY id DESC LIMIT 1',(old['source_ip'],)).fetchone()
+                    if event:
+                        record = dict(event)
+                        for match in ruleset.evaluate(con, record):
+                            if match.rule.kind == old['kind']:
+                                upsert_incident(con, match, record)
+            rows = store.rows("SELECT id FROM incidents WHERE status='detected' AND analysis IS NULL ORDER BY id LIMIT 1")
+            if not rows:
+                await asyncio.sleep(2)
+                continue
+            incident_id = rows[0]['id']
+            try:
+                await analyze(incident_id)
+            except HTTPException as error:
+                if error.status_code != 409:
+                    await asyncio.sleep(10)
+            except Exception:
+                with store.tx() as con:
+                    con.execute("UPDATE incidents SET status='detected', updated_at=? WHERE id=? AND status='analyzing' AND analysis IS NULL", (utcnow(), incident_id))
+                    log(con, incident_id, 'analysis_error', 'Automatic analysis failed; queued for retry')
+                await asyncio.sleep(30)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        task = asyncio.create_task(automatic_analysis())
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    api = FastAPI(title="SENTINEL AI", version=API_VERSION, lifespan=lifespan)
     api.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
     # DNS rebinding: a hostile name resolving to 127.0.0.1 still carries its own Host header.
     api.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(settings.allowed_hosts))
@@ -142,15 +194,23 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
 
     def trusted(peer: str, headers) -> bool:
         provided = headers.get("X-Admin-Key", "")
-        return peer in LOCAL_PEERS or bool(settings.admin_key and secrets.compare_digest(settings.admin_key, provided))
+        return bool(settings.admin_key and secrets.compare_digest(settings.admin_key, provided))
 
     @api.middleware("http")
     async def access_control(request: Request, call_next):
         peer = request.client.host if request.client else ""
         path = request.url.path
+        if not settings.demo_enabled and (path.startswith("/api/demo/") or path.startswith("/api/simulations")):
+            return JSONResponse({"detail": "Demo endpoints are disabled"}, status_code=404)
         if request.method in UNSAFE_METHODS and not same_site(request.headers.get("origin")):
             return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
-        if not trusted(peer, request.headers):
+        public_auth = path in {'/api/auth/login', '/api/auth/session'}
+        authenticated = auth.valid(request.cookies.get(COOKIE))
+        if path.startswith('/api/') and not public_auth and not (settings.demo_enabled and path in RATE_LIMITED) and not authenticated and not trusted(peer, request.headers):
+            return JSONResponse({'detail': 'Admin login required'}, status_code=401)
+        if path in docs_paths and not authenticated and not trusted(peer, request.headers):
+            return JSONResponse({'detail': 'Admin login required'}, status_code=401)
+        if not authenticated and not trusted(peer, request.headers) and not public_auth:
             if (path.startswith("/api/") and path not in PUBLIC_PATHS) or path in docs_paths:
                 return JSONResponse({"detail": "Remote access to the SOC API requires X-Admin-Key"}, status_code=403)
             if path in RATE_LIMITED:
@@ -164,7 +224,36 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                 if len(window) >= settings.demo_rate_limit:
                     return JSONResponse({"detail": "Too many demo requests; slow down"}, status_code=429)
                 window.append(now)
-        return await call_next(request)
+        response = await call_next(request)
+        if path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        return response
+
+    @api.get('/api/auth/session')
+    async def admin_session(request: Request):
+        valid = auth.valid(request.cookies.get(COOKIE))
+        return {'authenticated': valid, 'configured': bool(auth.password), 'username': auth.username if valid else None}
+
+    @api.post('/api/auth/login')
+    async def admin_login(body: AdminLogin, request: Request):
+        if not auth.password:
+            raise HTTPException(503, 'Admin credentials have not been configured')
+        status, token = await asyncio.to_thread(auth.login, body.username, body.password)
+        if status == 'limited': raise HTTPException(429, 'Too many attempts. Try again in 5 minutes')
+        if status != 'ok': raise HTTPException(401, 'Invalid username or password')
+        auth.revoke(request.cookies.get(COOKIE))
+        response = JSONResponse({'authenticated': True})
+        response.set_cookie(COOKIE, token, max_age=28800, httponly=True, secure=auth.secure, samesite='strict', path='/')
+        return response
+
+    @api.post('/api/auth/logout')
+    async def admin_logout(request: Request):
+        auth.revoke(request.cookies.get(COOKIE))
+        response = JSONResponse({'authenticated': False})
+        response.delete_cookie(COOKIE, path='/', secure=auth.secure, httponly=True, samesite='strict')
+        return response
 
     def log(con, incident_id: int | None, stage: str, detail: str):
         con.execute("INSERT INTO timeline(incident_id,stage,detail,created_at) VALUES(?,?,?,?)", (incident_id, stage, detail, utcnow()))
@@ -179,6 +268,10 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def broadcast(stage: str, payload: dict):
         message = {"v": WS_VERSION, "stage": stage, "ts": utcnow(), "payload": payload}
         for socket in tuple(sockets):
+            if not (auth.valid(socket.cookies.get(COOKIE)) or trusted('', socket.headers)):
+                await socket.close(code=1008)
+                sockets.discard(socket)
+                continue
             try:
                 await socket.send_json(message)
             except Exception:
@@ -195,6 +288,14 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
 
     def upsert_incident(con, match: Match, event: dict) -> dict:
         rule, ip = match.rule, event["source_ip"]
+        # A previously approved block must not absorb future attacks after expiry.
+        expired = con.execute("""SELECT i.id FROM incidents i WHERE i.source_ip=? AND i.kind=? AND i.status='blocked'
+            AND NOT EXISTS (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id
+                            WHERE p.incident_id=i.id AND r.expires_at>?)""", (ip, rule.kind, utcnow())).fetchall()
+        for old in expired:
+            con.execute("UPDATE incidents SET status='closed', updated_at=? WHERE id=?", (utcnow(), old['id']))
+            log(con, old['id'], 'closed', 'Previous block expired; a new detection opens a separate incident')
+            audit(con, 'detection', 'status_changed', old['id'], {'from':'blocked','to':'closed','reason':'block expired before new detection'})
         placeholders = ",".join("?" * len(TERMINAL))
         current = con.execute(f"SELECT * FROM incidents WHERE source_ip=? AND kind=? AND status NOT IN ({placeholders}) ORDER BY id DESC LIMIT 1", (ip, rule.kind, *TERMINAL)).fetchone()
         if current:
@@ -230,6 +331,36 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             incident = format_incident(incident)
             await broadcast("incident", incident)
         return {"event": result, "incident": incident}
+
+    geo_cache = {}
+    geo_lock = asyncio.Lock()
+
+    @api.get("/api/geoip/{address}")
+    async def geoip(address: str):
+        try:
+            parsed = ipaddress.ip_address(address)
+        except ValueError:
+            raise HTTPException(400, "Invalid IP address")
+        if not parsed.is_global:
+            raise HTTPException(400, "Public IP required")
+        address = str(parsed)
+        async with geo_lock:
+            cached = geo_cache.get(address)
+            if cached and cached[0] > time.time():
+                return cached[1]
+            try:
+                async with httpx.AsyncClient(timeout=8) as client:
+                    response = await client.get(f"https://ipwho.is/{address}")
+                    response.raise_for_status()
+                    result = response.json()
+                if not result.get("success") or result.get("ip") != address:
+                    raise ValueError("Location unavailable")
+            except (httpx.HTTPError, ValueError):
+                raise HTTPException(503, "GeoIP temporarily unavailable")
+            if len(geo_cache) >= 2048:
+                geo_cache.pop(next(iter(geo_cache)))
+            geo_cache[address] = (time.time() + 86400, result)
+            return result
 
     @api.get("/api/health")
     async def health():
@@ -271,8 +402,17 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                 "errors": errors, "incident_ids": incident_ids}
 
     @api.get("/api/events")
-    def list_events(limit: int = 100):
-        return store.rows("SELECT * FROM events ORDER BY id DESC LIMIT ?", (min(max(limit, 1), 500),))
+    def list_events(limit: int = 100, before_id: int | None = None,
+                    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION"] | None = None):
+        conditions, params = [], []
+        if before_id is not None:
+            conditions.append("id < ?")
+            params.append(before_id)
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        return store.rows(f"SELECT * FROM events{where} ORDER BY id DESC LIMIT ?", (*params, min(max(limit, 1), 500)))
 
     @api.get("/api/incidents")
     def list_incidents():
@@ -297,7 +437,11 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if incident["analysis"]:
             return get_incident(incident_id)
         with store.tx() as con:
-            transition(con, incident_id, "analyzing", "agent", "investigation started")
+            claimed = con.execute("UPDATE incidents SET status='analyzing', updated_at=? WHERE id=? AND status='detected' AND analysis IS NULL", (utcnow(), incident_id))
+            if claimed.rowcount != 1:
+                raise HTTPException(409, f"Incident is {incident['status']}; already being analyzed or no longer eligible")
+            log(con, incident_id, 'analyzing', 'Investigation started')
+            audit(con, 'agent', 'status_changed', incident_id, {'from': 'detected', 'to': 'analyzing', 'reason': 'investigation started'})
         await broadcast("incident", format_incident(store.one("SELECT * FROM incidents WHERE id=?", (incident_id,))))
 
         async def step(row: dict):
@@ -555,7 +699,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     @api.websocket("/ws")
     async def websocket(socket: WebSocket):
         peer = socket.client.host if socket.client else ""
-        if not same_site(socket.headers.get("origin")) or not trusted(peer, socket.headers):
+        if not same_site(socket.headers.get("origin")) or not (auth.valid(socket.cookies.get(COOKIE)) or trusted(peer, socket.headers)):
             await socket.close(code=1008)
             return
         await socket.accept()
@@ -564,6 +708,9 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             await socket.send_json({"v": WS_VERSION, "stage": "connected", "ts": utcnow(), "payload": {"message": "Refetch current state after reconnect"}})
             while True:
                 await socket.receive_text()
+                if not (auth.valid(socket.cookies.get(COOKIE)) or trusted(peer, socket.headers)):
+                    await socket.close(code=1008)
+                    break
         except WebSocketDisconnect:
             sockets.discard(socket)
 
