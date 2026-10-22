@@ -30,6 +30,7 @@ def ssh(args, command, payload=None):
     result = subprocess.run(
         ["ssh", "-i", str(args.key), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=yes", f"{args.user}@{args.host}", command],
         input=payload, text=True, capture_output=True, timeout=20,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
     if result.returncode:
         raise RuntimeError(f"SSH command failed: {result.stderr.strip()[:500]}")
@@ -95,13 +96,16 @@ def run_once(args, state):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="201.18.215.18")
-    parser.add_argument("--user", default="root")
+    # VPS address and SSH user stay out of Git: pass them or set SENTINEL_VPS_HOST / SENTINEL_VPS_USER.
+    parser.add_argument("--host", default=os.getenv("SENTINEL_VPS_HOST"))
+    parser.add_argument("--user", default=os.getenv("SENTINEL_VPS_USER"))
     parser.add_argument("--key", type=Path, default=Path.home() / ".ssh" / "sentinel_rod_mai_rod")
     parser.add_argument("--state", type=Path, default=Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "rod-mai-rod-agent.json")
     parser.add_argument("--interval", type=float, default=5)
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args()
+    if not args.host or not args.user:
+        parser.error("set --host/--user or SENTINEL_VPS_HOST/SENTINEL_VPS_USER")
     state = json.loads(args.state.read_text()) if args.state.exists() else {}
     while True:
         try:

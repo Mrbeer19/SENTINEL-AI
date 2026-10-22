@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Badge, Empty, Icon, Panel, Stat, fmtTime, incId, isActiveRule, isOpenIncident, kindName, perMinute, targetIp, useNow } from '../ui.jsx'
 import ActivityChart from '../components/ActivityChart.jsx'
+import LoginHistory from '../components/LoginHistory.jsx'
 import NetworkTopology from '../components/NetworkTopology.jsx'
 import QuickResponse from '../components/QuickResponse.jsx'
 import SourceList, { sourceLocation } from '../components/SourceList.jsx'
+import { isRealPublicIp, latestRealLoginIp, sourceActivity } from '../sourceActivity.js'
 
 export default function Overview({ ctx }) {
   const { data } = ctx
@@ -11,6 +13,7 @@ export default function Overview({ ctx }) {
   const [minutes, setMinutes] = useState(15)
   const [selection, setSelection] = useState(null)
   const [selectedIp, setSelectedIp] = useState(null)
+  const [geoByIp, setGeoByIp] = useState({})
   const pending = data.proposals.filter(p => p.status === 'pending')
   const activeRules = data.rules.filter(r => isActiveRule(r, now))
   const open = data.incidents.filter(isOpenIncident)
@@ -18,11 +21,20 @@ export default function Overview({ ctx }) {
   const trafficSeries = perMinute(data.traffic, 'created_at', minutes, now)
   const allowed = data.traffic.filter(t => t.decision === 'allowed').length
   const denied = data.traffic.filter(t => t.decision === 'denied').length
-  const focusIp = selectedIp || data.traffic[0]?.source_ip || data.incidents[0]?.source_ip
-  const focus = focusIp && sourceLocation(focusIp, data)
+  const focusIp = selectedIp || latestRealLoginIp(data) || sourceActivity(data)[0]?.ip
+  useEffect(() => {
+    if (!isRealPublicIp(focusIp) || Object.hasOwn(geoByIp, focusIp)) return
+    const controller = new AbortController()
+    fetch(`https://ipapi.co/${encodeURIComponent(focusIp)}/json/`, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(geo => setGeoByIp(current => ({ ...current, [focusIp]: geo?.ip === focusIp && !geo.error ? { city: geo.city, region: geo.region, country: geo.country_name, connection: { isp: geo.org }, provider: 'ipapi.co' } : null })))
+      .catch(error => { if (error.name !== 'AbortError') setGeoByIp(current => ({ ...current, [focusIp]: null })) })
+    return () => controller.abort()
+  }, [focusIp, geoByIp])
+  const focus = focusIp && sourceLocation(focusIp, data, geoByIp[focusIp])
   return <div className="commandOverview">
     <section className="overviewIntro">
-      <div className="introCopy"><span className="sectionIndex">/01 — SECURITY OPERATIONS</span><h1>SENTINEL<span>CONTROL ROOM<span className="titleDot">_</span></span></h1><p className="introTagline">เห็นทุกสัญญาณ. ตัดสินใจได้ทันที.</p><p>ดูต้นทาง ตรวจเหตุการณ์ และจัดการการป้องกันจากหน้าจอเดียว</p><div className="overviewShortcuts"><button className="btn primary" onClick={() => document.querySelector('.sourcePanel')?.scrollIntoView({block:'start',behavior:'smooth'})}>ดู IP ที่เข้ามา<Icon name="chevron" size={15}/></button><button className="btn ghost" onClick={() => document.querySelector('.responseDesk')?.scrollIntoView({block:'start',behavior:'smooth'})}>จัดการการป้องกัน {pending.length > 0 && <span className="badge info">{pending.length}</span>}</button></div><div className="introFootnote"><span>OBSERVE</span><i>→</i><span>UNDERSTAND</span><i>→</i><span>RESPOND</span></div></div>
+      <div className="introCopy"><span className="sectionIndex">/01 — SECURITY OPERATIONS</span><h1>SENTINEL<span>CONTROL ROOM<span className="titleDot">_</span></span></h1><p className="introTagline">เห็นทุกสัญญาณ. ตัดสินใจได้ทันที.</p><p>ดูต้นทาง ตรวจเหตุการณ์ และจัดการการป้องกันจากหน้าจอเดียว</p><div className="overviewShortcuts"><button className="btn primary" onClick={() => document.querySelector('.loginHistoryPanel')?.scrollIntoView({block:'start',behavior:'smooth'})}>ดู IP ที่เข้ามา<Icon name="chevron" size={15}/></button><button className="btn ghost" onClick={() => document.querySelector('.responseDesk')?.scrollIntoView({block:'start',behavior:'smooth'})}>จัดการการป้องกัน {pending.length > 0 && <span className="badge info">{pending.length}</span>}</button></div><div className="introFootnote"><span>OBSERVE</span><i>→</i><span>UNDERSTAND</span><i>→</i><span>RESPOND</span></div></div>
       <div className="introArtwork"><img src="/assets/sentinel-structure-v2.svg" alt=""/><span className="artSerial" aria-hidden="true">STRUCTURE / S—01</span><div className="watchStatus"><span className="liveSquare" /><div><b>{ctx.error ? 'CONNECTION LOST' : ctx.connected ? 'MONITORING ACTIVE' : 'RECONNECTING'}</b><small>{ctx.error ? 'กำลังแสดงข้อมูลที่บันทึกไว้' : 'M5 / LOCAL SECURITY WORKSPACE'}</small></div></div></div>
     </section>
     <div className="stats four commandStats">
@@ -33,7 +45,7 @@ export default function Overview({ ctx }) {
     </div>
     <div className="operationsGrid">
       <Panel title="แผนที่การเชื่อมต่อ" icon="trace" className="networkPanel" actions={<span className="sectionIndex">NETWORK / 01</span>}>
-        <NetworkTopology data={data} activeRules={activeRules} connected={ctx.connected} selectedIp={focusIp} />
+        <NetworkTopology data={data} activeRules={activeRules} connected={ctx.connected} selectedIp={focusIp} geoByIp={geoByIp} />
       </Panel>
       <Panel title="จัดการการป้องกัน" icon="shield" className="responseDesk" actions={<span className="deskCount">{pending.length} WAITING</span>}>
         <p className="deskIntro">ตรวจหลักฐานก่อนอนุมัติ ระบบจะไม่บล็อก IP เอง</p>
@@ -43,11 +55,14 @@ export default function Overview({ ctx }) {
         <div className="deskFooter"><Icon name="user" size={15}/><span>คนเป็นผู้อนุมัติ · ทุกคำตัดสินมีบันทึก</span></div>
       </Panel>
     </div>
-    <Panel title="IP ที่เข้ามาในระบบ" icon="laptop" className="sourcePanel" actions={<span className="sectionIndex">SOURCE EXPLORER / 02</span>}>
-      <SourceList ctx={ctx} activeRules={activeRules} onRespond={setSelection} onSelect={setSelectedIp} selectedIp={focusIp} now={now} />
+    <Panel title="ประวัติการล็อกอิน rod-mai-rod" icon="terminal" className="loginHistoryPanel" actions={<span className="sectionIndex">LOGIN HISTORY / 02</span>}>
+      <LoginHistory events={data.events} />
+    </Panel>
+    <Panel title="สรุปแหล่งต้นทางตาม IP" icon="laptop" className="sourcePanel" actions={<span className="sectionIndex">SOURCE EXPLORER / 03</span>}>
+      <SourceList ctx={ctx} activeRules={activeRules} onRespond={setSelection} onSelect={setSelectedIp} selectedIp={focusIp} geoByIp={geoByIp} now={now} />
       {focus && <div className="sourceFocus"><span className="sectionIndex">SELECTED SOURCE</span><b className="mono">{focusIp}</b><span>{focus.label}</span><small>{focus.note}</small></div>}
     </Panel>
-    <div className="telemetryGrid"><Panel title="ปริมาณคำขอเข้าแอป" icon="pulse" actions={<label className="chartRange"><span className="sr">ช่วงเวลากราฟ</span><select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={15}>15 นาที</option><option value={30}>30 นาที</option><option value={60}>60 นาที</option></select></label>}><ActivityChart values={trafficSeries} now={now}/><div className="trafficTotals"><span><i className="dot mint"/>ผ่าน <b>{allowed}</b></span><span><i className="dot coral"/>ปฏิเสธ <b>{denied}</b></span><small>จากรายการล่าสุดที่ระบบส่งกลับ</small></div></Panel><Panel title="คำขอเข้าล่าสุด" icon="terminal" actions={<span className="sectionIndex">{ctx.connected?'LIVE FEED':'SAVED FEED'} / 03</span>}><RequestLog traffic={data.traffic} limit={6}/><p className="scopeNote">ข้อมูลนี้ครอบคลุม request ที่เข้าแอปและ events ที่นำเข้า ไม่ใช่ traffic ทั้งหมดของเครือข่าย</p></Panel></div>
+    <div className="telemetryGrid"><Panel title="ปริมาณคำขอเข้าแอป" icon="pulse" actions={<label className="chartRange"><span className="sr">ช่วงเวลากราฟ</span><select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={15}>15 นาที</option><option value={30}>30 นาที</option><option value={60}>60 นาที</option></select></label>}><ActivityChart values={trafficSeries} now={now}/><div className="trafficTotals"><span><i className="dot mint"/>ผ่าน <b>{allowed}</b></span><span><i className="dot coral"/>ปฏิเสธ <b>{denied}</b></span><small>จากรายการล่าสุดที่ระบบส่งกลับ</small></div></Panel><Panel title="คำขอเข้าล่าสุด" icon="terminal" actions={<span className="sectionIndex">{ctx.connected?'LIVE FEED':'SAVED FEED'} / 03</span>}><RequestLog traffic={data.traffic} events={data.events} limit={6}/><p className="scopeNote">ข้อมูลนี้ครอบคลุม request ที่เข้าแอปและ events ที่นำเข้า ไม่ใช่ traffic ทั้งหมดของเครือข่าย</p></Panel></div>
     {selection && <QuickResponse key={`${selection.proposal?.id || selection.rule?.id}-${selection.action || 'unblock'}`} ctx={ctx} selection={selection} onClose={()=>setSelection(null)}/>}
   </div>
 }
@@ -66,9 +81,13 @@ export function AgentSteps({ incident }) {
   </ol>
 }
 
-export function RequestLog({ traffic, limit = 8 }) {
-  if (!traffic.length) return <Empty>ยังไม่มี request เข้า demo application</Empty>
-  return <div className="log" role="log" aria-live="polite">{traffic.slice(0, limit).map(t => <div key={t.id}>
-    <time>{fmtTime(t.created_at)}</time><span className="mono">{t.source_ip}</span><span>demo app request</span><b className={t.decision === 'denied' ? 'coral' : 'mint'}>{t.decision === 'denied' ? '403 denied' : 'allowed'}</b>
+export function RequestLog({ traffic, events = [], limit = 8 }) {
+  const entries = [
+    ...traffic.map(t => ({ key: `traffic-${t.id}`, at: t.created_at, ip: t.source_ip, label: 'app request', result: t.decision === 'denied' ? '403 denied' : 'allowed', denied: t.decision === 'denied', id: t.id })),
+    ...events.filter(e => e.event_type === 'HTTP_AUTH').map(e => ({ key: `auth-${e.id}`, at: e.timestamp, ip: e.source_ip, label: isRealPublicIp(e.source_ip) ? 'rod-mai-rod login' : 'HTTP_AUTH · ทดสอบ', result: e.outcome === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ', denied: e.outcome !== 'success', id: e.id })),
+  ].sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0) || b.id - a.id).slice(0, limit)
+  if (!entries.length) return <Empty>ยังไม่มีคำขอหรือเหตุการณ์ล็อกอิน</Empty>
+  return <div className="log" role="log" aria-live="polite">{entries.map(entry => <div key={entry.key}>
+    <time>{fmtTime(entry.at)}</time><span className="mono">{entry.ip}</span><span>{entry.label}</span><b className={entry.denied ? 'coral' : 'mint'}>{entry.result}</b>
   </div>)}</div>
 }

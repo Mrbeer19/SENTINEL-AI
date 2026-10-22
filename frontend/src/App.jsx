@@ -8,7 +8,6 @@ import AgentTrace from './pages/AgentTrace.jsx'
 import Approvals from './pages/Approvals.jsx'
 import Rules from './pages/Rules.jsx'
 import Reports from './pages/Reports.jsx'
-import DemoLab from './pages/DemoLab.jsx'
 import { WorkflowGuide } from './components/WorkflowGuide.jsx'
 
 const NAV = [
@@ -28,7 +27,6 @@ const PAGES = {
   approvals: ['Response Approvals', 'ตรวจ IP และระยะเวลา ก่อนยืนยันการบล็อกระดับแอป'],
   rules: ['App Firewall Rules', 'ดูกฎที่ทำงาน เวลาคงเหลือ และคำขอที่ถูกบล็อก'],
   reports: ['Incident Reports', 'สรุปหลักฐาน การตัดสินใจ และผลทดสอบ เพื่อส่งต่อให้ทีม'],
-  lab: ['Controlled Demo Lab', 'สร้างเหตุการณ์จำลองบน M5 เพื่อซ้อมขั้นตอนการนำเสนอ'],
 }
 
 function parseHash() {
@@ -90,14 +88,13 @@ export default function App() {
         </a>)}
       </nav>
       <div className="sideFoot">
-        <div className="sessionCard"><span className={`sessionSignal ${connected && !error ? 'online' : ''}`}><i className="dot" />{error ? 'Server unavailable' : connected ? 'System connected' : 'Reconnecting'}</span><small>Local network · controlled lab</small></div>
-        <a href="#/lab" className={active === 'lab' ? 'active' : ''} aria-current={active === 'lab' ? 'page' : undefined}><Icon name="lab" size={20} /><span>Demo Lab</span></a>
+        <div className="sessionCard"><span className={`sessionSignal ${connected && !error ? 'online' : ''}`}><i className="dot" />{error ? 'Server unavailable' : connected ? 'System connected' : 'Reconnecting'}</span><small>rod-mai-rod · live monitoring</small></div>
         <div className="operator"><span className="operatorAvatar"><Icon name="user" size={20} /></span><span>SOC operator<small>Local M5 workspace</small></span><Icon name="chevron" size={14} /></div>
       </div>
     </aside>
 
     <main id="main" tabIndex={-1}>
-      <div className="workspaceBar"><div className="workspaceCrumb"><Icon name="shield" size={15} /><span>Workspace</span><span className="crumbSlash">/</span><b>{NAV.find(item => item.key === active)?.label || (active === 'lab' ? 'Demo Lab' : 'Overview')}</b></div><div className="workspaceActions"><span className="lastUpdated">{updatedAt ? <>Updated <time dateTime={updatedAt}>{fmtTime(updatedAt)}</time></> : 'Waiting for server'}</span><button className={`refreshButton ${refreshing ? 'refreshing' : ''}`} onClick={live.refresh} disabled={refreshing} aria-label="Refresh live data" title="Refresh live data"><Icon name="refresh" size={16} /></button></div></div>
+      <div className="workspaceBar"><div className="workspaceCrumb"><Icon name="shield" size={15} /><span>Workspace</span><span className="crumbSlash">/</span><b>{NAV.find(item => item.key === active)?.label || 'Overview'}</b></div><div className="workspaceActions"><span className="lastUpdated">{updatedAt ? <>Updated <time dateTime={updatedAt}>{fmtTime(updatedAt)}</time></> : 'Waiting for server'}</span><button className={`refreshButton ${refreshing ? 'refreshing' : ''}`} onClick={live.refresh} disabled={refreshing} aria-label="Refresh live data" title="Refresh live data"><Icon name="refresh" size={16} /></button></div></div>
       <header className={`topbar ${route.page === 'overview' ? 'overviewTopbar' : ''}`}>
         <div><div className="eyebrow"><i className="dot mint" />LOCAL SECURITY WORKSPACE</div><h1>{title}</h1><p>{subtitle}</p></div>
         <div className="topStatus">
@@ -127,7 +124,6 @@ function Page({ route, ctx }) {
     case 'approvals': return <Approvals ctx={ctx} id={route.id} />
     case 'rules': return <Rules ctx={ctx} id={route.id} />
     case 'reports': return <Reports ctx={ctx} id={route.id} />
-    case 'lab': return <DemoLab ctx={ctx} />
     default: return <Overview ctx={ctx} />
   }
 }

@@ -23,7 +23,7 @@ export default function Rules({ ctx, id }) {
   const coveringRule = (t) => rules.find(r => within(t, r))
 
   return <div className="grid rules">
-    <div className="span3"><Banner tone="info" icon="info"><b>Scope:</b> demo application only · Host firewall unchanged · Neo keeps internet access</Banner></div>
+    <div className="span3"><Banner tone="info" icon="info"><b>Scope:</b> กฎนี้ใช้กับ rod-mai-rod เท่านั้น</Banner></div>
     <div className="stats four span3">
       <Stat icon="shield" label="Active rules" value={active.length} />
       <Stat icon="clock" tone="amber" label="Expired / removed" value={rules.length - active.length} />
@@ -69,7 +69,7 @@ export default function Rules({ ctx, id }) {
       </Panel>
     </div>
 
-    <Panel title="Recent Decisions" icon="rules" className="span3" actions={<span className="muted small">every request the demo app received</span>}>
+    <Panel title="Recent Decisions" icon="rules" className="span3" actions={<span className="muted small">คำขอที่ระบบบันทึกไว้</span>}>
       {traffic.length ? <div className="tableWrap short"><table>
         <thead><tr><th>Time</th><th>Source IP</th><th>Result</th><th>Reason</th><th>Related rule</th></tr></thead>
         <tbody>{traffic.slice(0, 12).map(t => { const r = t.decision === 'denied' ? coveringRule(t) : null; return <tr key={t.id}>
