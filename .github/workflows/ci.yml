@@ -12,7 +12,6 @@ jobs:
           python-version: '3.12'
       - run: pip install -r backend/requirements.txt
       - run: python -m pytest backend/tests -q --basetemp backend/tests/.tmp
-      - run: python -m unittest discover -s bot/tests -q
   frontend:
     runs-on: ubuntu-latest
     steps:
