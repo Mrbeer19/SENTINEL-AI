@@ -13,12 +13,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REMOTE = "/opt/rod-mai-rod/sentinel"
-API = "http://127.0.0.1:8000"
+API = os.getenv("SENTINEL_API_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def api(path, body=None):
     raw = None if body is None else json.dumps(body).encode()
-    request = urllib.request.Request(API + path, data=raw, headers={"Content-Type": "application/json"} if raw else {})
+    headers = {"Content-Type": "application/json"} if raw else {}
+    if os.getenv('SENTINEL_ADMIN_KEY'): headers['X-Admin-Key'] = os.environ['SENTINEL_ADMIN_KEY']
+    request = urllib.request.Request(API + path, data=raw, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=5) as response:
             return response.status, json.load(response)
@@ -57,6 +59,22 @@ def emit(path, message, error=False):
         file.write(f"{datetime.now(timezone.utc).isoformat()} {message}\n")
 
 
+def collect_sensor(args, state):
+    cursor = state.get('sensor')
+    flags = '--start-at-end' if cursor is None else f"--inode {int(cursor['inode'] or 0)} --offset {int(cursor['offset'])}"
+    batch = json.loads(ssh(args, f"python3 {REMOTE}/vps_logs.py --sensor {flags}"))
+    count = 0
+    for item in batch['events']:
+        status, _ = api('/api/events', item['event'])
+        if status != 201: raise RuntimeError(f'Sensor event ingest returned HTTP {status}')
+        state['sensor'] = {'inode': batch['inode'], 'offset': item['offset']}
+        save_state(args.state, state)
+        count += 1
+    state['sensor'] = {'inode': batch['inode'], 'offset': batch['offset']}
+    save_state(args.state, state)
+    return count
+
+
 def run_once(args, state):
     status, rows = api("/api/rules")
     if status != 200:
@@ -91,6 +109,7 @@ def run_once(args, state):
         processed += 1
     state.update(inode=batch["inode"], offset=batch["offset"])
     save_state(args.state, state)
+    if getattr(args, "network_sensor", False): processed += collect_sensor(args, state)
     return processed
 
 
@@ -103,6 +122,7 @@ def main():
     parser.add_argument("--state", type=Path, default=Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "rod-mai-rod-agent.json")
     parser.add_argument("--interval", type=float, default=5)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--network-sensor", action="store_true")
     args = parser.parse_args()
     if not args.host or not args.user:
         parser.error("set --host/--user or SENTINEL_VPS_HOST/SENTINEL_VPS_USER")

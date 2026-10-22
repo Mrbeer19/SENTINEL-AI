@@ -55,3 +55,14 @@ Stop the Windows agent, remove its Startup shortcut, and disable the VPS timer. 
 - Public responses stayed at 307 for `tntproduction.tech`, 200 for `rod-mai-rod.tntproduction.tech`, and 200 for `rangsitnanmai.tntproduction.tech`.
 
 Limit: Login outcomes are inferred from the existing application's 200/401 responses. Other application events and WebSocket traffic are not ingested. This integration enforces approved IP rules for the rod-mai-rod hostname at Caddy; it does not modify the VPS firewall.
+## Live SSH and TCP sensor
+
+`vps_sensor.py` collects incoming TCP SYN metadata and sshd/sshd-session authentication results into a restricted local JSONL spool. No packet payloads or passwords are retained. It observes the VPS network, so connections to other services on a shared VPS can also appear; this is not domain-specific packet attribution. SYN retransmissions within three seconds are deduplicated. Capture depends on traffic reaching the interface; upstream-dropped packets cannot be detected here. This is an introductory metadata sensor, not a full IDS.
+
+Install using `install_sensor.ps1 -VpsHost <host> -VpsUser <user>`. Existing root SSH access, tcpdump, Python and journald are required. Enable verbose sshd logging after validating configuration to observe failed publickey authentication. Run the updated Windows agent with `--network-sensor`. The initial sensor cursor starts at end; wait one collector poll before testing. Rotation retains one previous spool; high-volume downtime can lose records. Ingestion has at-least-once delivery and a crash can duplicate an event.
+
+The bridge defaults to the original local backend on port 8000; the admin backend on 8001 must use the same persistent database. If consolidating backends, set SENTINEL_API_URL and SENTINEL_ADMIN_KEY in the collector environment and corresponding backend configuration. Never put the integration key into frontend VITE variables.
+
+Live test helper: `python scripts/live-five-tests.py http|ssh|login|scan|traffic [--host <your-vps>]`. HTTP: six intentional failures, requiring 401. SSH: six untrusted ephemeral-public-key attempts to the existing root account, strict host verification, no password guessing. Suspicious login needs an existing test website account and its correct password. Scan: nine TCP ports, once each. Traffic: 105 sequential TCP connections to 443, 150 ms apart. No block is auto-approved. Upstream rate limiting or blocking can prevent test completion. Stop after one batch and review evidence.
+
+Only Caddy HTTP enforcement is currently integrated. SSH and port-scan cases demonstrate detection/analysis, not host-firewall prevention. Synthetic helpers remain separate. Real connection tests send actual traffic to the operator-supplied VPS host; there is no hardcoded VPS IP in tracked scripts.
