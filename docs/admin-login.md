@@ -17,3 +17,15 @@ The SQLite database must be on persistent storage. Before deploying to ephemeral
 No self registration or default admin password is provided. Until credentials are configured, login returns 503 and protected APIs return 401. Set up credentials and restart the backend before using the dashboard.
 
 Validation: python -m pytest backend/tests/test_admin_auth.py -q
+
+## One backend on port 8001
+
+The admin backend on `127.0.0.1:8001` is the only SOC backend on the Windows workstation. The old port 8000 process is no longer used; Vite proxies to 8001 by default.
+
+The Windows bridge authenticates with a machine key (`X-Admin-Key`), not the admin password:
+
+1. `powershell -File scripts/new-admin-key.ps1` creates `%LOCALAPPDATA%\SentinelAI\admin-key.txt` (current user only). The key is never printed.
+2. `scripts/_sentinel-env.ps1` loads that file into `SENTINEL_ADMIN_KEY` when the admin backend starts.
+3. `integrations/rod_mai_rod/agent.py` reads the same file and sends to `http://127.0.0.1:8001` (override with `SENTINEL_API_URL`).
+
+After creating or replacing the key, restart the admin backend (`scripts/start-admin-local.ps1`) and the bridge.

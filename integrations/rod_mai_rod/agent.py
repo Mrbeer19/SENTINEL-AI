@@ -13,13 +13,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REMOTE = "/opt/rod-mai-rod/sentinel"
-API = os.getenv("SENTINEL_API_URL", "http://127.0.0.1:8000").rstrip("/")
+API = os.getenv("SENTINEL_API_URL", "http://127.0.0.1:8001").rstrip("/")
+# Machine key for X-Admin-Key: env first, else a file readable only by this Windows user.
+KEY_FILE = Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "admin-key.txt"
+
+
+def admin_key():
+    if os.getenv("SENTINEL_ADMIN_KEY"):
+        return os.environ["SENTINEL_ADMIN_KEY"]
+    return KEY_FILE.read_text(encoding="utf-8").strip() if KEY_FILE.exists() else ""
 
 
 def api(path, body=None):
     raw = None if body is None else json.dumps(body).encode()
     headers = {"Content-Type": "application/json"} if raw else {}
-    if os.getenv('SENTINEL_ADMIN_KEY'): headers['X-Admin-Key'] = os.environ['SENTINEL_ADMIN_KEY']
+    key = admin_key()
+    if key:
+        headers['X-Admin-Key'] = key
     request = urllib.request.Request(API + path, data=raw, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=5) as response:

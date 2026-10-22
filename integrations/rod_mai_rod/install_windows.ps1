@@ -8,7 +8,7 @@ if (-not $VpsHost -or -not $VpsUser) { throw 'Pass -VpsHost and -VpsUser, or set
 $installDir = Join-Path $env:LOCALAPPDATA 'SentinelAI'
 $agentSource = Join-Path $PSScriptRoot 'agent.py'
 $agentInstalled = Join-Path $installDir 'rod-mai-rod-agent.py'
-$agentArgs = "`"$agentInstalled`" --host $VpsHost --user $VpsUser"
+$agentArgs = "`"$agentInstalled`" --host $VpsHost --user $VpsUser --network-sensor"
 $pythonw = (Get-Command pythonw.exe -ErrorAction Stop).Source
 $startup = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startup 'SENTINEL rod-mai-rod bridge.lnk'
