@@ -1,6 +1,6 @@
 # rod-mai-rod Caddy bridge source
 
-This is a separate integration path from `../sidecar/`. The source was present in the working tree during the 22 October handoff and is included for review. Uploading these files does not install them, apply Caddy rules, create scheduled tasks or establish that VPS deployment passed.
+This is a separate integration path from `../sidecar/`. It is included for review. Adding these files does not install them, apply Caddy rules, create scheduled tasks or establish that VPS deployment passed.
 
 ## Components
 

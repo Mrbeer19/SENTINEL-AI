@@ -48,5 +48,3 @@ Screenshots and layout measurements: `mockup/brutalist-review-2026-10-21/`.
 GeoIP is not connected. LAN and documentation IP ranges have no real country pin; public IPs without geolocation are labelled as unknown. The decorative globe and node do not invent measurements. The existing demo pin mode remains explicitly labelled as simulated.
 
 The application observes its own demo endpoints and ingested events, not all network traffic or the host firewall. These local UI checks do not certify live model performance or replace a two-machine M5 / Neo LAN rehearsal. The main database was not used to generate test incidents for the redesign.
-
-No commit, push or Discord message was sent for this redesign.
