@@ -13,7 +13,7 @@ export default function Overview({ ctx }) {
   const [minutes, setMinutes] = useState(15)
   const [selection, setSelection] = useState(null)
   const [selectedIp, setSelectedIp] = useState(null)
-  const [geoByIp, setGeoByIp] = useState({})
+  const [geoByIp, setGeoByIp] = useState(() => { try { return JSON.parse(sessionStorage.getItem("sentinel-geoip") || "{}") } catch { return {} } })
   const pending = data.proposals.filter(p => p.status === 'pending')
   const activeRules = data.rules.filter(r => isActiveRule(r, now))
   const open = data.incidents.filter(isOpenIncident)
@@ -22,21 +22,29 @@ export default function Overview({ ctx }) {
   const allowed = data.traffic.filter(t => t.decision === 'allowed').length
   const denied = data.traffic.filter(t => t.decision === 'denied').length
   const focusIp = selectedIp || latestRealLoginIp(data) || sourceActivity(data)[0]?.ip
+  const geoTargets = [...new Set([focusIp, ...sourceActivity(data).slice(0, 6).map(s => s.ip)])].filter(isRealPublicIp).join(',')
   useEffect(() => {
-    if (!isRealPublicIp(focusIp) || Object.hasOwn(geoByIp, focusIp)) return
     const controller = new AbortController()
-    fetch(`https://ipapi.co/${encodeURIComponent(focusIp)}/json/`, { signal: controller.signal })
-      .then(response => response.ok ? response.json() : null)
-      .then(geo => setGeoByIp(current => ({ ...current, [focusIp]: geo?.ip === focusIp && !geo.error ? { city: geo.city, region: geo.region, country: geo.country_name, connection: { isp: geo.org }, provider: 'ipapi.co' } : null })))
-      .catch(error => { if (error.name !== 'AbortError') setGeoByIp(current => ({ ...current, [focusIp]: null })) })
+    for (const address of geoTargets.split(',').filter(Boolean)) {
+      if (geoByIp[address]) continue
+      const lookup = async () => {
+        let geo = null
+        try {
+          const response = await fetch(`/api/geoip/${encodeURIComponent(address)}`, { signal: controller.signal })
+          if (response.ok) { const result = await response.json(); if (result.success && result.ip === address) geo = { ...result, provider: 'ipwho.is' } }
+        } catch (error) { if (error.name === 'AbortError') return }
+        if (!controller.signal.aborted) setGeoByIp(current => ({ ...current, [address]: geo }))
+      }
+      lookup()
+    }
     return () => controller.abort()
-  }, [focusIp, geoByIp])
+  }, [geoTargets])
+  useEffect(() => {
+    try { sessionStorage.setItem('sentinel-geoip', JSON.stringify(Object.fromEntries(Object.entries(geoByIp).filter(([, value]) => value)))) } catch { /* Storage may be disabled. */ }
+  }, [geoByIp])
   const focus = focusIp && sourceLocation(focusIp, data, geoByIp[focusIp])
-  return <div className="commandOverview">
-    <section className="overviewIntro">
-      <div className="introCopy"><span className="sectionIndex">/01 — SECURITY OPERATIONS</span><h1>SENTINEL<span>CONTROL ROOM<span className="titleDot">_</span></span></h1><p className="introTagline">เห็นทุกสัญญาณ. ตัดสินใจได้ทันที.</p><p>ดูต้นทาง ตรวจเหตุการณ์ และจัดการการป้องกันจากหน้าจอเดียว</p><div className="overviewShortcuts"><button className="btn primary" onClick={() => document.querySelector('.loginHistoryPanel')?.scrollIntoView({block:'start',behavior:'smooth'})}>ดู IP ที่เข้ามา<Icon name="chevron" size={15}/></button><button className="btn ghost" onClick={() => document.querySelector('.responseDesk')?.scrollIntoView({block:'start',behavior:'smooth'})}>จัดการการป้องกัน {pending.length > 0 && <span className="badge info">{pending.length}</span>}</button></div><div className="introFootnote"><span>OBSERVE</span><i>→</i><span>UNDERSTAND</span><i>→</i><span>RESPOND</span></div></div>
-      <div className="introArtwork"><img src="/assets/sentinel-structure-v2.svg" alt=""/><span className="artSerial" aria-hidden="true">STRUCTURE / S—01</span><div className="watchStatus"><span className="liveSquare" /><div><b>{ctx.error ? 'CONNECTION LOST' : ctx.connected ? 'MONITORING ACTIVE' : 'RECONNECTING'}</b><small>{ctx.error ? 'กำลังแสดงข้อมูลที่บันทึกไว้' : 'M5 / LOCAL SECURITY WORKSPACE'}</small></div></div></div>
-    </section>
+  return <div className="commandOverview commandV3">
+    <section className="overviewIntro"><div><span className="sectionIndex">SENTINEL / SECURITY OPERATIONS</span><h1>Network overview<span className="titleDot">.</span></h1><p>เห็นทุกสัญญาณ เชื่อมทุกการป้องกัน</p></div><div className="overviewMeta"><span className="overviewLive"><i className={`dot ${ctx.connected ? 'mint' : 'amber'}`}/>{ctx.connected ? 'LIVE MONITORING' : 'RECONNECTING'}</span><time>{new Date(now).toLocaleString('th-TH', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</time><span>HUMAN-APPROVED RESPONSE</span></div></section>
     <div className="stats four commandStats">
       <Stat icon="laptop" label="IP ต้นทางที่พบ" value={ips.size} note="จากคำขอและเหตุการณ์ที่บันทึก" />
       <Stat icon="alert" tone="coral" label="เหตุการณ์ที่ต้องตรวจ" value={open.length} note="รวมรายการที่ยังรอยืนยันผล" />
@@ -45,24 +53,33 @@ export default function Overview({ ctx }) {
     </div>
     <div className="operationsGrid">
       <Panel title="แผนที่การเชื่อมต่อ" icon="trace" className="networkPanel" actions={<span className="sectionIndex">NETWORK / 01</span>}>
-        <NetworkTopology data={data} activeRules={activeRules} connected={ctx.connected} selectedIp={focusIp} geoByIp={geoByIp} />
+        <NetworkTopology data={data} activeRules={activeRules} connected={ctx.connected} selectedIp={focusIp} onSelectIp={setSelectedIp} geoByIp={geoByIp} />
       </Panel>
+      <div className="responseColumn">
+        <section className="nexAssistant" aria-label="NEX network assistant">
+          <div className="assistantTop"><span>✦ NEX ASSISTANT</span><span className="assistantSignal">{ctx.error ? 'OFFLINE' : ctx.connected ? 'CONNECTED' : 'CONNECTING'}</span></div>
+          <div className="assistantBody"><div className="nexPortrait"><span className="nexOrbit" aria-hidden="true"/><img className="nexSolo" src="/assets/nex-solo-v2.png" alt="NEX หุ่นผู้ช่วยเฝ้าระวังเครือข่าย"/></div><div className="assistantCopy"><span className="sectionIndex">YOUR NETWORK COMPANION</span><h2>เครือข่ายของคุณ<br/><em>อยู่ในสายตา</em></h2><p>{ctx.error ? 'ขาดการเชื่อมต่อ · ข้อมูลอาจยังไม่เป็นปัจจุบัน' : pending.length ? `${pending.length} ข้อเสนอรอให้คุณตรวจสอบ` : 'ตรวจเหตุการณ์และติดตามการป้องกันได้จากที่นี่'}</p></div></div>
+          <a className="assistantPrimary" href="#/approvals">ตรวจคำแนะนำจาก AI <Icon name="chevron" size={17}/></a><div className="assistantLinks"><a href="#/incidents"><Icon name="alert" size={18}/>ตรวจเหตุการณ์</a><a href="#/rules"><Icon name="shield" size={18}/>ดูกฎป้องกัน</a><a href="#/reports"><Icon name="reports" size={18}/>ดูรายงาน</a></div>
+        </section>
+
+      </div>
+    </div>
+    <div className="telemetryGrid"><Panel title="ปริมาณคำขอเข้าแอป" icon="pulse" actions={<label className="chartRange"><span className="sr">ช่วงเวลากราฟ</span><select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={15}>15 นาที</option><option value={30}>30 นาที</option><option value={60}>60 นาที</option></select></label>}><ActivityChart values={trafficSeries} now={now}/><div className="trafficTotals"><span><i className="dot mint"/>ผ่าน <b>{allowed}</b></span><span><i className="dot coral"/>ปฏิเสธ <b>{denied}</b></span><small>จากรายการล่าสุดที่ระบบส่งกลับ</small></div></Panel><Panel title="คำขอเข้าล่าสุด" icon="terminal" actions={<span className="sectionIndex">{ctx.connected?'LIVE FEED':'SAVED FEED'} / 03</span>}><RequestLog traffic={data.traffic} events={data.events} limit={6}/><p className="scopeNote">ข้อมูลนี้ครอบคลุม request ที่เข้าแอปและ events ที่นำเข้า ไม่ใช่ traffic ทั้งหมดของเครือข่าย</p></Panel></div>
       <Panel title="จัดการการป้องกัน" icon="shield" className="responseDesk" actions={<span className="deskCount">{pending.length} WAITING</span>}>
-        <p className="deskIntro">ตรวจหลักฐานก่อนอนุมัติ ระบบจะไม่บล็อก IP เอง</p>
-        {pending.length ? <div className="responseQueue">{pending.slice(0,3).map(p => {const incident=data.incidents.find(i=>i.id===p.incident_id); return <article key={p.id} className="responseItem"><div className="responseItemHead"><b className="mono">{targetIp(p)}</b><Badge tone="warn">รออนุมัติ</Badge></div><p>{kindName(incident?.kind) || 'เหตุการณ์ที่ตรวจพบ'}</p><small>{p.duration_seconds/60} นาที · {p.source === 'rule_fallback' || incident?.analysis_mode === 'rule_fallback' ? 'Rule fallback · ไม่ใช่ AI' : 'ตรวจผลวิเคราะห์ก่อนตัดสินใจ'}</small><div className="rowActions"><button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={()=>setSelection({proposal:p,incident,action:'approve'})}>ตรวจ / บล็อก IP<Icon name="chevron" size={15}/></button><button className="btn ghost" disabled={ctx.busy || !!ctx.error} onClick={()=>setSelection({proposal:p,incident,action:'reject'})}>ปฏิเสธ</button></div></article>})}</div> : <div className="deskEmpty"><Icon name="ok" size={38} /><b>ไม่มีข้อเสนอรออนุมัติ</b><p>เมื่อวิเคราะห์แล้วมีข้อเสนอบล็อก<br/>จะตรวจและตัดสินใจได้ตรงนี้</p></div>}
+        <p className="deskIntro">AI วิเคราะห์อัตโนมัติ · ตรวจคำแนะนำก่อนยืนยันบล็อก IP</p>
+        {pending.length ? <div className="responseQueue">{pending.slice(0,3).map(p => {const incident=data.incidents.find(i=>i.id===p.incident_id); return <article key={p.id} className="responseItem"><div className="responseItemHead"><b className="mono">{targetIp(p)}</b><Badge tone="warn">รออนุมัติ</Badge></div><p>{kindName(incident?.kind) || 'เหตุการณ์ที่ตรวจพบ'}</p><small>{p.duration_seconds/60} นาที · {p.source === 'rule_fallback' || incident?.analysis_mode === 'rule_fallback' ? 'Rule fallback · ไม่ใช่ AI' : 'ตรวจผลวิเคราะห์ก่อนตัดสินใจ'}</small><div className="rowActions"><button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={()=>setSelection({proposal:p,incident,action:'approve'})}>ตรวจ / บล็อก IP<Icon name="chevron" size={15}/></button><button className="btn ghost" disabled={ctx.busy || !!ctx.error} onClick={()=>setSelection({proposal:p,incident,action:'reject'})}>ปฏิเสธ</button></div></article>})}</div> : <div className="deskEmpty"><Icon name="ok" size={38} /><b>ไม่มีข้อเสนอรออนุมัติ</b><p>AI วิเคราะห์เหตุการณ์ใหม่อัตโนมัติ<br/>หากมีข้อเสนอจะแสดงให้คุณตรวจและยืนยันที่นี่</p></div>}
         {pending.length>3 && <a className="link" href="#/approvals">ดูอีก {pending.length-3} ข้อเสนอ →</a>}
         <div className="protectedNode"><img src="/assets/sentinel-node.svg" alt="" /><div><span className="sectionIndex">PROTECTED APPLICATION</span><b>rod-mai-rod</b><p>{activeRules.length} กฎที่ทำงาน · {denied} คำขอถูกปฏิเสธ</p><small>เว็บไซต์จริงที่ป้องกันอยู่ · บล็อกแล้วต้องมีคำขอใหม่ยืนยันผล</small></div></div>
         <div className="deskFooter"><Icon name="user" size={15}/><span>คนเป็นผู้อนุมัติ · ทุกคำตัดสินมีบันทึก</span></div>
       </Panel>
-    </div>
     <Panel title="ประวัติการล็อกอิน rod-mai-rod" icon="terminal" className="loginHistoryPanel" actions={<span className="sectionIndex">LOGIN HISTORY / 02</span>}>
       <LoginHistory events={data.events} />
     </Panel>
     <Panel title="สรุปแหล่งต้นทางตาม IP" icon="laptop" className="sourcePanel" actions={<span className="sectionIndex">SOURCE EXPLORER / 03</span>}>
-      <SourceList ctx={ctx} activeRules={activeRules} onRespond={setSelection} onSelect={setSelectedIp} selectedIp={focusIp} geoByIp={geoByIp} now={now} />
+      <SourceList ctx={ctx} activeRules={activeRules} onRespond={setSelection} onSelect={setSelectedIp} selectedIp={focusIp} geoByIp={geoByIp} now={now} queryOverride={ctx.searchTerm} />
       {focus && <div className="sourceFocus"><span className="sectionIndex">SELECTED SOURCE</span><b className="mono">{focusIp}</b><span>{focus.label}</span><small>{focus.note}</small></div>}
     </Panel>
-    <div className="telemetryGrid"><Panel title="ปริมาณคำขอเข้าแอป" icon="pulse" actions={<label className="chartRange"><span className="sr">ช่วงเวลากราฟ</span><select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={15}>15 นาที</option><option value={30}>30 นาที</option><option value={60}>60 นาที</option></select></label>}><ActivityChart values={trafficSeries} now={now}/><div className="trafficTotals"><span><i className="dot mint"/>ผ่าน <b>{allowed}</b></span><span><i className="dot coral"/>ปฏิเสธ <b>{denied}</b></span><small>จากรายการล่าสุดที่ระบบส่งกลับ</small></div></Panel><Panel title="คำขอเข้าล่าสุด" icon="terminal" actions={<span className="sectionIndex">{ctx.connected?'LIVE FEED':'SAVED FEED'} / 03</span>}><RequestLog traffic={data.traffic} events={data.events} limit={6}/><p className="scopeNote">ข้อมูลนี้ครอบคลุม request ที่เข้าแอปและ events ที่นำเข้า ไม่ใช่ traffic ทั้งหมดของเครือข่าย</p></Panel></div>
+
     {selection && <QuickResponse key={`${selection.proposal?.id || selection.rule?.id}-${selection.action || 'unblock'}`} ctx={ctx} selection={selection} onClose={()=>setSelection(null)}/>}
   </div>
 }

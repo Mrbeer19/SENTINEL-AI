@@ -33,7 +33,7 @@ export default function QuickResponse({ ctx, selection, onClose }) {
         <details className="dialogDetails"><summary>ดูหลักฐานและเหตุผลเพิ่มเติม</summary><p>{p.reason || 'ไม่มีเหตุผลเพิ่มเติมในข้อเสนอ'}</p><ul>{(report?.events || []).slice(-6).map(e => <li key={e.id}><code>{e.event_type} · {e.outcome} {e.destination_port || ''}</code></li>)}</ul><a href={`#/incident/${incident.id}`} onClick={onClose}>เปิดรายละเอียดเหตุการณ์ →</a></details>
         <label className="field"><span>ผู้ตรวจทาน</span><input value={reviewer} maxLength={80} onChange={e => setReviewer(e.target.value)} /></label>
       </>}
-      <p className="scopeNote"><Icon name="info" size={16} />{rule ? 'ปลดเฉพาะกฎระดับแอปนี้' : action === 'approve' ? 'บล็อกเฉพาะแอปสาธิต ไม่เปลี่ยน firewall ของเครื่อง การอนุมัติยังไม่นับว่ายืนยันผล' : 'ไม่สร้างกฎบล็อก และบันทึกผู้ตัดสินใจ'}</p>
+      <p className="scopeNote"><Icon name="info" size={16} />{rule ? 'ปลดเฉพาะกฎระดับแอปนี้' : action === 'approve' ? 'บล็อกเฉพาะเว็บ rod-mai-rod ไม่เปลี่ยน firewall ของเครื่อง การอนุมัติยังไม่นับว่ายืนยันผล' : 'ไม่สร้างกฎบล็อก และบันทึกผู้ตัดสินใจ'}</p>
       <footer><button className="btn ghost" disabled={ctx.busy} onClick={onClose}>ยกเลิก</button><button className="btn primary" disabled={ctx.busy || !!ctx.error || (!rule && (!report || !!error || reviewer.trim().length < 2))} onClick={submit}>{ctx.busy ? 'กำลังบันทึก…' : rule ? 'ยืนยันปลดบล็อก' : action === 'approve' ? 'ยืนยันบล็อก IP' : 'ยืนยันปฏิเสธ'}<Icon name="chevron" size={16} /></button></footer>
     </div>
   </dialog>

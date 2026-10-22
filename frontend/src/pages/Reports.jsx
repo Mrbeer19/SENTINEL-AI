@@ -76,9 +76,9 @@ function ReportView({ ctx, id }) {
       </Panel>
       <Panel title="Limitations" icon="info">
         <ul className="plain">
-          <li>Controlled local lab, not a production environment</li>
+          <li>Evidence is limited to events received by the configured collectors</li>
           <li>App-level enforcement only; host firewall unchanged</li>
-          {report.kind === 'SSH_BRUTE_FORCE' && <li>SSH events are synthetic log replay</li>}
+          {report.kind === 'SSH_BRUTE_FORCE' && <li>SSH detection uses collected authentication logs; inspect evidence to distinguish live and test events</li>}
           {isFallback(report) && <li>Analysis is rule fallback, not a model result</li>}
           {report.analysis_meta?.model && !isFallback(report) && <li>Model {report.analysis_meta.model} · prompt {report.analysis_meta.prompt_version || '—'}</li>}
           <li>Approved rules require a new denied request to count as verified</li>

@@ -41,7 +41,7 @@ export const ruleId = (id) => `RULE-${pad(id)}`
 
 export const kindLabel = {
   HTTP_AUTH_BRUTE_FORCE: 'HTTP Brute Force',
-  SSH_BRUTE_FORCE: 'SSH Brute Force (log replay)',
+  SSH_BRUTE_FORCE: 'SSH Brute Force',
   PORT_SCAN: 'Port Scan',
   SUSPICIOUS_LOGIN: 'Login after repeated failures',
   TRAFFIC_ANOMALY: 'Traffic Anomaly',

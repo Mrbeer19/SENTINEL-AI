@@ -1,17 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Empty, Icon, SeverityBadge, fmtTime, isOpenIncident, isReplayIp, kindName, remaining, targetIp } from '../ui.jsx'
 import { sourceActivity } from '../sourceActivity.js'
 
 export function sourceLocation(ip, data, lookedUpGeo) {
   const geo = lookedUpGeo || data.geo_locations?.find(g => g.source_ip === ip || g.ip === ip || g.label === ip)
-  if (geo?.country || geo?.city) return { label: [geo.city, geo.region !== geo.city && geo.region, geo.country].filter(Boolean).join(', '), note: geo.provider === 'ipapi.co' ? `GeoIP โดยประมาณ${geo.connection?.isp ? ` · เครือข่าย ${geo.connection.isp}` : ''}` : 'พิกัดจากข้อมูลระบบ', geo }
+  if (geo?.country || geo?.city) return { label: [geo.city, geo.region !== geo.city && geo.region, geo.country].filter(Boolean).join(', '), note: ['ipapi.co', 'ipwho.is'].includes(geo.provider) ? `GeoIP โดยประมาณ${geo.connection?.isp ? ` · เครือข่าย ${geo.connection.isp}` : ''}` : 'พิกัดจากข้อมูลระบบ', geo }
   if (isReplayIp(ip)) return { label: 'IP สำหรับเอกสาร', note: 'TEST-NET · ไม่มีตำแหน่งจริง' }
   if (/^(10\.|192\.168\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip) || ip === '::1' || /^(fc|fd|fe80:)/i.test(ip)) return { label: 'เครือข่ายภายใน', note: 'LAN / Local · ไม่มีพิกัดประเทศ' }
   return { label: 'แหล่งต้นทางจริง', note: 'Public IP · ยังไม่มีข้อมูล GeoIP จึงระบุตำแหน่งไม่ได้' }
 }
 
-export default function SourceList({ ctx, activeRules, onRespond, onSelect, selectedIp, geoByIp = {}, now }) {
-  const [query, setQuery] = useState('')
+export default function SourceList({ ctx, activeRules, onRespond, onSelect, selectedIp, geoByIp = {}, now, queryOverride }) {
+  const [query, setQuery] = useState(queryOverride || '')
+  useEffect(() => { if (queryOverride !== undefined) setQuery(queryOverride) }, [queryOverride])
   const [filter, setFilter] = useState('all')
   const { data } = ctx
   const activity = sourceActivity(data)
