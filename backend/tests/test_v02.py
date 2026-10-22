@@ -51,7 +51,7 @@ def fake_model(monkeypatch, tool_calls=(), finals=()):
 
 def client_for(app, peer=None, headers=None):
     transport = httpx.ASGITransport(app=app, client=(peer, 1234)) if peer else httpx.ASGITransport(app=app)
-    return httpx.AsyncClient(transport=transport, base_url="http://test", headers=headers or {})
+    return httpx.AsyncClient(transport=transport, base_url="http://test", headers=headers or ({"X-Admin-Key":"test-fixture-machine-key"} if peer is None else {}))
 
 
 async def brute_force(client, ip=ATTACKER, scenario="http_brute_force"):
@@ -216,9 +216,9 @@ def test_remote_peer_cannot_read_soc_api_or_websocket(tmp_path: Path, monkeypatc
 
     async def run():
         async with client_for(app, "192.168.1.90") as remote:
-            assert (await remote.get("/api/incidents")).status_code == 403
-            assert (await remote.get("/api/audit")).status_code == 403
-            assert (await remote.get("/api/health")).status_code == 200
+            assert (await remote.get("/api/incidents")).status_code == 401
+            assert (await remote.get("/api/audit")).status_code == 401
+            assert (await remote.get("/api/health")).status_code == 401
             assert (await remote.post("/api/demo/traffic", json={})).status_code == 200
         async with client_for(app, "192.168.1.90", {"X-Admin-Key": "k" * 24}) as admin:
             assert (await admin.get("/api/incidents")).status_code == 200

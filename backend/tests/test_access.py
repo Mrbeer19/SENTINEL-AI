@@ -38,7 +38,7 @@ def call(client, method, path, body):
 @pytest.mark.parametrize("method,path,body", SOC_ROUTES)
 def test_remote_peer_without_key_is_refused(make_app, method, path, body):
     response = call(connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE), method, path, body)
-    assert response.status_code == 403 and "X-Admin-Key" in response.json()["detail"]
+    assert response.status_code == 401 and "login" in response.json()["detail"]
 
 
 @pytest.mark.parametrize("method,path,body", SOC_ROUTES)
@@ -49,16 +49,16 @@ def test_remote_peer_with_key_passes_access_control(make_app, method, path, body
 
 @pytest.mark.parametrize("headers", [{"X-Admin-Key": "wrong"}, {"X-Admin-Key": KEY[:-1]}, {"X-Admin-Key": ""}, {"X-Admin": KEY}])
 def test_wrong_or_missing_key_is_refused(make_app, headers):
-    assert connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE, headers).get("/api/incidents").status_code == 403
+    assert connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE, headers).get("/api/incidents").status_code == 401
 
 
 def test_empty_key_setting_never_matches_empty_header(make_app):
-    assert connect(make_app(), REMOTE, {"X-Admin-Key": ""}).get("/api/incidents").status_code == 403
+    assert connect(make_app(), REMOTE, {"X-Admin-Key": ""}).get("/api/incidents").status_code == 401
 
 
 @pytest.mark.parametrize("peer", ["127.0.0.1", "::1", "testclient"])
-def test_local_peers_need_no_key(make_app, peer):
-    assert connect(make_app(), peer).get("/api/incidents").status_code == 200
+def test_local_peers_require_authentication(make_app, peer):
+    assert TestClient(make_app(), client=(peer,1234)).get("/api/incidents").status_code == 401
 
 
 @pytest.mark.parametrize("method,path,body", [("get", "/api/health", None), ("post", "/api/demo/traffic", {}),
@@ -129,7 +129,7 @@ def test_cors_allows_only_the_dev_dashboard(client):
 @pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"])
 def test_api_docs_are_hidden_from_the_lab(make_app, path):
     app = make_app(SENTINEL_ADMIN_KEY=KEY)
-    assert connect(app, REMOTE).get(path).status_code == 403
+    assert connect(app, REMOTE).get(path).status_code == 401
     assert connect(app, REMOTE, {"X-Admin-Key": KEY}).get(path).status_code == 200
     assert connect(app).get(path).status_code == 200
 
@@ -187,7 +187,7 @@ def test_websocket_from_another_site_is_refused(make_app):
 
 
 def test_websocket_from_the_dashboard_is_accepted(make_app):
-    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": "http://localhost:5173"}) as client:
+    with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": "http://localhost:5173", "X-Admin-Key": "test-fixture-machine-key"}) as client:
         with client.websocket_connect("/ws") as socket:
             assert socket.receive_json()["stage"] == "connected"
 

@@ -18,6 +18,7 @@ def isolated_env(monkeypatch):
                  "SENTINEL_PROMPT_PATH", "SENTINEL_RULES_DIR", "SENTINEL_DEMO_RATE_LIMIT", "SENTINEL_DEMO_RATE_WINDOW",
                  "SENTINEL_ALLOWED_HOSTS", "SENTINEL_ENABLE_DEMO"):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SENTINEL_ADMIN_KEY", "test-fixture-machine-key")
     monkeypatch.setenv("SENTINEL_DISABLE_OLLAMA", "1")
     monkeypatch.setenv("OLLAMA_URL", "http://127.0.0.1:9")  # closed port: a stray real call fails fast
     monkeypatch.setenv("SENTINEL_ALLOWED_HOSTS", "testserver,test")  # Host of TestClient / httpx base_url in tests
@@ -28,14 +29,19 @@ def isolated_env(monkeypatch):
 def make_app(tmp_path, monkeypatch):
     """make_app(**env) → app on a fresh DB in tmp_path. Same tmp_path DB across calls (restart simulation)."""
     def make(db_name="soc.db", **env):
+        env.setdefault("SENTINEL_ADMIN_KEY", "test-fixture-machine-key")
         for key, value in env.items():
             monkeypatch.setenv(key, value)
-        return create_app(tmp_path / db_name)
+        app = create_app(tmp_path / db_name)
+        app.state.test_admin_key = env["SENTINEL_ADMIN_KEY"]
+        return app
     return make
 
 
 def connect(app, peer="testclient", headers=None) -> TestClient:
-    return TestClient(app, client=(peer, 1234), headers=headers or {})
+    auth_headers = {"X-Admin-Key": getattr(app.state, "test_admin_key", "test-fixture-machine-key")} if peer in {"testclient", "127.0.0.1", "::1"} else {}
+    auth_headers.update(headers or {})
+    return TestClient(app, client=(peer, 1234), headers=auth_headers)
 
 
 @pytest.fixture
