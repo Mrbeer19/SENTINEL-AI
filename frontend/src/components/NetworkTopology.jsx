@@ -5,7 +5,8 @@ import { sourceLocation } from './SourceList.jsx'
 import { sourceActivity } from '../sourceActivity.js'
 
 const PROTECTED_SITE = 'rod-mai-rod.tntproduction.tech'
-const PROTECTED_SITE_IP = '201.18.215.18'
+// Set in frontend/.env.local (ignored by Git), e.g. VITE_PROTECTED_SITE_IP=203.0.113.10
+const PROTECTED_SITE_IP = import.meta.env.VITE_PROTECTED_SITE_IP || 'ไม่ได้ตั้งค่า'
 
 export default function NetworkTopology({ data, activeRules, connected, selectedIp, geoByIp = {} }) {
   const recentSources = sourceActivity(data).filter(({ ip }) => !['127.0.0.1', '::1'].includes(ip))
