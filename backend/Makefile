@@ -30,7 +30,7 @@ run:
 
 run-lan:
 	@[ -n "$(HOST)" ] || { echo "usage: make run-lan HOST=192.168.x.y (the M5 address on the hotspot)"; exit 2; }
-	cd $(ROOT) && $(ENV) export SENTINEL_ALLOWED_HOSTS="$(HOST)$${SENTINEL_ALLOWED_HOSTS:+,$$SENTINEL_ALLOWED_HOSTS}"; \
+	cd $(ROOT) && $(ENV) export SENTINEL_ALLOWED_HOSTS="$(HOST)$${SENTINEL_ALLOWED_HOSTS:+,$$SENTINEL_ALLOWED_HOSTS}" SENTINEL_LAN_HOST="$(HOST)"; \
 	$(PY) -m backend.preflight --host $(HOST) && $(PY) -m uvicorn backend.app:app --host $(HOST) --port $(PORT)
 
 preflight:
