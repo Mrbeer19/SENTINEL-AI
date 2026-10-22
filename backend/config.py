@@ -37,6 +37,7 @@ class Settings:
     rules_dir: Path
     demo_rate_limit: int
     demo_rate_window_s: int
+    demo_enabled: bool
     allowed_hosts: frozenset[str]
 
 
@@ -55,5 +56,6 @@ def load_settings() -> Settings:
         rules_dir=Path(os.getenv("SENTINEL_RULES_DIR", ROOT / "rules")),
         demo_rate_limit=int(os.getenv("SENTINEL_DEMO_RATE_LIMIT", "30")),
         demo_rate_window_s=int(os.getenv("SENTINEL_DEMO_RATE_WINDOW", "10")),
+        demo_enabled=os.getenv("SENTINEL_ENABLE_DEMO", "0") == "1",
         allowed_hosts=DEFAULT_HOSTS | {h.strip().lower() for h in os.getenv("SENTINEL_ALLOWED_HOSTS", "").split(",") if h.strip()},
     )

@@ -148,6 +148,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def access_control(request: Request, call_next):
         peer = request.client.host if request.client else ""
         path = request.url.path
+        if not settings.demo_enabled and (path.startswith("/api/demo/") or path.startswith("/api/simulations")):
+            return JSONResponse({"detail": "Demo endpoints are disabled"}, status_code=404)
         if request.method in UNSAFE_METHODS and not same_site(request.headers.get("origin")):
             return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
         if not trusted(peer, request.headers):
@@ -271,8 +273,17 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                 "errors": errors, "incident_ids": incident_ids}
 
     @api.get("/api/events")
-    def list_events(limit: int = 100):
-        return store.rows("SELECT * FROM events ORDER BY id DESC LIMIT ?", (min(max(limit, 1), 500),))
+    def list_events(limit: int = 100, before_id: int | None = None,
+                    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION"] | None = None):
+        conditions, params = [], []
+        if before_id is not None:
+            conditions.append("id < ?")
+            params.append(before_id)
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        return store.rows(f"SELECT * FROM events{where} ORDER BY id DESC LIMIT ?", (*params, min(max(limit, 1), 500)))
 
     @api.get("/api/incidents")
     def list_incidents():

@@ -1,5 +1,4 @@
-"""Who may call what: localhost and admin-key holders run the SOC; LAN peers only reach the demo endpoints."""
-
+"""Who may call what: localhost and admin-key holders run the SOC; demo endpoints require lab mode."""
 import pytest
 from conftest import connect
 from fastapi.testclient import TestClient
@@ -10,6 +9,15 @@ import backend.app as app_module
 KEY = "k" * 24
 REMOTE = "192.168.1.90"
 REVIEW = {"reviewer": "teacher"}
+
+
+def test_live_mode_disables_demo_without_disabling_event_ingest(make_app):
+    client = connect(make_app(SENTINEL_ENABLE_DEMO="0"))
+    assert client.post("/api/demo/login", json={"username": "u", "password": "p"}).status_code == 404
+    assert client.post("/api/demo/traffic", json={}).status_code == 404
+    assert client.post("/api/simulations", json={"scenario": "normal"}).status_code == 404
+    assert client.get("/api/simulations/state").status_code == 404
+    assert client.post("/api/events", json={"source_ip": "198.18.0.1", "event_type": "HTTP_AUTH", "outcome": "failed"}).status_code in {200, 201}
 
 SOC_ROUTES = [
     ("get", "/api/events", None), ("post", "/api/events", {"source_ip": "192.0.2.1", "event_type": "HTTP_AUTH", "outcome": "failed"}),
