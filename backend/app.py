@@ -586,8 +586,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def enforce(body: EnforceIn):
         """Enforcement hook for a real server behind SENTINEL. A trusted reverse proxy
         (same admin key) reports the real client IP per request; the response says whether
-        to block it. Admin-only: the access-control middleware already refuses /api/enforce
-        from any non-local caller without X-Admin-Key, so only the proxy can reach it."""
+        to block it. Admin-only: the access-control middleware refuses every caller,
+        localhost included, that has neither an admin session nor X-Admin-Key."""
         result = await record_source_decision(str(body.client_ip))
         return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
 

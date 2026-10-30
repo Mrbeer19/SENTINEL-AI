@@ -11,37 +11,37 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-SOURCE = Path("/opt/copie/ops/hostinger/Caddyfile")
-CADDY_DIR = Path("/var/lib/docker/volumes/copie_caddy_config/_data")
+from site_config import CADDY_CONTAINER, CADDY_DIR, DOMAIN, SITE
+
+SOURCE = Path(SITE.get("caddyfile", "/nonexistent"))
 SNIPPET = CADDY_DIR / "rod-mai-rod-sentinel.caddy"
 ACTIVE = CADDY_DIR / "rod-mai-rod-active.Caddyfile"
-EXPECTED_SHA256 = "796cc6bcd68dcdb766828c43a1cd8e41209b4543afcbff523dda81d870162e54"
-DOMAIN = "rod-mai-rod.tntproduction.tech"
-NEW_BLOCK = """rod-mai-rod.tntproduction.tech {
+EXPECTED_SHA256 = SITE.get("caddyfile_sha256", "")
+NEW_BLOCK = """{domain} {{
     encode zstd gzip
-    header {
+    header {{
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
-    }
-    log {
-        output file /config/rod-mai-rod.access.log {
+    }}
+    log {{
+        output file /config/rod-mai-rod.access.log {{
             mode 0600
             roll_size 10MiB
             roll_keep 3
-        }
+        }}
         format json
-    }
-    route {
+    }}
+    route {{
         import /config/rod-mai-rod-sentinel.caddy
-        reverse_proxy rod-mai-rod-web:8000 {
-            transport http {
+        reverse_proxy {upstream} {{
+            transport http {{
                 response_header_timeout 130s
-            }
-        }
-    }
-}
-"""
+            }}
+        }}
+    }}
+}}
+""".format(domain=DOMAIN, upstream=SITE.get("upstream", ""))
 
 
 def site_bounds(data):
@@ -72,6 +72,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
+    if not (DOMAIN and EXPECTED_SHA256 and CADDY_CONTAINER and SITE.get("upstream")):
+        raise RuntimeError("fill site.json (see site.example.json) before running")
     original = SOURCE.read_text()
     if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != EXPECTED_SHA256:
         raise RuntimeError("shared Caddyfile changed since inspection; refusing to patch")
@@ -85,15 +87,15 @@ def main():
     candidate = CADDY_DIR / "rod-mai-rod-install.Caddyfile"
     write_atomic(candidate, updated, 0o644)
     try:
-        subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "validate", "--config", "/config/rod-mai-rod-install.Caddyfile", "--adapter", "caddyfile"], check=True)
+        subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "validate", "--config", "/config/rod-mai-rod-install.Caddyfile", "--adapter", "caddyfile"], check=True)
         write_atomic(SOURCE, updated, SOURCE.stat().st_mode & 0o777)
         write_atomic(ACTIVE, updated, 0o644)
         try:
-            subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True)
         except subprocess.CalledProcessError:
             write_atomic(SOURCE, original, SOURCE.stat().st_mode & 0o777)
             write_atomic(ACTIVE, original, 0o644)
-            subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True)
             raise
     finally:
         candidate.unlink(missing_ok=True)

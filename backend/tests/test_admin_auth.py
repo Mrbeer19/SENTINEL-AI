@@ -47,6 +47,7 @@ def test_secure_cookie_and_rotation(monkeypatch,tmp_path):
     c.post('/api/auth/login',json=body)
     old = c.cookies.get('sentinel_session')
     c.post('/api/auth/login',json=body)
+    c.cookies.clear()
     c.cookies.set('sentinel_session',old)
     assert c.get('/api/events').status_code == 401
 

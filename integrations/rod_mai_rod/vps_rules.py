@@ -10,11 +10,10 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-BASE = Path("/opt/rod-mai-rod/sentinel")
-RULES = BASE / "rules.json"
-CADDY_DIR = Path("/var/lib/docker/volumes/copie_caddy_config/_data")
+from site_config import CADDY_CONTAINER, CADDY_DIR, CADDYFILE, HERE
+
+RULES = HERE / "rules.json"
 SNIPPET = CADDY_DIR / "rod-mai-rod-sentinel.caddy"
-CADDYFILE = Path("/opt/copie/ops/hostinger/Caddyfile")
 ACTIVE_CONFIG = CADDY_DIR / "rod-mai-rod-active.Caddyfile"
 IMPORT = "import /config/rod-mai-rod-sentinel.caddy"
 
@@ -50,6 +49,8 @@ def atomic_write(path, content, mode=0o600):
 
 
 def apply():
+    if not CADDY_CONTAINER:
+        raise RuntimeError("site.json is missing caddy_container (see site.example.json)")
     config = CADDYFILE.read_text()
     if IMPORT not in config:
         raise RuntimeError("rod-mai-rod import is missing from Caddyfile")
@@ -67,13 +68,13 @@ def apply():
     candidate = config.replace(IMPORT, "import /config/rod-mai-rod-sentinel.candidate")
     atomic_write(candidate_config, candidate, 0o644)
     try:
-        subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "validate", "--config", "/config/rod-mai-rod-candidate.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+        subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "validate", "--config", "/config/rod-mai-rod-candidate.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
         atomic_write(SNIPPET, new, 0o644)
         try:
-            subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError:
             atomic_write(SNIPPET, old, 0o644)
-            subprocess.run(["docker", "exec", "copie-caddy-1", "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
             raise
     finally:
         candidate_snippet.unlink(missing_ok=True)

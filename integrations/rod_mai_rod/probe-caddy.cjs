@@ -1,8 +1,10 @@
 // Private-network smoke test from rod-mai-rod's frontend container.
 const https = require('https');
-const host = process.argv[2] || 'rod-mai-rod.tntproduction.tech';
+// Usage: node probe-caddy.cjs <site-domain> <caddy-container>
+const [host, container] = process.argv.slice(2);
+if (!host || !container) { console.error('usage: node probe-caddy.cjs <site-domain> <caddy-container>'); process.exit(2); }
 https.get({
-  hostname: 'copie-caddy-1', port: 443, servername: host, path: '/',
+  hostname: container, port: 443, servername: host, path: '/',
   headers: { Host: host }, rejectUnauthorized: false,
   timeout: 5000,
 }, response => {

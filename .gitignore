@@ -29,3 +29,6 @@ frontend/dist/
 **/.env.local
 /scripts/local.ps1
 **/__pycache__/
+
+# Real deployment values for integrations/rod_mai_rod live on the VPS only
+integrations/rod_mai_rod/site.json

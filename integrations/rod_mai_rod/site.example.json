@@ -1,0 +1,8 @@
+{
+  "domain": "site.example.com",
+  "caddy_config_dir": "/path/to/caddy/config/volume",
+  "caddyfile": "/path/to/gateway/Caddyfile",
+  "caddy_container": "caddy-container-name",
+  "upstream": "web-container:8000",
+  "caddyfile_sha256": "sha256 of the shared Caddyfile at inspection time (install_caddy.py only)"
+}

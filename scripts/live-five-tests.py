@@ -8,9 +8,11 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import os
 from pathlib import Path
 
-LOGIN = 'https://rod-mai-rod.tntproduction.tech/api/v1/auth/login'
+LOGIN_PATH = '/api/v1/auth/login'
+LOGIN = ''
 
 def login(email,password):
     req=urllib.request.Request(LOGIN,data=json.dumps({'email':email,'password':password}).encode(),headers={'Content-Type':'application/json'},method='POST')
@@ -22,8 +24,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('case',choices=['http','ssh','ssh-login','login','scan','traffic'])
     p.add_argument('--host',help='Your VPS hostname/IP, required for TCP and SSH tests')
+    p.add_argument('--site',default=os.getenv('SENTINEL_SITE_URL'),help='Website base URL, e.g. https://site.example.com (or SENTINEL_SITE_URL)')
     args=p.parse_args()
     if args.case in ('http','login'):
+        if not args.site: p.error('--site or SENTINEL_SITE_URL required')
+        global LOGIN
+        LOGIN = args.site.rstrip('/') + LOGIN_PATH
         email = input('Existing test account email: ') if args.case=='login' else 'sentinel-test@example.com'
         password = getpass.getpass('Correct TEST WEBSITE account password: ') if args.case=='login' else None
         for i in range(6):

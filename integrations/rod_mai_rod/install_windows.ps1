@@ -1,14 +1,15 @@
 param(
     [string]$VpsHost = $env:SENTINEL_VPS_HOST,
-    [string]$VpsUser = $env:SENTINEL_VPS_USER
+    [string]$VpsUser = $env:SENTINEL_VPS_USER,
+    [string]$VpsDir = $env:SENTINEL_VPS_DIR
 )
 $ErrorActionPreference = 'Stop'
-if (-not $VpsHost -or -not $VpsUser) { throw 'Pass -VpsHost and -VpsUser, or set SENTINEL_VPS_HOST and SENTINEL_VPS_USER.' }
+if (-not $VpsHost -or -not $VpsUser -or -not $VpsDir) { throw 'Pass -VpsHost, -VpsUser and -VpsDir, or set SENTINEL_VPS_HOST, SENTINEL_VPS_USER and SENTINEL_VPS_DIR.' }
 
 $installDir = Join-Path $env:LOCALAPPDATA 'SentinelAI'
 $agentSource = Join-Path $PSScriptRoot 'agent.py'
 $agentInstalled = Join-Path $installDir 'rod-mai-rod-agent.py'
-$agentArgs = "`"$agentInstalled`" --host $VpsHost --user $VpsUser --network-sensor"
+$agentArgs = "`"$agentInstalled`" --host $VpsHost --user $VpsUser --remote-dir `"$VpsDir`" --network-sensor"
 $pythonw = (Get-Command pythonw.exe -ErrorAction Stop).Source
 $startup = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startup 'SENTINEL rod-mai-rod bridge.lnk'

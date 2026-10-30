@@ -4,7 +4,7 @@ import GlobeCanvas from './GlobeCanvas.jsx'
 import { sourceLocation } from './SourceList.jsx'
 import { isRealPublicIp, sourceActivity } from '../sourceActivity.js'
 
-const PROTECTED_SITE = 'rod-mai-rod.tntproduction.tech'
+const PROTECTED_SITE = import.meta.env.VITE_PROTECTED_SITE_HOST || 'ไม่ได้ตั้งค่า'
 const PROTECTED_SITE_IP = import.meta.env.VITE_PROTECTED_SITE_IP || 'ไม่ได้ตั้งค่า'
 
 export default function NetworkTopology({ data, activeRules, connected, selectedIp, onSelectIp, geoByIp = {} }) {

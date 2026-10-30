@@ -12,7 +12,7 @@ Run (set these env vars):
   LISTEN_PORT         default 8080                      (clients hit the sidecar here)
   LOGIN_PATH          default /login                    (POST here = a login attempt)
   FAIL_STATUS         default 401,403                   (upstream statuses that mean "failed login")
-  CLIENT_IP_HEADER    optional, e.g. X-Forwarded-For    (set only if the sidecar itself sits behind a CDN/LB)
+  CLIENT_IP_HEADER    optional, e.g. X-Forwarded-For    (set only if the sidecar itself sits behind a CDN/LB; the rightmost value is used)
 
   python sentinel_sidecar.py
 
@@ -50,7 +50,8 @@ class Handler(BaseHTTPRequestHandler):
         if CLIENT_IP_HEADER:
             v = self.headers.get(CLIENT_IP_HEADER)
             if v:
-                return v.split(",")[0].strip()
+                # Rightmost entry is the one our own proxy appended; the leftmost is client-supplied.
+                return v.split(",")[-1].strip()
         return self.client_address[0]
 
     def handle_one(self):

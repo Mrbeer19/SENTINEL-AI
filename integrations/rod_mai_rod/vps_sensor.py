@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-OUTPUT = Path('/opt/rod-mai-rod/sentinel/network-events.jsonl')
+OUTPUT = Path(__file__).resolve().parent / 'network-events.jsonl'
 LOCK = threading.Lock()
 AUTH = re.compile(r'^(Failed (?:password|publickey)|Accepted (?:password|publickey|keyboard-interactive/pam)) for (?:invalid user )?(\S+) from (\S+) port \d+')
 SYN = re.compile(r'IP6? (\S+) > (\S+): Flags \[S\]')

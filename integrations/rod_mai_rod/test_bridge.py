@@ -4,15 +4,17 @@ import json
 import unittest
 from datetime import datetime, timezone
 
+import vps_logs
 from vps_logs import event
 from vps_rules import active_ips, snippet_for
 
 
 class BridgeTests(unittest.TestCase):
     def test_only_target_login_results_are_ingested(self):
-        row = {"request": {"host": "rod-mai-rod.tntproduction.tech", "remote_ip": "192.0.2.7", "method": "POST", "uri": "/api/v1/auth/login"}, "status": 401}
+        vps_logs.DOMAIN = "site.example.test"
+        row = {"request": {"host": "site.example.test", "remote_ip": "192.0.2.7", "method": "POST", "uri": "/api/v1/auth/login"}, "status": 401}
         self.assertEqual(event(json.dumps(row).encode(), 42), {"offset": 42, "ip": "192.0.2.7", "kind": "auth", "outcome": "failed"})
-        row["request"]["host"] = "rangsitnanmai.tntproduction.tech"
+        row["request"]["host"] = "other.example.test"
         self.assertIsNone(event(json.dumps(row).encode(), 42))
 
     def test_only_unexpired_valid_ips_become_caddy_matcher(self):

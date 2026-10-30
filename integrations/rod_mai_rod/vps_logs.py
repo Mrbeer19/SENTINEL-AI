@@ -6,8 +6,10 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
-DOMAIN = "rod-mai-rod.tntproduction.tech"
-LOG = Path("/var/lib/docker/volumes/copie_caddy_config/_data/rod-mai-rod.access.log")
+from site_config import CADDY_DIR, DOMAIN, HERE
+
+LOG = CADDY_DIR / "rod-mai-rod.access.log"
+SENSOR_LOG = HERE / "network-events.jsonl"
 MAX_BYTES = 1_000_000
 
 
@@ -31,7 +33,7 @@ def event(line: bytes, offset: int):
 
 
 def read_log(inode: int | None, offset: int, start_at_end: bool, sensor=False):
-    log_path = Path("/opt/rod-mai-rod/sentinel/network-events.jsonl") if sensor else LOG
+    log_path = SENSOR_LOG if sensor else LOG
     if not log_path.exists():
         return {"inode": None, "offset": 0, "events": []}
     with log_path.open("rb") as handle:
@@ -71,4 +73,6 @@ if __name__ == "__main__":
     parser.add_argument("--start-at-end", action="store_true")
     parser.add_argument("--sensor", action="store_true")
     args = parser.parse_args()
+    if not args.sensor and not DOMAIN:
+        raise SystemExit("site.json is missing domain (see site.example.json)")
     print(json.dumps(read_log(args.inode, args.offset, args.start_at_end, args.sensor)))

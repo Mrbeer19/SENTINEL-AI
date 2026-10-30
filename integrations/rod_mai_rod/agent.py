@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,6 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-REMOTE = "/opt/rod-mai-rod/sentinel"
 API = os.getenv("SENTINEL_API_URL", "http://127.0.0.1:8001").rstrip("/")
 # Machine key for X-Admin-Key: env first, else a file readable only by this Windows user.
 KEY_FILE = Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "admin-key.txt"
@@ -72,7 +72,7 @@ def emit(path, message, error=False):
 def collect_sensor(args, state):
     cursor = state.get('sensor')
     flags = '--start-at-end' if cursor is None else f"--inode {int(cursor['inode'] or 0)} --offset {int(cursor['offset'])}"
-    batch = json.loads(ssh(args, f"python3 {REMOTE}/vps_logs.py --sensor {flags}"))
+    batch = json.loads(ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_logs.py --sensor {flags}"))
     count = 0
     for item in batch['events']:
         status, _ = api('/api/events', item['event'])
@@ -92,17 +92,17 @@ def run_once(args, state):
     rules = [{"source_ip": row["source_ip"], "expires_at": row["expires_at"]} for row in rows if row["active"]]
     signature = json.dumps(rules, sort_keys=True)
     if signature != state.get("rules"):
-        ssh(args, f"python3 {REMOTE}/vps_rules.py --receive", signature)
+        ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_rules.py --receive", signature)
         state["rules"] = signature
         save_state(args.state, state)
 
     if state.get("inode") is None:
-        batch = json.loads(ssh(args, f"python3 {REMOTE}/vps_logs.py --start-at-end"))
+        batch = json.loads(ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_logs.py --start-at-end"))
         state.update(inode=batch["inode"], offset=batch["offset"])
         save_state(args.state, state)
         return 0
 
-    batch = json.loads(ssh(args, f"python3 {REMOTE}/vps_logs.py --inode {int(state['inode'])} --offset {int(state['offset'])}"))
+    batch = json.loads(ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_logs.py --inode {int(state['inode'])} --offset {int(state['offset'])}"))
     active = {row["source_ip"] for row in rules}
     processed = 0
     for item in batch["events"]:
@@ -125,17 +125,18 @@ def run_once(args, state):
 
 def main():
     parser = argparse.ArgumentParser()
-    # VPS address and SSH user stay out of Git: pass them or set SENTINEL_VPS_HOST / SENTINEL_VPS_USER.
+    # VPS address, SSH user and folder stay out of Git: pass them or set SENTINEL_VPS_HOST / _USER / _DIR.
     parser.add_argument("--host", default=os.getenv("SENTINEL_VPS_HOST"))
     parser.add_argument("--user", default=os.getenv("SENTINEL_VPS_USER"))
+    parser.add_argument("--remote-dir", default=os.getenv("SENTINEL_VPS_DIR"), help="folder on the VPS holding vps_*.py and site.json")
     parser.add_argument("--key", type=Path, default=Path.home() / ".ssh" / "sentinel_rod_mai_rod")
     parser.add_argument("--state", type=Path, default=Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "rod-mai-rod-agent.json")
     parser.add_argument("--interval", type=float, default=5)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--network-sensor", action="store_true")
     args = parser.parse_args()
-    if not args.host or not args.user:
-        parser.error("set --host/--user or SENTINEL_VPS_HOST/SENTINEL_VPS_USER")
+    if not args.host or not args.user or not args.remote_dir:
+        parser.error("set --host/--user/--remote-dir or SENTINEL_VPS_HOST/SENTINEL_VPS_USER/SENTINEL_VPS_DIR")
     state = json.loads(args.state.read_text()) if args.state.exists() else {}
     while True:
         try:
