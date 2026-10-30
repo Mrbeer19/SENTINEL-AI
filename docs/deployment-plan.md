@@ -1,4 +1,4 @@
-# งาน deploy สำหรับ Beer — F06
+# งาน deploy สำหรับ ประภากรณ์ — F06
 
 เป้าหมายคือ URL HTTPS ที่ทีมเปิดใช้งานระบบจริงได้จากอุปกรณ์อื่น เชื่อม FastAPI, WebSocket และ Qwen ได้ พร้อมมีวิธีเปิดระบบใหม่และย้อน version ยังไม่มี URL deployment ที่ตรวจรับในเอกสารนี้
 
@@ -10,15 +10,15 @@ FastAPI/SQLite/Ollama อยู่บนเครื่อง RTX 4060 ของ
 
 รูปแบบที่วางแผน: frontend บน Vercel → browser เรียก API/WSS ผ่าน protected tunnel → FastAPI ใน Docker Desktop บนเครื่องทีม → Ollama บน Windows ใช้ RTX 4060 โดยเก็บ SQLite ใน persistent Docker volume ไม่รวม model weights ไว้ใน image
 
-ให้ Beer ประสาน Obeto ทำ Dockerfile/Compose และคู่มือสั่งเปิดชุดบริการเดียว ค่า `OLLAMA_URL` ภายใน container ต้องชี้ไป host เช่น `http://host.docker.internal:11434` ตาม Docker Desktop และต้องทดสอบการเชื่อมจริง การใช้ Docker ไม่ได้ทำให้เครื่อง local เปิดให้ใช้ได้เมื่อปิดเครื่อง ห้ามระบุว่า container ผ่านการทดสอบก่อน build/run จริง
+ให้ ประภากรณ์ ประสาน พิชชากร ทำ Dockerfile/Compose และคู่มือสั่งเปิดชุดบริการเดียว ค่า `OLLAMA_URL` ภายใน container ต้องชี้ไป host เช่น `http://host.docker.internal:11434` ตาม Docker Desktop และต้องทดสอบการเชื่อมจริง การใช้ Docker ไม่ได้ทำให้เครื่อง local เปิดให้ใช้ได้เมื่อปิดเครื่อง ห้ามระบุว่า container ผ่านการทดสอบก่อน build/run จริง
 
 Cloudflare Pages Free เป็นตัวเลือก frontend อีกทางสำหรับ static build ส่วน Render Free รัน web service ได้แต่พักหลังไม่มี traffic 15 นาทีและไม่มี persistent disk ใน free web service จึงต้องออกแบบที่เก็บ SQLite ใหม่หากย้าย backend ไปที่นั่น
 
-## ขั้นตอนที่ให้ผู้ช่วยของ Beer ทำ
+## ขั้นตอน
 
 1. ตรวจโค้ดปัจจุบัน: API ยังเป็น relative `/api`, WebSocket อิง origin หน้าเว็บ และ Vite proxy มีผลเฉพาะ dev ต้องทำ production routing/config ให้ครบ
 2. แยก public configuration เช่น API origin และ WSS URL ออกจาก secrets ค่า `VITE_*` ถูกส่งให้ browser จึงห้ามใส่ bot token, admin key หรือ credential ถาวรในนั้น
-3. ประสาน Obeto ให้ backend รองรับ origin ที่อนุญาตและ authentication/access control สำหรับ HTTP กับ WebSocket ก่อนเปิดใช้นอกเครื่อง
+3. ประสาน พิชชากร ให้ backend รองรับ origin ที่อนุญาตและ authentication/access control สำหรับ HTTP กับ WebSocket ก่อนเปิดใช้นอกเครื่อง
 4. กั้น backend ปัจจุบันให้ครบก่อนใช้ tunnel เพราะ local management bypass ใน MVP มอง peer เป็น localhost และ reverse proxy อาจทำให้ทุกคนดูเหมือน localhost การเพิ่ม frontend login เพียงหน้าเดียวไม่เพียงพอ
 5. หากใช้ Quick Tunnel ให้ถือเป็น URL เดโมชั่วคราว ไม่มี uptime guarantee หากต้องการ API hostname ถาวรให้เลือก named tunnel/host ที่ทีมมีสิทธิ์และระบุค่าใช้จ่ายโดเมนแยกจาก free hosting
 6. เชื่อม GitHub กับ hosting ที่เลือกด้วยบัญชีเจ้าของ ตั้ง production branch, public env, HTTPS และ deployment preview ทดสอบโดยไม่ใช้ Vite dev server เป็น production
