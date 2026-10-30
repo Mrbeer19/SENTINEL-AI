@@ -172,6 +172,22 @@ def test_lan_ip_of_the_server_is_an_allowed_host(make_app):
     assert connect(app, "127.0.0.1", {"Origin": "http://192.168.1.10:8000"}).post("/api/demo/reset").status_code == 200
 
 
+def test_run_lan_host_counts_as_local_for_the_operator_dashboard(make_app):
+    """make run-lan binds only the M5 LAN IP, so the dashboard on the M5 itself arrives from that IP."""
+    app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10", SENTINEL_LAN_HOST="192.168.1.10")
+    m5 = connect(app, "192.168.1.10", {"Host": "192.168.1.10:8000", "Origin": "http://192.168.1.10:8000"})
+    assert m5.get("/api/incidents").status_code == 200
+    assert m5.post("/api/demo/reset").status_code == 200
+    with m5.websocket_connect("/ws") as socket:
+        assert socket.receive_json()["stage"] == "connected"
+    assert connect(app, REMOTE, {"Host": "192.168.1.10:8000"}).get("/api/incidents").status_code == 403
+
+
+def test_lan_ip_is_remote_without_run_lan(make_app):
+    app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10")
+    assert connect(app, "192.168.1.10", {"Host": "192.168.1.10:8000"}).get("/api/incidents").status_code == 403
+
+
 def test_websocket_from_another_site_is_refused(make_app):
     with TestClient(make_app(), client=("127.0.0.1", 1234), headers={"Origin": EVIL}) as client:
         with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws"):
