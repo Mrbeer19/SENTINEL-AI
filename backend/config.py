@@ -45,6 +45,7 @@ class Settings:
     demo_rate_limit: int
     demo_rate_window_s: int
     allowed_hosts: frozenset[str]
+    local_peers: frozenset[str]
 
 
 def load_settings() -> Settings:
@@ -63,4 +64,7 @@ def load_settings() -> Settings:
         demo_rate_limit=int(os.getenv("SENTINEL_DEMO_RATE_LIMIT", "30")),
         demo_rate_window_s=int(os.getenv("SENTINEL_DEMO_RATE_WINDOW", "10")),
         allowed_hosts=DEFAULT_HOSTS | {h.strip().lower() for h in os.getenv("SENTINEL_ALLOWED_HOSTS", "").split(",") if h.strip()},
+        # `make run-lan` binds the M5 LAN IP only, so the operator's own dashboard arrives from that IP, not loopback.
+        # Only the M5 holds that address, so it counts as local like 127.0.0.1.
+        local_peers=LOCAL_PEERS | parse_ips(os.getenv("SENTINEL_LAN_HOST", "")),
     )
