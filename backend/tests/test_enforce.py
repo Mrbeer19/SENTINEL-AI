@@ -20,6 +20,16 @@ def test_enforce_allows_an_unblocked_ip(client):
     assert res.status_code == 200 and res.json()["decision"] == "allowed"
 
 
+def test_enforce_stores_only_denied_requests(client):
+    blocked_incident(client, ip=ATTACKER)
+    count = lambda: len(client.get("/api/traffic").json())
+    before = count()
+    client.post("/api/enforce", json={"client_ip": "192.0.2.77"})
+    assert count() == before
+    client.post("/api/enforce", json={"client_ip": ATTACKER})
+    assert count() == before + 1
+
+
 def test_enforce_verifies_the_incident(client):
     incident = blocked_incident(client, ip=ATTACKER)
     assert client.get(f"/api/incidents/{incident['id']}").json()["status"] == "blocked"
