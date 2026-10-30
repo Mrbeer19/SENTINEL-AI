@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
 from backend import logparse, policy, soc
 from backend.agent import Agent
-from backend.config import ROOT, load_settings
+from backend.config import ROOT, load_settings, same_model
 from backend.detection import Match, RuleSet
 from backend.store import Store, audit, utcnow, verify_audit
 
@@ -233,7 +233,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         try:
             async with httpx.AsyncClient(timeout=2) as client:
                 response = await client.get(f"{settings.ollama_url}/api/tags")
-                model_ready = response.is_success and any(item.get("name") == settings.model for item in response.json().get("models", []))
+                model_ready = response.is_success and any(same_model(item.get("name", ""), settings.model) for item in response.json().get("models", []))
         except (httpx.HTTPError, ValueError):
             pass
         return {"status": "ok", "version": API_VERSION, "model": settings.model, "model_ready": model_ready, "ai_mode": "ollama" if model_ready else "rule_fallback"}

@@ -17,6 +17,13 @@ LOCAL_PEERS = frozenset({"127.0.0.1", "::1", "testclient"})
 DEFAULT_HOSTS = frozenset({"localhost", "127.0.0.1"})
 
 
+def same_model(installed: str, wanted: str) -> bool:
+    """Ollama lists an untagged model as `name:latest`, so `name` and `name:latest` are the same model."""
+    def full(name: str) -> str:
+        return name if ":" in name.rsplit("/", 1)[-1] else f"{name}:latest"
+    return full(installed) == full(wanted)
+
+
 def parse_ips(raw: str) -> frozenset[str]:
     """Comma-separated IPs → normalised set. Raises ValueError on a bad entry so misconfiguration is loud."""
     return frozenset(str(ipaddress.ip_address(part.strip())) for part in raw.split(",") if part.strip())
