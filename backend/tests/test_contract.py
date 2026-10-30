@@ -2,10 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
-from conftest import ATTACKER, blocked_incident, event, simulate
+from conftest import ATTACKER, blocked_incident, connect, event, simulate
 
 from backend.app import API_VERSION, WS_VERSION
+from backend.config import same_model
 
 INCIDENT_KEYS = {"id", "kind", "source_ip", "status", "severity", "event_count", "created_at", "updated_at", "rule_id",
                  "attack_technique", "analysis", "analysis_mode", "analysis_meta"}
@@ -18,6 +20,22 @@ AUDIT_KEYS = {"id", "ts", "actor", "action", "incident_id", "detail", "prev_hash
 def test_health_shape_without_model(client):
     assert client.get("/api/health").json() == {"status": "ok", "version": API_VERSION, "model": "qwen3.5:4b",
                                                  "model_ready": False, "ai_mode": "rule_fallback"}
+
+
+def test_health_finds_an_untagged_model_that_ollama_lists_as_latest(make_app, monkeypatch):
+    async def tags(self, url, **kwargs):
+        return httpx.Response(200, json={"models": [{"name": "sentinel-qwen3.5-4b-r2:latest"}]}, request=httpx.Request("GET", str(url)))
+    monkeypatch.setattr(httpx.AsyncClient, "get", tags)
+    health = connect(make_app(SENTINEL_MODEL="sentinel-qwen3.5-4b-r2")).get("/api/health").json()
+    assert health["model_ready"] is True and health["ai_mode"] == "ollama"
+
+
+@pytest.mark.parametrize("installed,wanted,same", [
+    ("qwen3.5:4b", "qwen3.5:4b", True), ("m:latest", "m", True), ("m", "m:latest", True), ("m:latest", "m:4b", False),
+    ("qwen3.5:4b", "qwen3.5", False), ("host:5000/m:latest", "host:5000/m", True),
+])
+def test_same_model_treats_no_tag_as_latest(installed, wanted, same):
+    assert same_model(installed, wanted) is same
 
 
 def test_event_is_created_with_201_and_full_record(client):

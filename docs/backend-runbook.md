@@ -32,6 +32,10 @@ make -C backend test            # ต้องได้ 395 passed
 
 `run-lan` รัน preflight ก่อน ถ้าไม่ผ่านจะไม่เปิด server · **ห้าม bind `0.0.0.0` บน Mac** (preflight ปฏิเสธ) เพราะจะเปิดทุก interface
 
+เมื่อใช้ `run-lan` server ฟังที่ IP M5 อย่างเดียว ไม่ได้ฟังที่ `127.0.0.1` → บน M5 เปิด dashboard และเรียก `curl` ที่ `http://<IP M5>:8000` (ไม่ใช่ `localhost`) · request ที่มาจาก IP M5 เอง (`SENTINEL_LAN_HOST`) นับเป็นเครื่องเดียวกับ `127.0.0.1` สำหรับการกำหนด IP ต้นทางในโหมดสาธิต แต่ยังต้อง login admin ก่อนกดปุ่มบน dashboard เหมือน `127.0.0.1`
+
+**ห้ามวาง reverse proxy บน M5 ที่ส่งต่อมาที่ `<IP M5>:8000`** (เช่น nginx/Caddy/sidecar) เพราะ request ทุกตัวที่ผ่าน proxy จะมี IP ต้นทางเป็น M5 และถูกนับเป็นเครื่อง SOC ทั้งหมด ใครก็ตามที่เข้าถึง proxy ได้จะเรียก endpoint ของ SOC ได้โดยไม่ต้องมี key · ถ้าต้องมี proxy ให้รันอีกเครื่อง หรือรัน `make -C backend run` (127.0.0.1) แล้วให้ proxy แนบ `X-Admin-Key` เอง
+
 ตรวจระบบที่รันอยู่ (อีกหน้าต่าง):
 
 ```sh
@@ -51,7 +55,7 @@ make -C backend smoke SMOKE_ARGS=--require-model   # วันเดโม: ต�
 | 3 | M5 | dashboard: incident `HTTP_AUTH_BRUTE_FORCE` source = IP เครื่องยิง → กด Analyze | trace ทีละขั้น · proposal `TEMP_BLOCK_IP` 600 วิ `pending` |
 | 4 | M5 | กด Approve (ใส่ชื่อผู้ตรวจ) | สถานะ `blocked` |
 | 5 | เครื่องยิง | `… --action traffic` | `403` `"decision":"denied"` → สถานะ `verified` |
-| 6 | M5 | `curl -s localhost:8000/api/audit/verify` | `"valid": true` |
+| 6 | M5 | `curl -s http://<IP M5>:8000/api/audit/verify` | `"valid": true` |
 
 ฝั่งเครื่องยิงใช้ `curl` ตาม `scripts/neo/README.md` (ของ Beer, branch `beer/dashboard-v1`) แทน `lab_client.py` ได้ ผลที่ต้องเห็นเหมือนตารางนี้ · **ฝั่ง M5 ให้รันด้วย `make -C backend run-lan HOST=<IP M5>` ไม่ใช่ `--host 0.0.0.0`**
 
@@ -89,9 +93,10 @@ curl -s -X POST localhost:8000/api/logs -H 'Content-Type: application/json' -d '
 | analyze ได้ `rule_fallback` ทั้งที่เปิดโมเดล | โมเดลตอบ JSON ผิด 2 ครั้ง / timeout 90 วิ / ชื่อโมเดลไม่ตรง | ดู trace แถว `invalid_output` · `ollama list` |
 | approve ได้ `400 … protected` | IP นั้นถูกเพิ่มเป็น protected หลังเสนอ | ถูกต้องตาม policy (ตรวจซ้ำตอนอนุมัติ) |
 | `/api/audit/verify` `valid:false` | มีคนแก้ DB ตรง | `broken_at` บอกแถวแรกที่ถูกแก้ |
-| เบราว์เซอร์ได้ `400 Invalid host header` | เปิดด้วยชื่อ/IP ที่ไม่อยู่ใน `SENTINEL_ALLOWED_HOSTS` | ใช้ `127.0.0.1` หรือรันผ่าน `make run-lan HOST=…` |
-| ปุ่มบน dashboard ได้ `403 Cross-site request refused` | หน้า dashboard มาจาก origin อื่น (เช่นเปิดผ่านชื่อเครื่อง) | เปิด dashboard ที่ `127.0.0.1:8000` หรือ `localhost:5173` |
-| เครื่องยิงเปิด `/docs` ได้ 403 | ปิดไว้ตั้งใจ (Beer ตกลง 20 ต.ค.) | เปิดดูบน M5 ที่ `127.0.0.1:8000/docs` |
+| เบราว์เซอร์ได้ `400 Invalid host header` | เปิดด้วยชื่อ/IP ที่ไม่อยู่ใน `SENTINEL_ALLOWED_HOSTS` | ใช้ `127.0.0.1` (`make run`) หรือ `<IP M5>` (`make run-lan HOST=…`) |
+| ปุ่มบน dashboard ได้ `403 Cross-site request refused` | หน้า dashboard มาจาก origin อื่น (เช่นเปิดผ่านชื่อเครื่อง) | เปิด dashboard ที่ `127.0.0.1:8000` (`make run`), `http://<IP M5>:8000` (`make run-lan`) หรือ `localhost:5173` |
+| เปิด `localhost:8000` บน M5 ไม่ขึ้น ระหว่าง `run-lan` | server ฟังที่ IP M5 อย่างเดียว | ใช้ `http://<IP M5>:8000` |
+| เครื่องยิงเปิด `/docs` ได้ 403 | ปิดไว้ตั้งใจ (Beer ตกลง 20 ต.ค.) | เปิดดูบน M5 ที่ `127.0.0.1:8000/docs` หรือ `http://<IP M5>:8000/docs` ระหว่าง `run-lan` |
 | event มี `username_truncated = 1` | username ยาวเกิน 80 ตัว (มักเป็นการลองยัดข้อความ) | ปกติ · เก็บ 80 ตัวแรกและยังนับเข้ากฎตรวจจับ · เกิน 1024 ตัว = 422 |
 
 ## 7. ตรวจผล/วัดผล (ไม่ต้องเปิด server)

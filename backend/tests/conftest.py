@@ -16,7 +16,7 @@ ATTACKER = "192.0.2.25"
 def isolated_env(monkeypatch):
     for name in ("SENTINEL_MODEL", "SENTINEL_OLLAMA_FORMAT", "SENTINEL_OLLAMA_TIMEOUT", "SENTINEL_ADMIN_KEY", "SENTINEL_PROTECTED_IPS",
                  "SENTINEL_PROMPT_PATH", "SENTINEL_RULES_DIR", "SENTINEL_DEMO_RATE_LIMIT", "SENTINEL_DEMO_RATE_WINDOW",
-                 "SENTINEL_ALLOWED_HOSTS", "SENTINEL_ENABLE_DEMO"):
+                 "SENTINEL_ALLOWED_HOSTS", "SENTINEL_ENABLE_DEMO", "SENTINEL_LAN_HOST"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SENTINEL_ADMIN_KEY", "test-fixture-machine-key")
     monkeypatch.setenv("SENTINEL_DISABLE_OLLAMA", "1")
