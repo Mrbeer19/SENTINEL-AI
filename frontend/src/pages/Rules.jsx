@@ -1,5 +1,6 @@
+import TablePagination, { usePagedRows } from '../components/TablePagination.jsx'
 import React, { useEffect, useState } from 'react'
-import { Badge, Banner, Empty, FilterSummary, Icon, NoResults, Panel, Stat, fmtTime, go, incId, isActiveRule, remaining, ruleId, useNow } from '../ui.jsx'
+import { Badge, Banner, Empty, FilterSummary, Icon, NoResults, Panel, Stat, fmtTime, go, incId, isActiveRule, remaining, ruleId, useNow, fmtExpiry, isPermanentRule } from '../ui.jsx'
 
 const within = (t, rule) => t.source_ip === rule.source_ip && new Date(t.created_at) >= new Date(rule.created_at) && new Date(t.created_at) <= new Date(rule.expires_at)
 export const ruleProof = (rule, traffic) => traffic.filter(t => t.decision === 'denied' && within(t, rule)).sort((a, b) => a.id - b.id)[0] || null
@@ -14,7 +15,8 @@ export default function Rules({ ctx, id }) {
   const active = rules.filter(r => isActiveRule(r, now))
   const list = (tab === 'active' ? active : rules.filter(r => !isActiveRule(r, now)))
     .filter(r => !query || [ruleId(r.id), r.source_ip, incId(incidentOf(r) || 0)].some(v => v.toLowerCase().includes(query.toLowerCase())))
-  const selected = list.find(r => r.id === id) || list[0]
+  const paging = usePagedRows(list, `${query}|${tab}`)
+  const selected = list.find(r => r.id === id) || paging.rows[0]
   const routeRule = rules.find(r => r.id === id)
   const routeActive = routeRule ? isActiveRule(routeRule, now) : null
   useEffect(() => { if (routeActive !== null) setTab(routeActive ? 'active' : 'history'); setConfirm(null) }, [id, routeActive])
@@ -42,13 +44,13 @@ export default function Rules({ ctx, id }) {
       <FilterSummary count={list.length} total={tab === 'active' ? active.length : rules.length - active.length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <div className="tableWrap"><table>
         <thead><tr><th>Rule</th><th>Source IP</th><th>Incident</th><th>Expires</th><th>Status</th><th>Verification</th><th>Actions</th></tr></thead>
-        <tbody>{list.map(r => {
+        <tbody>{paging.rows.map(r => {
           const on = isActiveRule(r, now)
           const proof = ruleProof(r, traffic)
-          return <tr key={r.id} className={`clickable ${selected?.id === r.id ? 'selected' : ''}`} onClick={() => go('rules', r.id)}>
+          return <tr key={r.id} className={`clickable ${selected?.id === r.id ? 'selected' : ''}`} tabIndex={0} aria-selected={selected?.id === r.id} onKeyDown={e=>{if(e.target===e.currentTarget && ['Enter',' '].includes(e.key)){e.preventDefault();go('rules',r.id)}}} onClick={() => go('rules', r.id)}>
             <td><a href={`#/rules/${r.id}`} onClick={e => e.stopPropagation()}>{ruleId(r.id)}</a></td><td className="mono">{r.source_ip}</td>
             <td>{incidentOf(r) ? <a href={`#/incident/${incidentOf(r)}`} onClick={e => e.stopPropagation()}>{incId(incidentOf(r))}</a> : '—'}</td>
-            <td className="mono">{fmtTime(r.expires_at)}</td>
+            <td className="mono">{fmtExpiry(r)}</td>
             <td><Badge tone={on ? 'good' : 'muted'}>{on ? 'Active' : 'Expired'}</Badge></td>
             <td><Badge tone={proof ? 'good' : 'muted'} icon={proof ? 'ok' : undefined}>{proof ? 'Verified 403' : 'Not verified'}</Badge></td>
             <td onClick={e => e.stopPropagation()}>{on ? (confirm === r.id
@@ -56,10 +58,11 @@ export default function Rules({ ctx, id }) {
               : <button className="btn ghost sm" disabled={ctx.busy} onClick={() => setConfirm(r.id)}>Unblock</button>) : '—'}</td>
           </tr>
         })}</tbody></table></div> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'active' ? <>ไม่มีกฎที่ทำงานอยู่ · <a href="#/approvals">ดูข้อเสนอที่รออนุมัติ</a></> : 'ยังไม่มีกฎที่หมดอายุหรือถูกปลด'}</Empty>}
+      <TablePagination state={paging}/>
     </Panel>
 
     <div className="stack">
-      <Panel title="Rule Details" icon="shield" actions={selected && <Badge tone={isActiveRule(selected, now) ? 'good' : 'muted'}>{isActiveRule(selected, now) ? 'Active' : 'Expired'}</Badge>}>
+      <Panel title="รายละเอียดกฎ" icon="shield" actions={selected && <Badge tone={isActiveRule(selected, now) ? 'good' : 'muted'}>{isActiveRule(selected, now) ? 'Active' : 'Expired'}</Badge>}>
         {selected ? <RuleDetail rule={selected} now={now} incident={incidentOf(selected)} traffic={traffic} onRemove={() => setConfirm(selected.id)} confirming={confirm === selected.id} busy={ctx.busy || !!ctx.error} unblock={() => unblock(selected)} cancel={() => setConfirm(null)} /> : <Empty>ไม่มีกฎในรายการที่เลือก</Empty>}
       </Panel>
       <Panel title="Protected Sources" icon="shield">
@@ -94,9 +97,10 @@ function RuleDetail({ rule, now, incident, traffic, onRemove, confirming, busy, 
       <div><dt>Source IP</dt><dd className="mono">{rule.source_ip}</dd></div>
       <div><dt>Incident</dt><dd>{incident ? <a href={`#/incident/${incident}`}>{incId(incident)}</a> : '—'}</dd></div>
       <div><dt>Created</dt><dd className="mono">{fmtTime(rule.created_at)}</dd></div>
-      <div><dt>Expires at</dt><dd className="mono">{fmtTime(rule.expires_at)}</dd></div>
+      <div><dt>Expires at</dt><dd className="mono">{fmtExpiry(rule)}</dd></div>
     </dl>
-    {on ? <div className="ttl"><div className="ttlHead"><span>Time remaining</span><b>{remaining(rule, now)}</b></div><div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(left / total * 100)}><span style={{ width: `${(left / total) * 100}%` }} /></div></div>
+    {on && isPermanentRule(rule) ? <p className="muted small">กฎนี้ไม่หมดอายุเอง ปลดได้ด้วยปุ่ม Unblock ด้านล่าง</p>
+      : on ? <div className="ttl"><div className="ruleTimer" style={{"--remaining":`${Math.min(100,Math.max(0,total>0?left/total*100:0))}%`}}><div><small>เวลาที่เหลือ</small><strong>{remaining(rule, now)}</strong><span>นาที : วินาที</span></div></div><div className="ttlHead"><span>Time remaining</span><b>{remaining(rule, now)}</b></div><div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(left / total * 100)}><span style={{ width: `${(left / total) * 100}%` }} /></div></div>
       : <p className="muted small">Rule expired or was removed at {fmtTime(rule.expires_at)}.</p>}
     {on && (confirming
       ? <div className="confirm block"><span>ปลดบล็อก {rule.source_ip}?</span><button className="btn danger sm" disabled={busy} onClick={unblock}>Confirm</button><button className="btn ghost sm" onClick={cancel}>Cancel</button></div>

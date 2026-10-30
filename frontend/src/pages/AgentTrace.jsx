@@ -1,6 +1,6 @@
 import React from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, actionLabel, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, parseJson, propId, targetIp } from '../ui.jsx'
+import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, actionLabel, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, parseJson, propId, targetIp, durationText, UNTIL_UNBLOCKED } from '../ui.jsx'
 
 // Trace rows follow OpenTelemetry GenAI names (contract v0.2): invoke_agent > chat / execute_tool.
 const statusTone = { ok: 'good', error: 'bad', rejected_by_policy: 'bad', invalid_output: 'warn', fallback: 'warn' }
@@ -42,7 +42,8 @@ export default function AgentTrace({ ctx, id }) {
     {fallback && <div className="span3"><Banner tone="warn" icon="info">โมเดลใช้ไม่ได้หรือผลไม่ผ่าน validation รอบนี้จึงเป็น <b>rule fallback</b> ไม่ใช่ผลวิเคราะห์ของ AI · แถวที่มาจาก fallback ติดป้าย <b>fallback</b> แยกจากแถวของโมเดล</Banner></div>}
     {blockedByPolicy.length > 0 && <div className="span3"><Banner tone="bad" icon="shield"><b>Policy ปฏิเสธคำขอของโมเดล {blockedByPolicy.length} ครั้ง</b> · เช่น เสนอบล็อก IP ที่ไม่ใช่ต้นทางของ incident หรือ IP ที่ได้รับการป้องกัน — backend ไม่ทำตาม</Banner></div>}
 
-    <Panel title="Investigation Steps" icon="trace">
+    <Panel title="รายการเหตุการณ์" icon="alert" className="traceQueue"><ul className="queue">{incidents.map(i=><li key={i.id}><a className={`queueItem ${current===i.id?'on':''}`} href={`#/trace/${i.id}`} aria-current={current===i.id?'true':undefined}><Icon name="alert" size={18}/><span><b>{kindName(i.kind)}</b><small className="mono">{i.source_ip}</small></span><time>{fmtTime(i.created_at)}</time></a></li>)}</ul></Panel>
+    <Panel title="ลำดับการวิเคราะห์" icon="trace" className="traceSteps">
       <ol className="vsteps">
         <li className="done"><b>Read incident</b><small>{kindName(report.kind)} from {report.source_ip}</small></li>
         {trace.map((t, i) => <React.Fragment key={t.id}>
@@ -59,19 +60,19 @@ export default function AgentTrace({ ctx, id }) {
       {!report.analysis && report.status !== 'closed' && <button className="btn primary block" disabled={ctx.busy || !!ctx.error || report.status === 'analyzing'} onClick={analyze}>{ctx.busy || report.status === 'analyzing' ? 'กำลังวิเคราะห์หลักฐาน… (บน M5 ประมาณ 30 วินาที)' : 'เริ่มวิเคราะห์'}</button>}
     </Panel>
 
-    <div className="stack">
+    <div className="traceTools">
       {tools.length ? tools.map(t => <ToolCall key={t.id} t={t} />) : <Panel title="Tool Execution" icon="terminal"><Empty>ยังไม่มี tool call</Empty></Panel>}
     </div>
 
-    <div className="stack">
-      <Panel title="Structured Analysis" icon="rules" actions={<CopyButton text={report.analysis ? JSON.stringify(report.analysis, null, 2) : ''} />}>
-        {analysis?.json ? <Code label="Analysis JSON">{JSON.stringify(analysis.json, null, 2)}</Code> : analysis?.text ? <p className="analysisText">{analysis.text}</p> : <Empty>ยังไม่มีผลวิเคราะห์</Empty>}
+    <div className="stack traceResult">
+      <Panel title="ผลการวิเคราะห์ของ AI" icon="rules" actions={<CopyButton text={report.analysis ? JSON.stringify(report.analysis, null, 2) : ''} />}>
+        {analysis?.json ? <><div className="analysisHeadline"><Badge tone={analysis.json.severity==='HIGH'||analysis.json.severity==='CRITICAL'?'bad':'warn'}>{analysis.json.severity || 'ยังไม่ระบุระดับ'}</Badge><ModeBadge mode={report.analysis_mode}/><h3>{kindName(report.kind)}</h3><p>{analysis.json.explanation_th}</p></div><ol className="analysisEvidence">{analysis.json.evidence.map((e,i)=><li key={i}><span>{i+1}</span>{e}</li>)}</ol><div className="aiRecommendation"><div><span className="sectionIndex">ข้อเสนอแนะจาก AI</span><p>{actionLabel[analysis.json.recommended_action] || analysis.json.recommended_action || 'ตรวจสอบหลักฐานเพิ่มเติม'}</p></div><img src="/assets/sentinel-investigator.png" alt=""/></div><details className="analysisJson"><summary>ดูผลวิเคราะห์ JSON</summary><Code label="Analysis JSON">{JSON.stringify(analysis.json, null, 2)}</Code></details></> : analysis?.text ? <p className="analysisText">{analysis.text}</p> : <Empty>ยังไม่มีผลวิเคราะห์</Empty>}
       </Panel>
       <Panel title={p?.status === 'approved' ? 'Approved by human' : p?.status === 'rejected' ? 'Rejected by human' : 'No action executed'} icon="alert" className={p?.status === 'pending' ? 'attention' : ''}>
         {p ? <>
           <p className="muted">{p.status === 'pending' ? 'A temporary app-level block has been proposed. Review the proposal before execution.' : `Decision recorded by ${p.reviewer}.`}</p>
           {p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอจาก rule fallback ไม่ใช่โมเดล</Banner>}
-          <KeyVals items={[['Incident', `${incId(report.id)} · ${kindName(report.kind)}`], ['Target', <span className="mono">{targetIp(p)}</span>], ['Action', actionLabel[p.action] || p.action], ['Expires', `${p.duration_seconds / 60} minutes after approval`]]} />
+          <KeyVals items={[['Incident', `${incId(report.id)} · ${kindName(report.kind)}`], ['Target', <span className="mono">{targetIp(p)}</span>], ['Action', actionLabel[p.action] || p.action], ['Expires', p.duration_seconds ? `${durationText(p.duration_seconds)} หลังอนุมัติ` : UNTIL_UNBLOCKED]]} />
           {p.status === 'pending' && <a className="btn amber block" href={`#/approvals/${p.id}`}>Review {propId(p.id)}</a>}
         </> : <Empty>{report.analysis && noProposalNote[report.status] ? `ไม่มีข้อเสนอบล็อก · ${noProposalNote[report.status]}` : 'ยังไม่มีข้อเสนอ'}</Empty>}
       </Panel>

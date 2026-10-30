@@ -23,7 +23,7 @@ for (let lat = -80; lat <= 82; lat += .85) {
 }
 
 // Land and orbital lines are visual context. Location pins require explicit coordinates.
-export default function GlobeCanvas({ markers = [], focusLongitude = null, focusLatitude = 0, focusVersion = 0, controlRef }) {
+export default function GlobeCanvas({ markers = [], focusLongitude = null, focusLatitude = 0, focusVersion = 0, controlRef, theme = 'dark' }) {
   const canvasRef = useRef(null)
   const markerRef = useRef(markers)
   markerRef.current = markers
@@ -33,6 +33,8 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
   versionRef.current = focusVersion
   const latitudeRef = useRef(focusLatitude)
   latitudeRef.current = focusLatitude
+  const themeRef = useRef(theme)
+  themeRef.current = theme
   useEffect(() => {
     const canvas = canvasRef.current, ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -73,14 +75,14 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
       if (!manual && !reduced.matches) rotation += .0012
       const spin = rotation
       ctx.clearRect(0, 0, width, height)
-      ctx.fillStyle = '#02060d'; ctx.fillRect(0, 0, width, height)
+      ctx.fillStyle = themeRef.current === 'light' ? '#f5f9fc' : '#111e29'; ctx.fillRect(0, 0, width, height)
       for (let i = 0; i < 100; i++) {
         const x = ((Math.sin(i * 127.1) * 43758.5) % 1 + 1) % 1 * width
         const y = ((Math.sin(i * 269.5) * 18341.3) % 1 + 1) % 1 * height
         ctx.fillStyle = `rgba(95,183,255,${.12 + (i % 4) * .08})`; ctx.fillRect(x, y, i % 9 === 0 ? 1.7 : .8, i % 9 === 0 ? 1.7 : .8)
       }
       const atmosphere = ctx.createRadialGradient(cx, cy, radius * .9, cx, cy, radius * 1.22)
-      atmosphere.addColorStop(0, 'rgba(30,145,255,0)'); atmosphere.addColorStop(.48, 'rgba(0,154,255,.42)'); atmosphere.addColorStop(1, 'rgba(30,145,255,0)')
+      atmosphere.addColorStop(0, 'rgba(30,145,255,0)'); atmosphere.addColorStop(.48, 'rgba(0,154,255,.18)'); atmosphere.addColorStop(1, 'rgba(30,145,255,0)')
       ctx.fillStyle = atmosphere; ctx.fillRect(cx - radius * 1.4, cy - radius * 1.4, radius * 2.8, radius * 2.8)
       const surface = ctx.createRadialGradient(cx - radius * .3, cy - radius * .4, 0, cx, cy, radius)
       surface.addColorStop(0, '#124d7c'); surface.addColorStop(.35, '#082843'); surface.addColorStop(.8, '#031222'); surface.addColorStop(1, '#0867a1')
@@ -97,7 +99,7 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
       }
       for (let lat = -60; lat <= 60; lat += 20) line(Array.from({ length: 121 }, (_, n) => vector(lat * RAD, n * Math.PI / 60)), .055)
       for (let lon = 0; lon < 180; lon += 20) line(Array.from({ length: 121 }, (_, n) => vector(n * Math.PI / 60, lon * RAD)), .05)
-      for (const coast of coastlines) line(coast, .65, '255,196,114')
+      for (const coast of coastlines) line(coast, .6, '80,210,230')
       // Decorative surface lights follow land geometry; only GeoIP pins represent logins.
       for (const { point, light } of dots) {
         const [x, y, z] = project(point, spin)
@@ -107,16 +109,16 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
         ctx.fillRect(px, py, 1.1, 1.1)
         if (light < .57) continue
         const brightness = (light - .57) / .43
-        ctx.fillStyle = `rgba(255,${Math.round(170 + brightness * 65)},${Math.round(85 + brightness * 85)},${(.3 + brightness * .7) * Math.min(1,z * 3)})`
+        ctx.fillStyle = `rgba(95,${Math.round(180 + brightness * 60)},240,${(.3 + brightness * .7) * Math.min(1,z * 3)})`
         const size = (.45 + brightness * 1.1) * Math.max(.5, radius / 250)
         ctx.fillRect(px, py, size, size)
         if (light > .987) {
           const glow = ctx.createRadialGradient(px, py, 0, px, py, 5)
-          glow.addColorStop(0,'rgba(255,222,159,.45)'); glow.addColorStop(1,'rgba(255,174,76,0)')
+          glow.addColorStop(0,'rgba(105,224,255,.25)'); glow.addColorStop(1,'rgba(85,210,255,0)')
           ctx.fillStyle = glow; ctx.fillRect(px - 5,py - 5,10,10)
         }
       }
-      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(100,215,255,.9)'; ctx.lineWidth = 1.8; ctx.shadowColor = '#169dff'; ctx.shadowBlur = 13; ctx.stroke(); ctx.shadowBlur = 0
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(100,215,255,.9)'; ctx.lineWidth = 1.8; ctx.shadowColor = '#169dff'; ctx.shadowBlur = 7; ctx.stroke(); ctx.shadowBlur = 0
       for (let ring = 0; ring < 3; ring++) {
         const tilt = -.8 + ring * .35, phase = ring * .7 + elapsed * .00009
         const r = radius * (1.12 + ring * .07)
@@ -174,7 +176,7 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
           ctx.fillStyle = '#e1f2ff'; ctx.fillText(text, lx, ly)
         }
       }
-      ctx.font = '11px system-ui'; ctx.fillStyle = '#a9d4ef'
+      ctx.font = '11px system-ui'; ctx.fillStyle = themeRef.current === 'light' ? '#496578' : '#a9d4ef'
       ctx.fillText(`GeoIP ${markerRef.current.length} IP · มองเห็น ${visiblePins} · Home กลับไปยังหมุด`, 12, height - 12)
     }
     const tick = now => {

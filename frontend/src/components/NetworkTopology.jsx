@@ -7,7 +7,7 @@ import { isRealPublicIp, sourceActivity } from '../sourceActivity.js'
 const PROTECTED_SITE = import.meta.env.VITE_PROTECTED_SITE_HOST || 'ไม่ได้ตั้งค่า'
 const PROTECTED_SITE_IP = import.meta.env.VITE_PROTECTED_SITE_IP || 'ไม่ได้ตั้งค่า'
 
-export default function NetworkTopology({ data, activeRules, connected, selectedIp, onSelectIp, geoByIp = {} }) {
+export default function NetworkTopology({ data, activeRules, connected, selectedIp, onSelectIp, geoByIp = {}, theme }) {
   const controls = useRef(null)
   const [selectedRow, setSelectedRow] = useState(null)
   const [focusVersion, setFocusVersion] = useState(0)
@@ -47,17 +47,17 @@ export default function NetworkTopology({ data, activeRules, connected, selected
     <div className="networkHeader"><span className="networkScope"><span className="scopeSquare" />NETWORK VISUALIZATION</span><span className={`networkState ${tone}`}><i className="dot" />{state}</span></div>
     <div className="networkStage globeStage">
       <img className="worldGridAsset" src="/assets/network-grid.svg" alt="" />
-      <GlobeCanvas controlRef={controls} focusVersion={focusVersion} markers={liveMarkers} focusLongitude={focusGeo?.longitude ?? null} focusLatitude={focusGeo?.latitude ?? 0} />
-      <div className="globeControls"><button onClick={() => controls.current?.zoomIn()} aria-label="ซูมเข้าลูกโลก">+</button><button onClick={() => controls.current?.zoomOut()} aria-label="ซูมออกลูกโลก">−</button><button onClick={() => controls.current?.reset()} aria-label="คืนมุมมองลูกโลก">◎</button></div>
+      <GlobeCanvas theme={theme} controlRef={controls} focusVersion={focusVersion} markers={liveMarkers} focusLongitude={focusGeo?.longitude ?? null} focusLatitude={focusGeo?.latitude ?? 0} />
+      <div className="globeControls"><button onClick={() => controls.current?.zoomIn()} aria-label="ซูมเข้าลูกโลก"><Icon name="plus" size={16}/></button><button onClick={() => controls.current?.zoomOut()} aria-label="ซูมออกลูกโลก"><Icon name="minus" size={16}/></button><button onClick={() => controls.current?.reset()} aria-label="คืนมุมมองลูกโลก"><Icon name="locate" size={17}/></button></div>
       <span className="globeCross north" aria-hidden="true">+</span><span className="globeCross south" aria-hidden="true">+</span>
       <div className="mapCoordinate"><span>MONITORING NODE</span><b>SENTINEL</b><small>LIVE APPLICATION EVENTS</small></div>
       <span className="globeCaption">{hasGeo ? 'GEOIP / APPROXIMATE LOCATION' : 'AWAITING GEOIP'}</span>
     </div>
-    <div className="globeHudRow">
+    <details className="networkInfo"><summary><Icon name="trace" size={14}/><strong>{location?.label || 'เลือก IP เพื่อดูตำแหน่ง'}</strong><span>ข้อมูลการเชื่อมต่อ</span></summary><div className="globeHudRow">
       <div className="globeHud clientHud"><span className="hudEyebrow"><Icon name="laptop" size={12} />IP ของเว็บที่ป้องกัน</span><strong>{PROTECTED_SITE_IP}</strong><span>{PROTECTED_SITE}</span></div>
       <div className="globeHud serverHud"><span className="hudEyebrow"><Icon name="trace" size={12} />ที่ตั้งเครือข่ายต้นทาง</span><strong>{location?.label || 'ยังไม่พบต้นทาง'}</strong><span>{location?.note || 'เลือก IP จากรายการด้านล่างเพื่อดูตำแหน่งโดยประมาณ'}</span></div>
       <div className="globeHud rulesHud"><span className="hudEyebrow"><Icon name="brain" size={12} />สถานะโมเดล</span><strong>{modelStatus}</strong><span>{data.health?.model || 'รอข้อมูลจาก SENTINEL'}</span></div>
-    </div>
+    </div></details>
 
     <details className="networkSources"><summary>ต้นทางล่าสุด <span>{liveSources.length} รายการ · กดเพื่อเลือก IP</span></summary>
     {liveSources.length ? <ul className="liveSources" aria-label={recentLogins.length ? 'ล็อกอินล่าสุด 6 ครั้ง' : 'IP ต้นทางล่าสุด 6 รายการ'}>{liveSources.map(s => <li key={s.key} className={`${s.status} ${selectedRow === s.key && ip === s.ip ? 'selected' : ''}`}><button type="button" className="sourcePinButton" aria-pressed={selectedRow === s.key && ip === s.ip} onClick={() => { setSelectedRow(s.key); setFocusVersion(v => v + 1); onSelectIp?.(s.ip) }} title="แสดง IP นี้บนลูกโลก"><i className={`dot ${s.status === 'blocked' ? 'coral' : s.status === 'alert' ? 'amber' : 'mint'}`} /><b className="mono">{s.ip}</b><span>{fmtTime(s.at)} · {s.detail}</span><span className="pinCountry">{geoByIp[s.ip]?.country || 'ดูตำแหน่ง'} ↗</span></button></li>)}</ul> : <p className="liveSourcesEmpty">ยังไม่มี IP เข้ามา · เมื่อมีคำขอผ่านระบบป้องกันเว็บ rod-mai-rod จะแสดงที่นี่</p>}

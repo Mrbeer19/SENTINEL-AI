@@ -28,9 +28,21 @@ const paths = {
   download: 'M12 4v11M7 10l5 5 5-5M4 20h16',
   play: 'M7 4l13 8-13 8z',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  logout: 'M9 4H4v16h5M14 8l5 4-5 4M8 12h11',
+  plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  locate: 'M12 2v4M12 18v4M2 12h4M18 12h4M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z',
 }
 
-export function Icon({ name, size = 18, className = '' }) {
+// One icon atlas keeps the menu and section artwork in the same visual family.
+// Compact controls/status glyphs remain vectors so they stay sharp at 14px.
+const artworkIcons = ['home','alert','trace','check','rules','reports','shield','clock','pulse','laptop','server','terminal','user','brain','search','info']
+const artworkColumns = [25,330,630,940]
+const artworkRows = [50,340,630,915]
+
+export function Icon({ name, size = 18, className = '', artwork = true }) {
+  const index = artworkIcons.indexOf(name)
+  if (artwork && size >= 17 && index !== -1) return <span className={`icon imageIcon ${className}`} style={{width:size,height:size,'--icon-x':`${artworkColumns[index % 4] / 980 * 100}%`,'--icon-y':`${artworkRows[Math.floor(index / 4)] / 980 * 100}%`}} aria-hidden="true" />
   return <svg className={`icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>
 }
 
@@ -162,7 +174,13 @@ export const toDate = (value) => value ? new Date(value) : null
 export const fmtTime = (value) => value ? new Date(value).toLocaleTimeString('en-GB', { hour12: false }) : '—'
 export const fmtDateTime = (value) => value ? new Date(value).toLocaleString('en-GB', { hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'
 export const isActiveRule = (rule, now = Date.now()) => toDate(rule.expires_at) > now
+// Blocks approved with duration 0 have no expiry (expires_at in year 9999); only an admin unblock ends them.
+export const UNTIL_UNBLOCKED = 'จนกว่าแอดมินจะปลด'
+export const isPermanentRule = (rule) => String(rule?.expires_at || '').startsWith('9999-')
+export const durationText = (seconds, unit = 'นาที') => seconds ? `${seconds / 60} ${unit}` : UNTIL_UNBLOCKED
+export const fmtExpiry = (rule) => isPermanentRule(rule) ? UNTIL_UNBLOCKED : fmtTime(rule.expires_at)
 export const remaining = (rule, now = Date.now()) => {
+  if (isPermanentRule(rule)) return UNTIL_UNBLOCKED
   const ms = Math.max(0, toDate(rule.expires_at) - now)
   return `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 }

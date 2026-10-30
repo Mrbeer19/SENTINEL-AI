@@ -49,13 +49,13 @@ export default function LoginHistory({ events }) {
 
   return <div className="loginHistory">
     <p className="scopeNote">หนึ่งแถวต่อหนึ่งครั้งที่ล็อกอิน แม้เป็น IP เดิม · เรียงใหม่ไปเก่า · เก็บข้อมูลไว้ใน SENTINEL บนเครื่องนี้</p>
-    {history.length ? <div className="tableWrap"><table><thead><tr><th>เวลา</th><th>IP ต้นทาง</th><th>ผลล็อกอิน</th><th>แหล่งข้อมูล</th></tr></thead><tbody>{history.map(row => <tr key={row.id}>
+    {history.length ? <div className="tableWrap loginHistoryScroll" tabIndex={0} role="region" aria-label="ประวัติล็อกอิน เลื่อนเพื่อดูรายการถัดไป"><table><thead><tr><th>เวลา</th><th>IP ต้นทาง</th><th>ผลล็อกอิน</th><th>แหล่งข้อมูล</th></tr></thead><tbody>{history.map(row => <tr key={row.id}>
       <td><time dateTime={row.timestamp}>{new Date(row.timestamp).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium', hour12: false })}</time></td>
       <td className="mono">{row.source_ip}</td>
       <td><span className={`badge ${row.outcome === 'success' ? 'good' : 'bad'}`}>{row.outcome === 'success' ? 'สำเร็จ' : 'ไม่สำเร็จ'}</span></td>
       <td>{isReplayIp(row.source_ip) || row.label !== 'unknown' ? 'ไม่ได้ยืนยันแหล่งข้อมูล' : 'rod-mai-rod'}</td>
     </tr>)}</tbody></table></div> : <p className="loginHistoryEmpty">{loading ? 'กำลังโหลดประวัติ…' : 'ยังไม่มีการล็อกอินที่บันทึกไว้'}</p>}
-    <div className="loginHistoryFooter"><span>แสดงแล้ว {history.length} รายการ</span>{hasMore && <button className="btn ghost sm" onClick={loadOlder} disabled={loading}>{loading ? 'กำลังโหลด…' : 'โหลดประวัติก่อนหน้า'}</button>}</div>
+    <div className="loginHistoryFooter"><span>โหลดแล้ว {history.length} รายการ · เลื่อนในตารางเพื่อดูเพิ่มเติม</span>{hasMore && <button className="btn ghost sm" onClick={loadOlder} disabled={loading}>{loading ? 'กำลังโหลด…' : 'โหลดประวัติก่อนหน้า'}</button>}</div>
     {error && <p className="coral" role="alert">{error}</p>}
   </div>
 }
