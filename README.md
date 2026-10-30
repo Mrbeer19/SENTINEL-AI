@@ -39,7 +39,7 @@ npm run dev
 6. หน้า Reports: เปิด JSON report ซึ่งรวม events, analysis, proposal, timeline และ traffic จริง
 7. ทดลองอีก IP แล้ว Reject ต้องไม่เกิดกฎบล็อกของ IP นั้น
 
-SSH scenario เป็น synthetic log replay และแสดงชนิด SSH แยกจาก HTTP ส่วน app-level firewall มีผลเฉพาะ demo endpoints ของระบบนี้
+SSH scenario เป็น synthetic log replay และแสดงชนิด SSH แยกจาก HTTP ส่วน app-level firewall มีผลเฉพาะ demo endpoints ของระบบนี้ · การต่อ server จริงดู [docs/real-server-integration.md](docs/real-server-integration.md)
 
 ## โครงไฟล์และคนรับผิดชอบ
 
