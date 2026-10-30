@@ -31,18 +31,24 @@ class AdminAuth:
         with self.db() as con:
             con.execute('CREATE TABLE IF NOT EXISTS admin_sessions (token TEXT PRIMARY KEY, expires REAL, credential TEXT)')
             con.execute('CREATE TABLE IF NOT EXISTS admin_attempts (at REAL)')
+            if 'ip' not in [row[1] for row in con.execute('PRAGMA table_info(admin_attempts)')]:
+                con.execute("ALTER TABLE admin_attempts ADD COLUMN ip TEXT NOT NULL DEFAULT ''")
     def db(self): return sqlite3.connect(self.path, timeout=10)
     def valid(self, token):
         if not token or not self.password: return False
         with self.db() as con:
             row = con.execute('SELECT expires, credential FROM admin_sessions WHERE token=?', (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
         return bool(row and row[0] > time.time() and row[1] == self.credential)
-    def login(self, username, password):
+    # Per source IP: 10 attempts / 5 min, so one client cannot lock the admin out for everyone.
+    # A global ceiling still bounds scrypt work if many IPs try at once.
+    PER_IP_LIMIT, GLOBAL_LIMIT, WINDOW_S = 10, 200, 300
+    def login(self, username, password, ip=''):
         with self.db() as con:
             con.execute('BEGIN IMMEDIATE')
-            con.execute('DELETE FROM admin_attempts WHERE at < ?', (time.time()-300,))
-            if con.execute('SELECT count(*) FROM admin_attempts').fetchone()[0] >= 10: return 'limited', None
-            con.execute('INSERT INTO admin_attempts VALUES (?)', (time.time(),))
+            con.execute('DELETE FROM admin_attempts WHERE at < ?', (time.time()-self.WINDOW_S,))
+            if con.execute('SELECT count(*) FROM admin_attempts WHERE ip=?', (ip,)).fetchone()[0] >= self.PER_IP_LIMIT: return 'limited', None
+            if con.execute('SELECT count(*) FROM admin_attempts').fetchone()[0] >= self.GLOBAL_LIMIT: return 'limited', None
+            con.execute('INSERT INTO admin_attempts(at, ip) VALUES (?, ?)', (time.time(), ip))
         valid = verify_password(password, self.password)
         if not (valid and secrets.compare_digest(username, self.username)): return 'invalid', None
         token = secrets.token_urlsafe(32)

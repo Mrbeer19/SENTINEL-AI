@@ -17,6 +17,7 @@ COPY model/prompts/ model/prompts/
 COPY --from=dashboard /src/frontend/dist frontend/dist
 RUN useradd --system --uid 10001 sentinel && mkdir /data && chown sentinel /data
 USER sentinel
-ENV SENTINEL_DB_PATH=/data/sentinel.db PYTHONDONTWRITEBYTECODE=1
-# Loopback only: nothing on the public interface, open the dashboard through an SSH tunnel.
-CMD ["python", "-m", "uvicorn", "backend.app:app", "--host", "127.0.0.1", "--port", "8001"]
+ENV SENTINEL_DB_PATH=/data/sentinel.db PYTHONDONTWRITEBYTECODE=1     UVICORN_HOST=127.0.0.1 UVICORN_PORT=8001
+# Never a public interface. Default loopback (SSH tunnel); deploy/vps/.env may bind the
+# gateway of the Caddy network instead so Caddy can serve the dashboard over HTTPS.
+CMD ["python", "-m", "uvicorn", "backend.app:app"]

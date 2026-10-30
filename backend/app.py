@@ -240,7 +240,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def admin_login(body: AdminLogin, request: Request):
         if not auth.password:
             raise HTTPException(503, 'Admin credentials have not been configured')
-        status, token = await asyncio.to_thread(auth.login, body.username, body.password)
+        peer = request.client.host if request.client else ''
+        status, token = await asyncio.to_thread(auth.login, body.username, body.password, peer)
         if status == 'limited': raise HTTPException(429, 'Too many attempts. Try again in 5 minutes')
         if status != 'ok': raise HTTPException(401, 'Invalid username or password')
         auth.revoke(request.cookies.get(COOKIE))
