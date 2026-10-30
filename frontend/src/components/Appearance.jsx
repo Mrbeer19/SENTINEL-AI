@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useState } from 'react'
 
 export function useAppearance() {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('sentinel-appearance') === 'dark' ? 'dark' : 'light' } catch { return 'light' }
   })
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#000000' : '#f4f6fa')
     try { localStorage.setItem('sentinel-appearance', theme) } catch { /* Private browsing can disable storage. */ }
   }, [theme])
   useEffect(() => {

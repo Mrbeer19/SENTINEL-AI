@@ -55,11 +55,11 @@ export default function NetworkTopology({ data, activeRules, connected, selected
     </div>
     <details className="networkInfo"><summary><Icon name="trace" size={14}/><strong>{location?.label || 'เลือก IP เพื่อดูตำแหน่ง'}</strong><span>ข้อมูลการเชื่อมต่อ</span></summary><div className="globeHudRow">
       <div className="globeHud clientHud"><span className="hudEyebrow"><Icon name="laptop" size={12} />IP ของเว็บที่ป้องกัน</span><strong>{PROTECTED_SITE_IP}</strong><span>{PROTECTED_SITE}</span></div>
-      <div className="globeHud serverHud"><span className="hudEyebrow"><Icon name="trace" size={12} />ที่ตั้งเครือข่ายต้นทาง</span><strong>{location?.label || 'ยังไม่พบต้นทาง'}</strong><span>{location?.note || 'เลือก IP จากรายการด้านล่างเพื่อดูตำแหน่งโดยประมาณ'}</span></div>
+      <div className="globeHud serverHud"><span className="hudEyebrow"><Icon name="trace" size={12} />ตำแหน่งโดยประมาณของ IP</span><strong>{location?.label || 'ยังไม่พบต้นทาง'}</strong><span>{location?.note || 'เลือก IP จากรายการด้านล่างเพื่อดูตำแหน่งโดยประมาณ'}</span></div>
       <div className="globeHud rulesHud"><span className="hudEyebrow"><Icon name="brain" size={12} />สถานะโมเดล</span><strong>{modelStatus}</strong><span>{data.health?.model || 'รอข้อมูลจาก SENTINEL'}</span></div>
     </div></details>
 
-    <details className="networkSources"><summary>ต้นทางล่าสุด <span>{liveSources.length} รายการ · กดเพื่อเลือก IP</span></summary>
+    <details className="networkSources"><summary>IP ที่ตรวจพบล่าสุด <span>{liveSources.length} รายการ · กดเพื่อเลือก IP</span></summary>
     {liveSources.length ? <ul className="liveSources" aria-label={recentLogins.length ? 'ล็อกอินล่าสุด 6 ครั้ง' : 'IP ต้นทางล่าสุด 6 รายการ'}>{liveSources.map(s => <li key={s.key} className={`${s.status} ${selectedRow === s.key && ip === s.ip ? 'selected' : ''}`}><button type="button" className="sourcePinButton" aria-pressed={selectedRow === s.key && ip === s.ip} onClick={() => { setSelectedRow(s.key); setFocusVersion(v => v + 1); onSelectIp?.(s.ip) }} title="แสดง IP นี้บนลูกโลก"><i className={`dot ${s.status === 'blocked' ? 'coral' : s.status === 'alert' ? 'amber' : 'mint'}`} /><b className="mono">{s.ip}</b><span>{fmtTime(s.at)} · {s.detail}</span><span className="pinCountry">{geoByIp[s.ip]?.country || 'ดูตำแหน่ง'} ↗</span></button></li>)}</ul> : <p className="liveSourcesEmpty">ยังไม่มี IP เข้ามา · เมื่อมีคำขอผ่านระบบป้องกันเว็บ rod-mai-rod จะแสดงที่นี่</p>}
     {testLoginCount > 0 && <p className="geoTestNote">มี {testLoginCount} รายการ IP ทดสอบหรือเครือข่ายภายใน · ดูได้ในประวัติล็อกอิน แต่ไม่มีพิกัดบนโลก</p>}
     </details>

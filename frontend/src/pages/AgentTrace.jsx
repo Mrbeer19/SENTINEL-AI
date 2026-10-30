@@ -53,11 +53,11 @@ export default function AgentTrace({ ctx, id }) {
             <small>{fmtTime(t.created_at)} · {opText[t.operation] || 'Tool'}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}{t.source === 'fallback' && ' · fallback'}{t.status && !['ok', 'fallback'].includes(t.status) && ` · ${statusText[t.status] || t.status}`}</small>
           </li>
         </React.Fragment>)}
-        <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback (not AI)' : 'Validated JSON') : report.status === 'analyzing' || ctx.busy ? 'Running… (~30 s on the M5)' : 'Not run yet'}</small></li>
+        <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback (not AI)' : 'Validated JSON') : report.status === 'analyzing' || ctx.busy ? 'กำลังวิเคราะห์… อาจใช้เวลาสักครู่' : 'Not run yet'}</small></li>
         <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : report.analysis && noProposalNote[report.status] ? `No block proposed · ${noProposalNote[report.status]}` : 'No proposal yet'}</small></li>
       </ol>
       {!report.analysis && report.status === 'closed' && <p className="muted small">ปิดเหตุการณ์ก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p>}
-      {!report.analysis && report.status !== 'closed' && <button className="btn primary block" disabled={ctx.busy || !!ctx.error || report.status === 'analyzing'} onClick={analyze}>{ctx.busy || report.status === 'analyzing' ? 'กำลังวิเคราะห์หลักฐาน… (บน M5 ประมาณ 30 วินาที)' : 'เริ่มวิเคราะห์'}</button>}
+      {!report.analysis && report.status !== 'closed' && <button className="btn primary block" disabled={ctx.busy || !!ctx.error || report.status === 'analyzing'} onClick={analyze}>{ctx.busy || report.status === 'analyzing' ? 'กำลังวิเคราะห์หลักฐาน… อาจใช้เวลาสักครู่' : 'เริ่มวิเคราะห์'}</button>}
     </Panel>
 
     <div className="traceTools">

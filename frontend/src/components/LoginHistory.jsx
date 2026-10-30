@@ -48,7 +48,7 @@ export default function LoginHistory({ events }) {
   }
 
   return <div className="loginHistory">
-    <p className="scopeNote">หนึ่งแถวต่อหนึ่งครั้งที่ล็อกอิน แม้เป็น IP เดิม · เรียงใหม่ไปเก่า · เก็บข้อมูลไว้ใน SENTINEL บนเครื่องนี้</p>
+    <p className="scopeNote">หนึ่งแถวต่อหนึ่งครั้งที่ล็อกอิน แม้เป็น IP เดิม · เรียงใหม่ไปเก่า · บันทึกไว้ใน SENTINEL</p>
     {history.length ? <div className="tableWrap loginHistoryScroll" tabIndex={0} role="region" aria-label="ประวัติล็อกอิน เลื่อนเพื่อดูรายการถัดไป"><table><thead><tr><th>เวลา</th><th>IP ต้นทาง</th><th>ผลล็อกอิน</th><th>แหล่งข้อมูล</th></tr></thead><tbody>{history.map(row => <tr key={row.id}>
       <td><time dateTime={row.timestamp}>{new Date(row.timestamp).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium', hour12: false })}</time></td>
       <td className="mono">{row.source_ip}</td>

@@ -81,7 +81,7 @@ export default function DemoLab({ ctx }) {
   const next = steps.findIndex(s => !s[2])
 
   return <div className="grid lab">
-    <div className="span3"><Banner tone="info" icon="terminal">หน้านี้ใช้ซ้อมด้วยข้อมูลจำลองบน M5 · การทดสอบข้ามเครื่องจริงให้ส่งจาก Terminal ของ Neo โดยใช้คู่มือที่แยกไว้</Banner></div>
+    <div className="span3"><Banner tone="info" icon="terminal">หน้านี้ใช้ซ้อมด้วยข้อมูลจำลองบนเซิร์ฟเวอร์ · การทดสอบข้ามเครื่องให้ส่งจาก Terminal ของเครื่องทดสอบตามคู่มือ</Banner></div>
 
     <div className="scenarios span3" role="group" aria-label="Scenario">
       {SCENARIOS.map(s => <button key={s.key} aria-pressed={scenario === s.key} className={`scenario ${scenario === s.key ? 'on' : ''}`} onClick={() => setScenario(s.key)}>
@@ -91,8 +91,8 @@ export default function DemoLab({ ctx }) {
 
     <Panel title="Scenario Setup" icon="rules">
       <div className="form">
-        <div className="field"><span>Mode</span><div className="seg"><span className="on">M5 local replay</span><span>Neo tests via Terminal</span></div></div>
-        <div className="field"><span>Target</span><code>{location.origin}</code><small className="muted">This M5 backend</small></div>
+        <div className="field"><span>Mode</span><div className="seg"><span className="on">Server replay</span><span>Tests via Terminal</span></div></div>
+        <div className="field"><span>Target</span><code>{location.origin}</code><small className="muted">เซิร์ฟเวอร์ที่เชื่อมต่ออยู่</small></div>
         <label className="field"><span>Source IP</span><input value={ip} onChange={e => setIp(e.target.value)} className="mono" aria-describedby="ipnote" /><small id="ipnote" className={loopback ? 'coral' : 'muted'}>{loopback ? 'Loopback is protected — approval will be refused (HTTP 400)' : 'Lab source only, e.g. 192.0.2.25 (TEST-NET-1)'}</small></label>
         <div className="field"><span>Scenario</span><p className="muted small">{chosen.note}</p></div>
         <label className="check"><input type="checkbox" checked={paced} onChange={e => setPaced(e.target.checked)} /> ส่งทีละ event (0.5 วินาที) ให้เห็นบน dashboard แบบสด</label>
@@ -122,8 +122,8 @@ export default function DemoLab({ ctx }) {
     </Panel>
 
     <Panel title="Lab Connections" icon="trace">
-      <div className="labLink"><div><Icon name="laptop" size={30} /><b>Neo (tester)</b><small>Terminal requests</small></div><span className="wire">local network</span><div><Icon name="server" size={30} /><b>M5 Server</b><small className="mono">{location.host}</small></div></div>
-      <p className="muted small center">Neo sends requests. M5 investigates and approves the response.</p>
+      <div className="labLink"><div><Icon name="laptop" size={30} /><b>เครื่องทดสอบ</b><small>Terminal requests</small></div><span className="wire">local network</span><div><Icon name="server" size={30} /><b>เซิร์ฟเวอร์ SENTINEL</b><small className="mono">{location.host}</small></div></div>
+      <p className="muted small center">เครื่องทดสอบส่งคำขอ ระบบวิเคราะห์และเสนอแนวทางให้ผู้ดูแลอนุมัติ</p>
     </Panel>
   </div>
 }

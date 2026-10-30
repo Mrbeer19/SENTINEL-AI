@@ -42,7 +42,7 @@ const artworkRows = [50,340,630,915]
 
 export function Icon({ name, size = 18, className = '', artwork = true }) {
   const index = artworkIcons.indexOf(name)
-  if (artwork && size >= 17 && index !== -1) return <span className={`icon imageIcon ${className}`} style={{width:size,height:size,'--icon-x':`${artworkColumns[index % 4] / 980 * 100}%`,'--icon-y':`${artworkRows[Math.floor(index / 4)] / 980 * 100}%`}} aria-hidden="true" />
+  if (artwork && size >= 17 && index !== -1) return <svg className={`icon imageIcon ${className}`} width={size} height={size} style={{width:size,height:size}} viewBox={`${artworkColumns[index % 4]} ${artworkRows[Math.floor(index / 4)]} 300 300`} fill="none" aria-hidden="true" focusable="false"><image href="/assets/sentinel-icon-atlas.png" x="0" y="0" width="1280" height="1280" /></svg>
   return <svg className={`icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>
 }
 
@@ -147,7 +147,7 @@ export function NoResults({ onClear }) {
 }
 
 export function Banner({ tone = 'info', icon = 'info', children, action }) {
-  return <div className={`banner ${tone}`} role={tone === 'bad' ? 'alert' : 'status'}><Icon name={icon} /><div>{children}</div>{action}</div>
+  return <div className={`banner ${tone}`} role={tone === 'bad' ? 'alert' : 'status'}><Icon name={icon} /><div className="bannerContent">{children}</div>{action && <div className="bannerAction">{action}</div>}</div>
 }
 
 export function Loading({ label = 'กำลังโหลดข้อมูลจาก server…' }) {
