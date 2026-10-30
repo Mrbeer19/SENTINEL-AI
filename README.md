@@ -54,9 +54,9 @@
 | Backend + Dashboard | VPS, container แยก ฟังเฉพาะ `127.0.0.1:8001` จำกัด RAM 384 MB / CPU 0.5 | FastAPI, SQLite, LangGraph, React 19, Vite 8 |
 | Bridge และ sensor | VPS (systemd) | อ่าน log ของ Caddy/SSH/TCP ส่งเข้า backend และส่งกฎไปที่ Caddy |
 | โมเดล r3 | Workstation RTX 4060 เชื่อมกับ VPS ผ่าน reverse SSH tunnel | Ollama, Qwen 3.5 4B + QLoRA |
-| ผู้ดูแลระบบ | เปิด dashboard ผ่าน SSH tunnel และ login ด้วยบัญชี admin | session cookie, รหัสผ่านเก็บเป็น scrypt hash |
+| ผู้ดูแลระบบ | เปิด dashboard ผ่าน HTTPS (Caddy) และ login ด้วยบัญชี admin | session cookie แบบ Secure, รหัสผ่านเก็บเป็น scrypt hash, จำกัด login ผิดต่อ IP |
 
-ไม่มีพอร์ตของ SENTINEL หรือ Ollama เปิดสู่อินเทอร์เน็ต รายละเอียดการติดตั้งและการย้อนกลับอยู่ที่ [docs/vps-hosting.md](docs/vps-hosting.md)
+backend และ Ollama ไม่เปิดพอร์ตสู่อินเทอร์เน็ตโดยตรง dashboard ออกผ่าน Caddy ด้วย HTTPS เท่านั้น รายละเอียดการติดตั้งและการย้อนกลับอยู่ที่ [docs/vps-hosting.md](docs/vps-hosting.md)
 
 ## โมเดล
 

@@ -13,15 +13,24 @@
 | ตั้งค่า backend | `<sentinel-dir>/deploy/vps/.env` (สิทธิ์ 600, ไม่อยู่ใน Git) | ตัวอย่าง `deploy/vps/.env.example` |
 | โมเดล r3 | Ollama บนเครื่อง Windows RTX 4060 | VPS เรียกผ่าน reverse SSH tunnel `scripts/ollama-tunnel.ps1` ถ้าเครื่องปิดหรือไม่มี tunnel จะใช้ rule fallback |
 
-ไม่แก้ Caddyfile ที่ใช้ร่วมกัน ไม่เพิ่ม DNS ไม่เปิดพอร์ตสาธารณะ และไม่แก้ firewall ของเครื่อง การบล็อกยังทำที่ Caddy ใน site block ของ rod-mai-rod เหมือนเดิม
+ไม่เปิดพอร์ตใหม่สู่อินเทอร์เน็ต และไม่แก้ firewall ของเครื่อง dashboard ออกทางพอร์ต 443 ของ Caddy เดิมผ่าน site block ของตัวเอง การบล็อกยังทำที่ Caddy ใน site block ของ rod-mai-rod เหมือนเดิม
 
 ## เปิด dashboard
 
-```powershell
-ssh -N -L 8001:127.0.0.1:8001 -i $HOME\.ssh\sentinel_rod_mai_rod <user>@<vps>
-```
+ผ่านลิงก์ HTTPS แล้ว login ด้วยบัญชี admin ไม่ต้องใช้ SSH:
 
-แล้วเปิด `http://127.0.0.1:8001/` login ด้วย admin (ต้องใส่ `SENTINEL_ADMIN_PASSWORD_HASH` ใน `.env` ก่อน)
+- backend ฟังที่ gateway ของเครือข่าย Docker ที่ Caddy ใช้ (`UVICORN_HOST`) ไม่ใช่ IP สาธารณะ
+- `UVICORN_PROXY_HEADERS=true` และ `FORWARDED_ALLOW_IPS=<IP ของ container Caddy>` ให้ระบบเห็น IP จริงของผู้ใช้ (จำกัด login ผิด 10 ครั้ง / 5 นาที ต่อ IP)
+- `SENTINEL_ALLOWED_HOSTS` ต้องมีทั้งชื่อเว็บ และ gateway IP ที่ bridge ใช้เรียก
+- `SENTINEL_COOKIE_SECURE=1`
+- bridge ใช้ `SENTINEL_API_URL=http://<gateway>:8001` ใน `/etc/sentinel-bridge.env`
+- Caddy: เพิ่ม site block ใหม่ที่ `reverse_proxy <gateway>:8001` ในทั้ง Caddyfile ของเครื่องและ active config ให้เหมือนกันทุกตัวอักษร (ไม่อย่างนั้นสคริปต์กฎของ rod-mai-rod จะไม่ยอม reload) validate ก่อน แล้ว reload แบบ graceful ไม่ต้องแก้ block ของเว็บอื่น
+
+ถ้าไม่เปิดลิงก์สาธารณะ ใช้ SSH tunnel แทน:
+
+```powershell
+ssh -N -L 8001:<gateway หรือ 127.0.0.1>:8001 -i $HOME\.ssh\sentinel_rod_mai_rod <user>@<vps>
+```
 
 ## ต่อโมเดล r3
 
@@ -49,9 +58,10 @@ bridge: copy `integrations/rod_mai_rod/agent.py` ไปไว้ในโฟล�
 
 1. บน VPS: `systemctl disable --now sentinel-bridge` และ `docker compose -p sentinel stop`
 2. คัด DB ออกจาก volume ถ้าต้องการเก็บ incident ที่เกิดบน VPS
-3. บน Windows: เปลี่ยนชื่อ `SENTINEL rod-mai-rod bridge.lnk.disabled-moved-to-vps` ใน Startup กลับเป็น `.lnk` แล้วเปิด backend 8001 ตามเดิม
+3. ลบ site block ของ dashboard ออกจาก Caddyfile ทั้งสองไฟล์ แล้ว reload
+4. บน Windows: เปลี่ยนชื่อ `SENTINEL rod-mai-rod bridge.lnk.disabled-moved-to-vps` ใน Startup กลับเป็น `.lnk` แล้วเปิด backend 8001 ตามเดิม
 
-rollback ไม่ต้องแตะ Caddy และไม่ต้องหยุด container ของเว็บอื่น
+rollback ไม่ต้องหยุด container ของเว็บอื่น
 
 ## ผลตรวจ 30 ต.ค. 2026
 
