@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
 
 from backend import logparse, policy, soc
 from backend.agent import Agent
-from backend.config import LOCAL_PEERS, ROOT, load_settings
+from backend.config import ROOT, load_settings, same_model
 from backend.detection import Match, RuleSet
 from backend.store import Store, audit, utcnow, verify_audit
 
@@ -138,7 +138,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
 
     def trusted(peer: str, headers) -> bool:
         provided = headers.get("X-Admin-Key", "")
-        return peer in LOCAL_PEERS or bool(settings.admin_key and secrets.compare_digest(settings.admin_key, provided))
+        return peer in settings.local_peers or bool(settings.admin_key and secrets.compare_digest(settings.admin_key, provided))
 
     @api.middleware("http")
     async def access_control(request: Request, call_next):
@@ -233,7 +233,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         try:
             async with httpx.AsyncClient(timeout=2) as client:
                 response = await client.get(f"{settings.ollama_url}/api/tags")
-                model_ready = response.is_success and any(item.get("name") == settings.model for item in response.json().get("models", []))
+                model_ready = response.is_success and any(same_model(item.get("name", ""), settings.model) for item in response.json().get("models", []))
         except (httpx.HTTPError, ValueError):
             pass
         return {"status": "ok", "version": API_VERSION, "model": settings.model, "model_ready": model_ready, "ai_mode": "ollama" if model_ready else "rule_fallback"}
@@ -408,7 +408,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def demo_traffic(traffic: TrafficIn, request: Request):
         peer = request.client.host if request.client else "127.0.0.1"
         # Source override is only for local, controlled lab simulation.
-        if traffic.source_ip and peer not in LOCAL_PEERS:
+        if traffic.source_ip and peer not in settings.local_peers:
             raise HTTPException(403, "source override requires localhost")
         source = str(traffic.source_ip) if traffic.source_ip else peer
         rule = store.one("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC LIMIT 1", (source, utcnow()))
