@@ -1,7 +1,7 @@
 /* One transparent 1280×1280 atlas; 300px optical cells account for the generated
    artwork's spacing. Coordinates live beside the name map in ui.jsx. */
-.icon.imageIcon { position:relative; display:inline-block; flex:none; vertical-align:middle; overflow:hidden; background:transparent!important; border:0!important; border-radius:0!important; box-shadow:none!important; filter:none!important; }
-.imageIcon::before { content:''; position:absolute; inset:0; background-image:url('/assets/sentinel-icon-atlas.png'); background-repeat:no-repeat; background-size:426.666667% 426.666667%; background-position:var(--icon-x) var(--icon-y); }
+.icon.imageIcon { display:inline-block; flex:none; vertical-align:middle; aspect-ratio:1; min-width:0; min-height:0; max-width:none; max-height:none; overflow:hidden; background:transparent!important; border:0!important; border-radius:0!important; box-shadow:none!important; filter:none!important; isolation:isolate; forced-color-adjust:none; }
+.imageIcon>image { pointer-events:none; }
 .sidebar nav a>.icon.imageIcon { width:28px!important; height:28px!important; }
 .sidebar nav a { transition:background .16s,border-color .16s,color .16s; }
 .sidebar nav a .imageIcon { transition:transform .16s; }

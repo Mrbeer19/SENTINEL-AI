@@ -16,20 +16,20 @@ export default function Approvals({ ctx, id }) {
   }, [id, routeStatus])
   const incident = (p) => incidents.find(i => i.id === p.incident_id)
 
-  return <div className="grid approvals">
-    <div className="span3"><Banner tone="warn" icon="alert"><b>Human approval required</b> · Proposals never execute automatically. Approval adds an app-level rule only.</Banner></div>
-    <div className="stats three span3">
-      <Stat icon="clock" tone="amber" label="Pending proposals" value={byStatus('pending').length} />
-      <Stat icon="ok" label="Approved proposals" value={byStatus('approved').length} />
-      <Stat icon="x" tone="coral" label="Rejected proposals" value={byStatus('rejected').length} />
+  return <div className={`grid approvals approvalWorkspace ${selected ? 'hasSelection' : 'noSelection'}`}>
+    <div className="approvalNotice"><Banner tone="info" icon="shield"><b>ผู้ดูแลเป็นผู้ยืนยันทุกครั้ง</b> · AI เสนอคำแนะนำ การอนุมัติจึงจะเพิ่มกฎป้องกันระดับแอป</Banner></div>
+    <div className="stats three approvalStats">
+      <Stat icon="clock" tone="amber" label="ข้อเสนอรออนุมัติ" value={byStatus('pending').length} />
+      <Stat icon="ok" label="อนุมัติแล้ว" value={byStatus('approved').length} />
+      <Stat icon="x" tone="coral" label="ปฏิเสธแล้ว" value={byStatus('rejected').length} />
     </div>
 
-    <Panel title="Approval Queue" icon="rules">
+    <Panel title="รายการข้อเสนอ" icon="rules" className="approvalQueue">
       <div className="tabs" role="group" aria-label="สถานะข้อเสนอ">
         <button aria-pressed={tab === 'pending'} className={tab === 'pending' ? 'on' : ''} onClick={() => { setTab('pending'); setQuery('') }}>รออนุมัติ ({byStatus('pending').length})</button>
         <button aria-pressed={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => { setTab('history'); setQuery('') }}>ประวัติ ({proposals.length - byStatus('pending').length})</button>
       </div>
-      <label className="search"><Icon name="info" size={16} /><span className="sr">Search proposals</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search proposals…" /></label>
+      <label className="search"><Icon name="info" size={16} /><span className="sr">Search proposals</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ค้นหาหมายเลขข้อเสนอ หรือ IP…" /></label>
       <FilterSummary count={list.length} total={tab === 'pending' ? byStatus('pending').length : proposals.length - byStatus('pending').length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <ul className="queue">{list.map(p => {
         const inc = incident(p)
@@ -41,10 +41,14 @@ export default function Approvals({ ctx, id }) {
       })}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'pending' ? <>ไม่มีข้อเสนอรออนุมัติ · <a href="#/incidents">ดูเหตุการณ์ที่ต้องวิเคราะห์</a></> : 'ยังไม่มีประวัติการตัดสินใจ'}</Empty>}
     </Panel>
 
-    <Panel className="span2 approvalReview">
-      {selected ? <Review key={selected.id} ctx={ctx} proposal={selected} /> : <Empty>{query ? 'เลือกรายการใหม่หลังเปลี่ยนตัวกรอง' : 'รายละเอียดจะแสดงเมื่อมีข้อเสนอในรายการนี้'}</Empty>}
+    <Panel className="approvalReview">
+      {selected ? <Review key={selected.id} ctx={ctx} proposal={selected} /> : <ApprovalPlaceholder hasQuery={!!query} tab={tab}/>}
     </Panel>
   </div>
+}
+
+function ApprovalPlaceholder({ hasQuery, tab }) {
+  return <div className="approvalPlaceholder"><span className="approvalPlaceholderIcon"><Icon name="shield" size={48}/></span><h2>{hasQuery ? 'ไม่พบข้อเสนอที่ตรงกับคำค้นหา' : tab === 'history' ? 'ยังไม่มีประวัติการตัดสินใจ' : 'ไม่มีข้อเสนอรออนุมัติ'}</h2><p>{hasQuery ? 'เปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูรายการทั้งหมด' : 'เมื่อ AI วิเคราะห์แล้วมีข้อเสนอ ระบบจะแสดงให้คุณตรวจหลักฐานและตัดสินใจที่นี่'}</p><ol className="approvalProcess"><li><Icon name="alert" size={24}/><b>ตรวจพบเหตุการณ์</b><span>ระบบเก็บหลักฐานที่เกี่ยวข้อง</span></li><li><Icon name="brain" size={24}/><b>AI วิเคราะห์</b><span>ประเมินความเสี่ยงและเสนอแนวทาง</span></li><li><Icon name="check" size={24}/><b>ผู้ดูแลยืนยัน</b><span>ตรวจรายละเอียดก่อนดำเนินการ</span></li></ol><a className="btn ghost" href="#/incidents">ดูเหตุการณ์<Icon name="chevron" size={15}/></a></div>
 }
 
 function Review({ ctx, proposal: p }) {

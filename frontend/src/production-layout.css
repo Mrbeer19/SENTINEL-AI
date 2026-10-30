@@ -121,3 +121,100 @@ input,select,textarea,.adminLogin input { font-family:inherit; background:#26282
 @media(max-width:700px) { .shell>main { padding-inline:12px; }.sidebar { padding:14px 12px; }.sidebar nav { grid-template-columns:repeat(3,minmax(0,1fr)); }.sidebar nav a { font-size:11px; min-height:42px; }.workspaceBar { height:62px; gap:8px; margin-bottom:18px; }.globalSearch { width:auto; flex:1; min-width:0; padding:6px 8px; }.globalSearch input { font-size:11px; }.headerAccount { padding-left:8px; gap:8px; }.headerAccount>div { display:none; }.headerAccount>span { width:28px; height:28px; font-size:10px; }.notificationLink { padding:3px; }.topbar h1 { font-size:28px; }.topbar p { font-size:12px; }.pageMeta { justify-content:flex-start; font-size:10px; }.runtimeStatus { position:absolute; right:0; top:-7px; }.topbar { padding-top:18px; gap:10px; }.topbar .pageTitleGroup { flex-basis:100%; }.commandV3 .overviewIntro h1 { font-size:33px; }.commandV3 .overviewIntro p { font-size:12px; }.overviewMeta { display:none; }.overviewTopbar .runtimeStatus { top:0; font-size:9px; }.commandV3 { padding-top:18px; }.commandV3 .commandStats { grid-template-columns:1fr 1fr; gap:10px; }.commandV3 .stat { min-height:112px; padding:14px 10px; gap:10px; }.commandV3 .statIcon { width:32px; height:40px; }.commandV3 .statIcon .icon { width:21px; }.commandV3 .stat strong { font-size:31px; }.commandV3 .stat small { font-size:9px; }.commandV3 .operationsGrid,.commandV3 .telemetryGrid { grid-template-columns:1fr; gap:14px; }.commandV3 .networkStage.globeStage { height:320px; }.commandV3 .assistantBody { grid-template-columns:1fr 1.1fr; text-align:left; min-height:310px; padding:20px 14px; }.commandV3 .nexPortrait { width:100%; }.commandV3 .assistantCopy h2 { font-size:22px; }.commandV3 .assistantCopy h2 br { display:block; }.commandV3 .assistantCopy p { font-size:10px; }.assistantSummary>a { font-size:9px; }.assistantPrimary { font-size:12px; }.panel,.commandV3 .panel { padding:14px; }.panelHead h2,.commandV3 .panelHead h2 { font-size:15px; }.incidents,.approvals,.rules,.reports,.trace,.detail { grid-template-columns:1fr; }.incidents>.side,.incidents>.panel.span2,.approvals>.approvalReview,.approvals>.panel,.approvals>.stats,.rules>.stats,.rules>.panel.span2,.rules>.stack,.rules>.span3:first-child,.rules>.panel.span3,.reports>.panel.noprint,.reports>.span2,.trace>.traceQueue,.trace>.traceSteps,.trace>.traceResult,.trace>.traceTools,.detail>.panel.span2,.detail>.detailAnalysis { grid-column:1; grid-row:auto; }.incidents>.stats,.reports>.stats { grid-column:1; }.incidents>.stats { grid-template-columns:1fr 1fr; }.incidents>.stats .stat { min-height:112px; }.trace>.traceTools { grid-template-columns:1fr; }.traceQueue .queue { max-height:240px; }.trace .traceBar { flex-wrap:wrap; }.trace .incidentPick { max-width:100%; }.trace .incidentPick select { min-width:0; width:100%; font-size:11px; }.reports>.stats { gap:12px; }.reports>.stats .stat { min-width:40%; }.reports .reportSteps { grid-template-columns:1fr 1fr; }.reports .queue { max-height:250px; }.approvals>.stats { display:flex; flex-wrap:wrap; }.approvals>.stats .stat { flex:1 1 40%; }.review .decide { grid-template-columns:1fr; }.review .decide .btn { font-size:14px; min-height:46px; }.rules>.stats { grid-template-columns:1fr 1fr; }.rules>.stats .stat:last-child { display:flex; }.rules .tabRow { display:grid; gap:12px; }.detail>.facts { grid-template-columns:1fr 1fr; }.pageHead .titleRow h2 { font-size:29px; }.detail .stepper { overflow-x:auto; justify-content:flex-start; gap:16px; }.detail .stepper li { min-width:100px; }.detailNextStep { order:8; }.tableWrap { max-width:100%; }.tablePagination { font-size:10px; gap:8px; }.tablePagination>div { gap:8px; }.ruleTimer { width:170px; height:170px; }.adminLogin { padding:24px 18px; }.adminLoginCard { grid-template-columns:1fr; gap:24px; }.loginVisual { min-height:0; }.loginVisual img.loginBrand { width:240px; margin:0 auto 8px; }.loginVisual h1 { font-size:18px; text-align:center; }.loginVisual p { display:none; }.loginVisual img.loginMascot { height:220px; margin:12px auto 0; }.adminLogin form { padding:28px 24px; min-height:0; gap:20px; }.adminLogin form h2 { font-size:28px; }.adminLogin::before { inset:35% 0 0; }.adminLogin input { min-height:48px; }.adminLogin form .btn { min-height:48px; font-size:16px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; animation:none!important; scroll-behavior:auto!important; } }
 @media print { .shell { display:block; background:white; }.sidebar,.workspaceBar,.runtimeStatus,.pageMeta,.tablePagination,.sidebarArtwork,.workflowGuide { display:none!important; }.shell .panel,.shell .box,.shell .queueItem,.shell .reportSteps li { background:white!important; color:#111; border-color:#bbb; box-shadow:none; }.reports { display:block; }.reportSteps li p,.reportSteps li b,.reportSteps li time { color:#111; }.reports .reportSteps { grid-template-columns:repeat(4,1fr); } }
+
+/* Status belongs to the toolbar's normal flow, including while offline.
+   An absolute status in a zero-height overview header overlapped retry actions. */
+.workspaceBar .runtimeStatus { position:relative; inset:auto; margin:0; flex:0 0 auto; align-self:center; }
+.workspaceBar .runtimeStatus>summary { position:relative; min-height:36px; display:flex; align-items:center; justify-content:center; gap:7px; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); color:var(--muted); font-size:10px; white-space:nowrap; }
+.workspaceBar .runtimeStatus>summary:hover { border-color:var(--mint); color:var(--mint); }
+.workspaceBar .runtimeStatus[open]>div { top:calc(100% + 8px); right:0; left:auto; z-index:30; width:300px; max-width:calc(100vw - 24px); line-height:1.7; }
+.workspaceBar .themeToggle { margin-left:0; }
+.shell>main>.overviewTopbar,.route-incident>main>.topbar { display:none; }
+.shell>main>.banner { margin:0 0 16px; }
+.shell .banner { display:grid; grid-template-columns:20px minmax(0,1fr) auto; align-items:center; gap:10px 12px; min-height:52px; height:auto; padding:14px 16px; border-radius:6px; }
+.shell .banner>.icon { width:20px; height:20px; align-self:start; margin-top:3px; }
+.shell .banner>.bannerContent { min-width:0; line-height:1.8; overflow-wrap:anywhere; }
+.shell .banner>.bannerAction { display:flex; flex:none; align-items:center; justify-content:flex-end; min-width:0; }
+.shell .banner .bannerAction>.btn { white-space:normal; max-width:100%; line-height:1.5; }
+.shell .banner.bad>.icon { color:var(--coral); }.shell .banner.warn>.icon { color:var(--amber); }.shell .banner.info>.icon { color:var(--info); }
+.shell .feedbackToast .banner { margin:0; align-items:start; }
+@media(max-width:700px) {
+  .workspaceBar .runtimeStatus>summary { width:32px; min-height:32px; padding:6px; }
+  .workspaceBar .runtimeStatus>summary>span { display:none; }
+  .workspaceBar .runtimeStatus>summary>.dot { position:absolute; top:4px; right:4px; width:5px; height:5px; }
+  .workspaceBar .runtimeStatus[open]>div { position:fixed; top:auto; left:12px; right:12px; width:auto; max-width:none; margin-top:8px; }
+  .shell .banner { grid-template-columns:20px minmax(0,1fr); padding:12px; }
+  .shell .banner>.bannerAction { grid-column:2; justify-content:flex-start; }
+}
+
+/* Keep toolbar controls together instead of distributing each item across the
+   entire window. The content area stops growing before tables become unreadable. */
+.shell>main { width:100%; max-width:1840px; justify-self:center; }
+.shell .workspaceBar { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; justify-content:normal; gap:20px; }
+.shell .workspaceBar>.globalSearch { width:100%; max-width:720px; min-width:0; margin:0; }
+.workspaceActions { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-width:0; }
+.workspaceActions>.runtimeStatus,.workspaceActions>.themeToggle,.workspaceActions>.notificationLink,.workspaceActions>.headerAccount { margin:0; flex:none; }
+.workspaceActions>.themeToggle { min-width:76px; justify-content:center; }
+.workspaceActions>.notificationLink { display:grid; place-items:center; width:36px; height:36px; padding:6px; }
+.workspaceActions>.headerAccount { padding-left:12px; gap:8px; min-width:0; }
+.workspaceActions .headerAccount>div { min-width:0; width:92px; }
+.workspaceActions .headerAccount b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.workspaceActions .headerAccount small { white-space:nowrap; }
+.panelHead .panelTitle { min-width:0; overflow-wrap:anywhere; }
+.shell .approvalWorkspace { grid-template-columns:minmax(300px,.9fr) minmax(0,2fr); align-items:start; gap:16px; }
+.shell .approvalWorkspace>.approvalNotice { grid-column:1/-1; grid-row:1; }
+.shell .approvalWorkspace>.approvalNotice>.banner { margin:0; padding:12px 16px; font-size:12px; }
+.shell .approvalWorkspace>.approvalStats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-column:1/-1; grid-row:2; gap:16px; padding:0; border:0; border-radius:0; background:transparent; }
+.shell .approvalWorkspace>.approvalStats .stat { display:flex; align-items:center; justify-content:flex-start; min-height:96px; padding:16px 20px; border:1px solid var(--line); border-radius:7px; background:var(--panel); gap:16px; }
+.shell .approvalWorkspace>.approvalStats .statIcon { display:grid; width:40px; height:44px; }
+.shell .approvalWorkspace>.approvalStats .statBody { display:grid; justify-content:start; gap:5px; width:auto; text-align:left; }
+.shell .approvalWorkspace>.approvalStats .statLabel { font-size:12px; }
+.shell .approvalWorkspace>.approvalStats .stat strong { font:700 30px/1.15 var(--heading); }
+.shell .approvalWorkspace>.approvalQueue { grid-column:1; grid-row:3; padding:20px; min-width:0; }
+.shell .approvalWorkspace>.approvalReview { grid-column:2; grid-row:3; padding:24px; min-width:0; }
+.shell .approvalWorkspace.noSelection>.approvalQueue,.shell .approvalWorkspace.noSelection>.approvalReview { min-height:420px; align-self:stretch; }
+.approvalQueue .queue { max-height:640px; overflow:auto; overscroll-behavior:contain; padding:2px; }
+.approvalQueue .queueItem { grid-template-columns:26px minmax(0,1fr); }
+.approvalQueue .queueItem time { grid-column:2; margin:0; }
+.shell .approvalQueue>.empty { flex:1; border:0; background:transparent; min-height:160px; padding:20px 4px; }
+.approvalPlaceholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; flex:1; padding:16px 8px; text-align:center; }
+.approvalPlaceholderIcon { display:grid; place-items:center; width:72px; height:72px; border-radius:50%; background:var(--mint-soft); }
+.approvalPlaceholder h2 { font:600 23px/1.6 var(--heading); color:var(--text); }
+.approvalPlaceholder>p { color:var(--muted); font-size:12px; max-width:440px; line-height:1.9; }
+.approvalProcess { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:0; margin:6px 0; list-style:none; width:100%; max-width:720px; }
+.approvalProcess li { display:flex; align-items:center; flex-direction:column; gap:8px; padding:16px 10px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); min-width:0; }
+.approvalProcess b { color:var(--text); font-size:11px; font-weight:600; }
+.approvalProcess span { color:var(--muted); font-size:10px; line-height:1.8; }
+@media(max-width:1150px) {
+  .workspaceActions .headerAccount>div { display:none; }
+  .workspaceActions { gap:8px; }
+}
+@media(max-width:900px) {
+  .shell .approvalWorkspace { grid-template-columns:1fr; }
+  .shell .approvalWorkspace>.approvalQueue { grid-column:1; grid-row:3; }
+  .shell .approvalWorkspace>.approvalReview { grid-column:1; grid-row:4; }
+  .shell .approvalWorkspace.noSelection>.approvalQueue { min-height:300px; }
+  .shell .approvalWorkspace.noSelection>.approvalReview { min-height:360px; }
+}
+@media(max-width:700px) {
+  .shell .workspaceBar { gap:8px; height:auto; min-height:68px; }
+  .workspaceActions { gap:6px; }
+  .workspaceActions>.themeToggle { width:40px; min-width:40px; min-height:40px; }
+  .workspaceActions>.notificationLink { width:36px; height:40px; padding:5px; }
+  .workspaceActions .runtimeStatus>summary { width:40px; min-height:40px; }
+  .workspaceActions .headerLogout { min-width:36px; min-height:40px; }
+  .workspaceActions>.headerAccount { padding-left:6px; gap:0; }
+  .shell .approvalWorkspace>.approvalStats { gap:10px; }
+  .shell .approvalWorkspace>.approvalStats .stat { padding:14px 12px; min-height:90px; gap:10px; }
+  .shell .approvalWorkspace>.approvalStats .statLabel { font-size:10px; }
+  .shell .approvalWorkspace>.approvalStats .statIcon { display:none; }
+  .shell .approvalWorkspace>.approvalStats .stat strong { font-size:27px; }
+  .shell .approvalWorkspace>.approvalQueue,.shell .approvalWorkspace>.approvalReview { padding:16px; }
+  .approvalPlaceholder { padding:12px 0; }
+  .approvalPlaceholder h2 { font-size:21px; }
+  .approvalProcess { gap:8px; }
+  .approvalProcess li { padding:12px 6px; }
+  .approvalProcess b { font-size:10px; }
+  .approvalProcess span { font-size:9px; }
+}
+@media print { .approvalProcess { display:none; } .shell .approvalWorkspace>.approvalReview { grid-column:1/-1; } }

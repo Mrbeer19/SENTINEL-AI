@@ -75,7 +75,7 @@ export default function GlobeCanvas({ markers = [], focusLongitude = null, focus
       if (!manual && !reduced.matches) rotation += .0012
       const spin = rotation
       ctx.clearRect(0, 0, width, height)
-      ctx.fillStyle = themeRef.current === 'light' ? '#f5f9fc' : '#111e29'; ctx.fillRect(0, 0, width, height)
+      ctx.fillStyle = themeRef.current === 'light' ? '#f5f9fc' : '#070707'; ctx.fillRect(0, 0, width, height)
       for (let i = 0; i < 100; i++) {
         const x = ((Math.sin(i * 127.1) * 43758.5) % 1 + 1) % 1 * width
         const y = ((Math.sin(i * 269.5) * 18341.3) % 1 + 1) % 1 * height

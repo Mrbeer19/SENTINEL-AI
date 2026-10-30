@@ -138,7 +138,7 @@ function Fact({ icon, label, value, mono }) {
 }
 
 export function AnalysisView({ analysis, fallback, meta }) {
-  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบบน M5 อ่านหลักฐานและเสนอการตอบสนอง</p>
+  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบอ่านหลักฐานและเสนอการตอบสนอง</p>
   if (analysis.text) return <div className="analysis"><Banner tone="warn" icon="info">ผลนี้ไม่ใช่ JSON ตาม contract</Banner><p>{analysis.text}</p></div>
   const a = analysis.json
   return <div className="analysis">

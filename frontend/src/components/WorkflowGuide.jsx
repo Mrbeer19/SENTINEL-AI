@@ -48,7 +48,7 @@ export function NextStep({ ctx, incident, overview = false }) {
     label = active ? (overview ? 'ดูผลการทดสอบ' : 'ดูกฎที่ทำงาน') : 'ดูรายงาน'
   } else if (incident.status === 'analyzing') {
     step = 1; title = 'กำลังวิเคราะห์หลักฐาน'
-    note = 'โมเดลบน M5 กำลังเรียก tool อ่านหลักฐาน (ประมาณ 30 วินาที) · ขั้นที่ทำแล้วขึ้นใน Agent Trace ทันที'
+    note = 'โมเดลกำลังเรียกเครื่องมืออ่านหลักฐาน · ขั้นที่ทำแล้วขึ้นใน Agent Trace ทันที'
     href = `#/trace/${incident.id}`; label = 'ดู Agent Trace'
   } else if (incident.status === 'needs_review') {
     step = 2; tone = 'warn'; title = 'วิเคราะห์แล้ว · ไม่มีข้อเสนอบล็อก ต้องให้คนตรวจต่อ'
