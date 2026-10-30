@@ -16,7 +16,7 @@ SENTINEL_ADMIN_KEY=<สุ่มคีย์ยาวๆ> SENTINEL_MODEL=sentine
 ```
 
 ## 2. proxy ส่ง auth event เข้า detection
-เมื่อ login ของเว็บจริงสำเร็จ/ล้มเหลว ให้ยิง event (source_ip = IP จริงของผู้ใช้ จาก X-Forwarded-For):
+เมื่อ login ของเว็บจริงสำเร็จ/ล้มเหลว ให้ยิง event (source_ip = IP จริงของผู้ใช้ ใช้วิธีเดียวกับข้อ 3 ห้ามใช้ค่าซ้ายสุดของ X-Forwarded-For):
 ```
 POST /api/events   (X-Admin-Key: <key>)
 { "source_ip": "<client ip>", "event_type": "HTTP_AUTH", "outcome": "failed" }
@@ -34,19 +34,30 @@ request ที่ถูกบล็อกจะ flip incident เป็น `veri
 
 ตัวอย่าง middleware (Express) หน้า server จริง:
 ```js
+// มี reverse proxy ของเราอยู่หน้าแอป 1 ชั้น: Express จะใช้ IP ที่ proxy ตัวนั้นเติมไว้ท้ายสุด
+app.set("trust proxy", 1);
+
 app.use(async (req, res, next) => {
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress;
-  const r = await fetch("http://<sentinel>:8000/api/enforce", {
-    method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Key": process.env.SENTINEL_KEY },
-    body: JSON.stringify({ client_ip: ip }),
-  });
-  if (r.status === 403) return res.status(403).send("blocked");
+  const ip = req.ip;  // ไม่อ่าน X-Forwarded-For เอง ค่าซ้ายสุด client ปลอมได้
+  try {
+    const r = await fetch("http://<sentinel>:8000/api/enforce", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Key": process.env.SENTINEL_KEY },
+      body: JSON.stringify({ client_ip: ip }),
+      signal: AbortSignal.timeout(2000),
+    });
+    if (r.status === 403) return res.status(403).send("blocked");
+  } catch (err) {
+    // fail-open: SENTINEL ดับหรือช้าเกิน 2 วิ ก็ปล่อยผ่าน เว็บจริงไม่ล่มตาม (sidecar ใช้แบบเดียวกัน)
+    console.warn("SENTINEL enforce unavailable:", err.message);
+  }
   next();
 });
 ```
+ถ้าอยากให้ปลอดภัยกว่า (fail-closed) ให้คืน 503 ใน `catch` แทน แต่ถ้า SENTINEL ดับเว็บจะเข้าไม่ได้ทั้งหมด
 
 ## ข้อควรรู้
-- source IP ที่บันทึก = `client_ip` ที่ proxy ส่งมา → proxy ต้องอ่าน IP จริงจาก `X-Forwarded-For` ให้ถูก ไม่งั้นบล็อกโดน proxy เอง
+- source IP ที่บันทึก = `client_ip` ที่ proxy ส่งมา → **ห้ามใช้ค่าซ้ายสุดของ `X-Forwarded-For`** เพราะ client ใส่เองได้ คนที่โดนบล็อกจะส่ง IP อื่นมาเพื่อหลบ หรือยิง login ผิดโดยใส่ IP ของคนอื่นให้ระบบเสนอบล็อกผิดคน ให้ใช้ IP ที่ proxy ของเราเติมเอง (ค่าขวาสุด หรือ `req.ip` + `trust proxy` ตามจำนวนชั้น proxy) ถ้าอ่านผิดจะบล็อกโดน proxy เอง
+- `/api/enforce` เก็บลงตาราง traffic และ broadcast เฉพาะ request ที่ถูก deny (ใช้เป็นหลักฐาน verify) request ที่ผ่านไม่ถูกบันทึก DB จึงไม่โตตามจำนวนผู้เข้าเว็บ
 - ใส่ IP ของ proxy/server เองใน `SENTINEL_PROTECTED_IPS` กันเผลอบล็อกตัวเอง
 - enforce ถามต่อ request = เพิ่ม latency เล็กน้อย; จะ cache ผล allow ฝั่ง proxy สั้นๆ ก็ได้ แต่ผล deny ควรถามสด
 - ยังเป็น app-level: บล็อกที่จุด proxy ไม่ใช่ host firewall · ป้องได้เฉพาะ traffic ที่วิ่งผ่าน proxy นี้

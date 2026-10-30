@@ -552,12 +552,16 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed", username=login.username))
         return JSONResponse({"authenticated": success, "source_ip": peer, "event_id": result["event"]["id"]}, status_code=200 if success else 401)
 
-    async def record_source_decision(source: str) -> dict:
+    async def record_source_decision(source: str, record_allowed: bool = True) -> dict:
         """Check the active block rules for one source IP, log the request, and flip the
         incident to verified when a blocked source is denied. Shared by the demo traffic
-        endpoint and the real-server enforcement endpoint so both decide identically."""
+        endpoint and the real-server enforcement endpoint so both decide identically.
+        record_allowed=False skips the traffic row and broadcast for allowed requests, so a
+        busy real site only stores the denials used as verification evidence."""
         rule = store.one("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC LIMIT 1", (source, utcnow()))
         decision = "denied" if rule else "allowed"
+        if not rule and not record_allowed:
+            return {"source_ip": source, "decision": decision, "rule_id": None}
         with store.tx() as con:
             con.execute("INSERT INTO traffic(source_ip,decision,created_at) VALUES(?,?,?)", (source, decision, utcnow()))
             if rule:
@@ -588,7 +592,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         (same admin key) reports the real client IP per request; the response says whether
         to block it. Admin-only: the access-control middleware refuses every caller,
         localhost included, that has neither an admin session nor X-Admin-Key."""
-        result = await record_source_decision(str(body.client_ip))
+        result = await record_source_decision(str(body.client_ip), record_allowed=False)
         return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
 
     @api.post("/api/demo/reset")
