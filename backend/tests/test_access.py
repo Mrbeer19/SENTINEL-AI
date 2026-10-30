@@ -1,6 +1,6 @@
 """Who may call what: localhost and admin-key holders run the SOC; demo endpoints require lab mode."""
 import pytest
-from conftest import connect
+from conftest import ATTACKER, connect
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -178,6 +178,22 @@ def test_lan_ip_of_the_server_is_an_allowed_host(make_app):
     app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10")
     assert connect(app, REMOTE, {"Host": "192.168.1.10:8000"}).post("/api/demo/traffic", json={}).status_code == 200
     assert connect(app, "127.0.0.1", {"Origin": "http://192.168.1.10:8000"}).post("/api/demo/reset").status_code == 200
+
+
+def test_run_lan_host_still_needs_admin_login(make_app):
+    """make run-lan binds only the M5 LAN IP; like 127.0.0.1 it must log in, but it may override the demo source."""
+    app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10", SENTINEL_LAN_HOST="192.168.1.10")
+    m5 = connect(app, "192.168.1.10", {"Host": "192.168.1.10:8000", "Origin": "http://192.168.1.10:8000"})
+    assert m5.get("/api/incidents").status_code == 401
+    assert m5.post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 200
+    assert connect(app, REMOTE, {"Host": "192.168.1.10:8000"}).post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 403
+
+
+def test_lan_ip_is_remote_without_run_lan(make_app):
+    app = make_app(SENTINEL_ALLOWED_HOSTS="testserver,192.168.1.10")
+    lan = connect(app, "192.168.1.10", {"Host": "192.168.1.10:8000"})
+    assert lan.get("/api/incidents").status_code == 401
+    assert lan.post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 403
 
 
 def test_websocket_from_another_site_is_refused(make_app):
