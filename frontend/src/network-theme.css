@@ -8,7 +8,7 @@ body{background:radial-gradient(ellipse at 80% 0,#0a2442,transparent 48%),var(--
 .overviewIntro{background:radial-gradient(ellipse at 80% 50%,#0e3960,transparent 60%),linear-gradient(120deg,#081321,#030913);min-height:300px;padding:26px 30px}
 .overviewIntro h1{font-family:Bahnschrift,'Segoe UI',sans-serif;font-size:clamp(36px,4.2vw,66px);letter-spacing:.025em;color:#f0f8ff;text-shadow:0 0 25px #167eff55}
 .overviewIntro h1 span{color:#86d7ff;letter-spacing:.06em}.overviewIntro .introTagline{color:#66d9ff}.overviewIntro p,.introFootnote,.artSerial{color:#a6bed7}
-.introArtwork{min-height:260px;z-index:1}.nexMascot{width:min(100%,340px);height:265px;background:url('/assets/nex-network-assets.png') left center / auto 100% no-repeat;filter:drop-shadow(0 0 22px #087eff44)}
+.introArtwork{min-height:260px;z-index:1}.nexMascot{width:min(100%,340px);height:265px;background:url('/assets/nex.svg') left center / contain no-repeat;filter:drop-shadow(0 0 22px #087eff44)}
 .watchStatus{background:#071e30ee;border:1px solid #2c91bb;color:#d5f5ff;bottom:0;box-shadow:0 0 18px #1689ff22}
 .btn.primary{background:linear-gradient(135deg,#0782ee,#0754bc);color:#fff;border:1px solid #49bdff;box-shadow:0 0 12px #008cff26}.btn.primary:hover{background:#147ed6}
 .sectionIndex{color:#6fcaff}.worldGridAsset{opacity:.22;filter:hue-rotate(75deg)}.globeStage{background:radial-gradient(ellipse at center,#0b2a46,#030b17 72%)}
