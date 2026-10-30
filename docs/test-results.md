@@ -45,7 +45,7 @@ npm run build
 
 ตรวจหน้า React ผ่านเบราว์เซอร์: แสดง events/incidents จาก SQLite, model status, analysis, tool trace, proposal, Approve และผล incident `verified` หลัง request ใหม่ แยก mockup HTML ออกจากหน้าระบบจริงชัดเจน
 
-## Backend v0.2 — 20 ตุลาคม 2569 (Obeto)
+## Backend v0.2 — 20 ตุลาคม 2569 (พิชชากร)
 
 เครื่อง: MacBook Pro M5 16GB · Python 3.12.10 · branch `feature/ai-backend/pitchakorn-pkt` · วิธีรันทั้งหมดอยู่ `docs/backend-runbook.md`
 

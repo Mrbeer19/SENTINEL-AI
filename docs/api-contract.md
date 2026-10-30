@@ -1,6 +1,6 @@
 # API contract — v0.2
 
-OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จาก localhost หรือมี `X-Admin-Key` เท่านั้น) สะท้อน schema ปัจจุบัน ก่อนแก้ field/status ให้แก้ contract, backend และ tests ใน PR เดียวกัน แล้วแจ้งฝั่ง frontend เจ้าของ contract: Obeto · ร่างที่ใช้รวม: `docs/api-contract-v0.2-draft.md` (Beer)
+OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จาก localhost หรือมี `X-Admin-Key` เท่านั้น) สะท้อน schema ปัจจุบัน ก่อนแก้ field/status ให้แก้ contract, backend และ tests ใน PR เดียวกัน แล้วแจ้งฝั่ง frontend เจ้าของ contract: พิชชากร · ร่างที่ใช้รวม: `docs/api-contract-v0.2-draft.md` (ประภากรณ์)
 
 ## เปลี่ยนจาก v0.1
 
@@ -106,7 +106,7 @@ blocked → closed (ปลดกฎก่อน verify)
 | `recommended_action` | `NO_ACTION \| MONITOR \| INVESTIGATE \| TEMP_BLOCK_IP \| BLOCK_IP` |
 | `explanation_th` | string ไม่ว่าง |
 
-ห้ามมี key อื่น (strict) · ถ้าโมเดลพิมพ์ข้อความล้อม object จะดึง `{...}` ออกมาแล้ว validate strict เหมือนเดิม (ตกลงกับ Beer 20 ต.ค.) · ผิด → retry 1 ครั้งพร้อม error → ยังผิด → `rule_fallback`
+ห้ามมี key อื่น (strict) · ถ้าโมเดลพิมพ์ข้อความล้อม object จะดึง `{...}` ออกมาแล้ว validate strict เหมือนเดิม (ตกลงกับ ประภากรณ์ 20 ต.ค.) · ผิด → retry 1 ครั้งพร้อม error → ยังผิด → `rule_fallback`
 
 `analysis_mode`: `ollama` (เรียก tool แล้ว JSON ผ่าน) · `ollama_retry` (ผ่านหลัง retry) · `ollama_no_tools` · `rule_fallback`
 **ห้ามนับ `rule_fallback` เป็นผลของโมเดล**
@@ -138,7 +138,7 @@ blocked → closed (ปลดกฎก่อน verify)
 | `get_related_incidents` | `ip_address` | incident อื่นของ IP นี้ ≤10 |
 | `get_firewall_status` | `ip_address` | `{ip, status: ALLOWED/BLOCKED, protected}` |
 
-เพดาน: tool 6 ครั้ง / 4 รอบ · **investigator ใช้ได้แค่ 4 tool อ่านอย่างเดียว** (`propose_block_ip` เอาออกแล้ว ตกลงกับ Beer ใน PR #7 · การเลือกบล็อกเป็นของ defense_planning) เรียกมาจะได้ error แล้วสืบต่อ
+เพดาน: tool 6 ครั้ง / 4 รอบ · **investigator ใช้ได้แค่ 4 tool อ่านอย่างเดียว** (`propose_block_ip` เอาออกแล้ว ตกลงกับ ประภากรณ์ ใน PR #7 · การเลือกบล็อกเป็นของ defense_planning) เรียกมาจะได้ error แล้วสืบต่อ
 
 ## Trace
 
