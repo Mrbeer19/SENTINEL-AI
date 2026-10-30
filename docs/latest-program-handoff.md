@@ -1,54 +1,40 @@
 # SENTINEL program status for the paper
 
-Updated 22 October 2026. This note separates what is implemented, what earlier tests showed and what is still waiting for review, so the paper describes the program accurately.
+Updated 30 October 2026. This note separates what is implemented, what tests showed and what is still open, so the paper describes the program accurately.
+
+## Deployment
+
+| Plan | Machines | Use |
+| --- | --- | --- |
+| Main | VPS runs backend, dashboard and the rod-mai-rod bridge; the Windows workstation (RTX 4060) runs r3 over a reverse SSH tunnel; any browser opens the HTTPS dashboard; a second laptop (Neo) attacks the real rod-mai-rod website | presentation |
+| Fallback | M5 runs backend, r3 and dashboard with `make -C backend run-lan`; Neo sends requests over the LAN (`scripts/neo/README.md`) | if the internet or VPS is unavailable |
+
+Details: `docs/vps-hosting.md`, `docs/soc-rod-mai-rod-tests.md`.
 
 ## Frontend
 
-- White, black, purple and lime dashboard with a local vector sculpture and globe. All graphics are bundled; no external image service is used.
-- Overview combines summary counts, a proposal desk, searchable source IPs, request activity and recent requests.
-- Operators can analyze an incident, review an existing proposal, approve/reject, or confirm removal of an active rule from the overview.
-- Review dialogs show the incident evidence, analysis mode, target, duration and reviewer. Cancel does not submit a decision.
-- Thai navigation, mobile source cards, keyboard focus handling and a single stylesheet.
-- The rod-mai-rod view lists addresses seen in stored events/requests. Globe positions come from an IP hash, are layout positions only and are labeled `NOT GEOIP`; they are not country coordinates. TEST-NET ranges stay labeled as test addresses. No incident does not mean the source is safe.
-
-Frontend entry points: `frontend/src/pages/Overview.jsx`, `frontend/src/components/SourceList.jsx`, `QuickResponse.jsx`, `NetworkTopology.jsx`, `GlobeCanvas.jsx` and `frontend/src/style.css`.
+- Light theme by default with a Light/Dark switch, SENTINEL logo and mascot, Thai and Latin fonts bundled locally.
+- Overview: summary counts, globe, pending proposals, recent requests and login history. Incidents and rules are paged 10 rows at a time.
+- Globe positions come from an approximate GeoIP lookup of public source IPs; private and TEST-NET addresses have no location.
+- Operators analyze an incident, review a proposal, approve or reject, and unblock an active rule. Blocks without expiry are shown as "until an admin unblocks".
 
 ## Backend and response workflow
 
-Describe the website demonstration from the branch with the enforcement extension (PR #15), not from an older `main`:
-
 1. Normalized events feed five count-based detection rules.
-2. An operator starts analysis of a recorded incident.
+2. Incidents are analyzed automatically (or on demand).
 3. Investigator uses four scoped read-only tools; Threat Analyst produces structured findings; Defense Planner receives only selected fields and fixed incident facts.
 4. Code checks the recommended action, incident source, protected addresses and duration before storing a pending proposal.
 5. Human approval is required; policy is checked again. Rejection creates no rule.
-6. `TEMP_BLOCK_IP` lasts 600 seconds. `BLOCK_IP` requires CRITICAL severity and lasts 3600 seconds.
-7. A new request denied by an active rule is the verification evidence. Approval alone is not verification. Removing or expiring a rule keeps the incident history.
+6. Default durations: `TEMP_BLOCK_IP` 600 s, `BLOCK_IP` 3600 s (CRITICAL only). On the VPS `SENTINEL_MANUAL_UNBLOCK=1`: approved blocks stay until an admin unblocks them.
+7. A new request denied by an active rule is the verification evidence. Approval alone is not verification.
 
-Model/schema failures use a labeled rule fallback. The model never installs firewall rules directly.
+On the real website every approved rule, including SSH and port-scan incidents, is enforced at Caddy inside the rod-mai-rod site block only. Other sites on the same VPS keep serving that source. The host firewall is not changed.
 
-## Model selection (r3)
+Model/schema failures use a labeled rule fallback. The model never installs rules directly.
 
-Health check on the Windows workstation (RTX 4060) on 22 October:
+## Model (r3)
 
-```text
-http://127.0.0.1:8000/api/health
-status: ok
-model: sentinel-qwen3.5-4b-r3:latest
-model_ready: true
-```
-
-Port 8000 is the SOC backend; the website sidecar listens on 8099.
-
-On the M5 server, import the GGUF with its Modelfile and select r3 explicitly:
-
-```bash
-export SENTINEL_MODEL='sentinel-qwen3.5-4b-r3:latest'
-```
-
-The code default stays `qwen3.5:4b`; installing r3 does not select it. Keep r2 and the base model for a manual rollback. The base model is not an automatic failover: model errors go to the labeled rule fallback.
-
-## Results for the paper
+Selected with `SENTINEL_MODEL='sentinel-qwen3.5-4b-r3:latest'`; the code default stays `qwen3.5:4b`. Keep r2 and the base model for a manual rollback.
 
 | Dataset | r3 on M5 | median |
 |---|---:|---:|
@@ -57,20 +43,17 @@ The code default stays `qwen3.5:4b`; installing r3 does not select it. Keep r2 a
 | v3 | 32/34 | 12.6 s |
 | v4 | 30/33 | 11.9 s |
 
-These are existing team benchmark results; no new benchmark was run for this frontend change. Datasets and M5 results are in PR #13. r3's training data was revised after looking at its v2/v3 errors, so v2/v3 are regression checks for r3, not independent held-out sets. v4 was made after training; base and r2 were not run on v4.
+r3's training data was revised after looking at its v2/v3 errors, so v2/v3 are regression checks for r3, not independent held-out sets. v4 was made after training; base and r2 were not run on v4.
 
-The recorded LAN and live-website demonstrations used **r2**. The website sidecar forwarded requests from the Windows workstation to the existing website; it is not an inline filter for every visitor of the VPS. Website reject/browser tests and the full two-machine rehearsal (M5 server, second laptop as client) are still open in the test plan.
+## Live checks on the VPS (30 October)
 
-## Review order
+- SSH brute force from the SOC workstation: incident, r3 proposal, approval, 403 from rod-mai-rod and 200 from another site on the same Caddy, `verified`, unblock, 200.
+- Six failed website logins after the move to the VPS: same result.
+- Manual unblock: the rule kept returning 403 for over 20 minutes until the admin unblocked it.
+- Dashboard data compared with the VPS logs: connection events matched the sensor spool, SSH successes matched the sshd journal, website logins matched the Caddy access log.
 
-- PR #13: v2/v3/v4 datasets and M5 results. Waiting for review.
-- PR #15: real-server `/api/enforce`. Waiting for review.
-- This frontend/integration PR is stacked on #15. Merge #15 into `dev` first, then retarget this PR to `dev`.
-- Sidecar source and usage: `integrations/sidecar/`.
-- `integrations/rod_mai_rod/` holds a separate Caddy/SSH bridge. It is not the sidecar demonstration above. This PR installs nothing on the VPS and does not show that the bridge was deployed.
+Still open: the full rehearsal with M5 and Neo on the main plan, and the LAN fallback rehearsal.
 
 ## Checks
 
-Frontend production build and whitespace check pass. Earlier UI checks are in `reports/dashboard-redesign-2026-10-21.md` and `reports/dashboard-art-2026-10-22.md`; they are not a new model or two-machine test.
-
-No token, admin key, database, model weights, `node_modules` or `dist` bundle is committed. Build `frontend/dist` from source when deploying.
+Backend tests, model evaluation unit tests and the frontend production build pass. No token, admin key, database, model weights, `node_modules` or `dist` bundle is committed.

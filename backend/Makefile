@@ -12,7 +12,7 @@ help:
 	@echo "venv       create backend/.venv and install requirements"
 	@echo "test       run the backend test suite"
 	@echo "run        serve on 127.0.0.1:$(PORT) (this Mac only)"
-	@echo "run-lan    HOST=<M5 LAN IP>: preflight, then serve on the lab network"
+	@echo "run-lan    HOST=<M5 LAN IP>: preflight, then serve on the lab network (http: Secure cookie off, demo endpoints on)"
 	@echo "preflight  readiness check (Ollama, model, protected IPs, rules, DB)"
 	@echo "smoke      end-to-end check against the running server (SMOKE_ARGS=--require-model on demo day)"
 	@echo "reset      close open incidents and disable rules on the running server (history kept)"
@@ -30,7 +30,8 @@ run:
 
 run-lan:
 	@[ -n "$(HOST)" ] || { echo "usage: make run-lan HOST=192.168.x.y (the M5 address on the hotspot)"; exit 2; }
-	cd $(ROOT) && $(ENV) export SENTINEL_ALLOWED_HOSTS="$(HOST)$${SENTINEL_ALLOWED_HOSTS:+,$$SENTINEL_ALLOWED_HOSTS}" SENTINEL_LAN_HOST="$(HOST)"; \
+	cd $(ROOT) && $(ENV) export SENTINEL_ALLOWED_HOSTS="$(HOST)$${SENTINEL_ALLOWED_HOSTS:+,$$SENTINEL_ALLOWED_HOSTS}" SENTINEL_LAN_HOST="$(HOST)" \
+	  SENTINEL_COOKIE_SECURE=0 SENTINEL_ENABLE_DEMO=1; \
 	$(PY) -m backend.preflight --host $(HOST) && $(PY) -m uvicorn backend.app:app --host $(HOST) --port $(PORT)
 
 preflight:
