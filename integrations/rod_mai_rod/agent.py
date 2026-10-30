@@ -1,4 +1,6 @@
-"""Windows-side SSH bridge: rod-mai-rod auth logs -> SENTINEL, approved rules -> Caddy."""
+"""Bridge: rod-mai-rod auth logs -> SENTINEL, approved rules -> Caddy.
+
+Runs on Windows over SSH, or on the VPS itself with --local (no SSH hop)."""
 
 import argparse
 import json
@@ -39,8 +41,12 @@ def api(path, body=None):
 
 
 def ssh(args, command, payload=None):
+    if getattr(args, "local", False):
+        argv = ["sh", "-c", command]
+    else:
+        argv = ["ssh", "-i", str(args.key), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=yes", f"{args.user}@{args.host}", command]
     result = subprocess.run(
-        ["ssh", "-i", str(args.key), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=yes", f"{args.user}@{args.host}", command],
+        argv,
         input=payload, text=True, capture_output=True, timeout=20,
         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
@@ -134,8 +140,11 @@ def main():
     parser.add_argument("--interval", type=float, default=5)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--network-sensor", action="store_true")
+    parser.add_argument("--local", action="store_true", help="run on the VPS: call vps_*.py directly instead of over SSH")
     args = parser.parse_args()
-    if not args.host or not args.user or not args.remote_dir:
+    if args.local and not args.remote_dir:
+        parser.error("set --remote-dir or SENTINEL_VPS_DIR")
+    if not args.local and (not args.host or not args.user or not args.remote_dir):
         parser.error("set --host/--user/--remote-dir or SENTINEL_VPS_HOST/SENTINEL_VPS_USER/SENTINEL_VPS_DIR")
     state = json.loads(args.state.read_text()) if args.state.exists() else {}
     while True:

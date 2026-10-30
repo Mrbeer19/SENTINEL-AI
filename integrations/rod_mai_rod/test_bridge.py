@@ -27,5 +27,16 @@ class BridgeTests(unittest.TestCase):
             active_ips([{"source_ip": "1.2.3.4\nrespond * 200", "expires_at": rows[0]["expires_at"]}], now)
 
 
+class LocalModeTest(unittest.TestCase):
+    def test_local_mode_runs_the_command_without_ssh(self):
+        import types
+        from unittest import mock
+        import agent
+        args = types.SimpleNamespace(local=True)
+        with mock.patch.object(agent.subprocess, "run", return_value=types.SimpleNamespace(returncode=0, stdout="ok\n", stderr="")) as run:
+            self.assertEqual(agent.ssh(args, "python3 /x/vps_logs.py --start-at-end"), "ok")
+        self.assertEqual(run.call_args.args[0], ["sh", "-c", "python3 /x/vps_logs.py --start-at-end"])
+
+
 if __name__ == "__main__":
     unittest.main()
