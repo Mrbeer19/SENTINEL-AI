@@ -1,16 +1,9 @@
-bot/secrets/.env
-bot/data/state.json
-bot/data/phase_messages.json
-bot/config/team.json
 **/.pytest_cache/
 *.log
 .env
 **/.env
 !.env.example
 !**/.env.example
-bot/.venv/
-bot/.tmp/
-bot/tests/.tmp/
 backend/.venv/
 backend/data/*.db*
 backend/tests/.tmp/

@@ -17,7 +17,6 @@ Backend tests ใช้ isolated SQLite และ deterministic model stub/fallb
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -m pytest backend/tests -q --basetemp backend/tests/.tmp
-python -m unittest discover -s bot/tests -q
 cd frontend
 npm ci
 npm run build

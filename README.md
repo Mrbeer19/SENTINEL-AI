@@ -48,10 +48,6 @@ SSH scenario เป็น synthetic log replay และแสดงชนิด
 | `backend/` | FastAPI, SQLite, detection, tools, approval, verification | Obeto |
 | `frontend/` | React dashboard ผู้ดูแล M5 จำนวน 8 หน้า (`/`) | Beer |
 | `scripts/neo/` | คำสั่ง Terminal สำหรับ Neo ทดสอบผ่าน LAN กับ M5 | ทั้งคู่ |
-| `prompts/phases/` | Prompt คัดลอกใช้แยกคนและเฟส | ทั้งคู่ |
-| `prompts/tasks/` | Prompt ย่อย 19 งาน รวม deployment | ทั้งคู่ |
-| `workstreams/` | ลำดับงานและเกณฑ์ผ่าน | ทั้งคู่ |
-| `bot/` | Discord task dispatcher | ทั้งคู่ |
 | `docs/` | แผน, API contract, runbook และผลทดสอบ | ทั้งคู่ |
 | `mockup/index.html` | แบบหน้าจออ้างอิง | Beer |
 
@@ -59,26 +55,23 @@ Beer รับผิดชอบโมเดลด้วย: baseline, prompt tu
 
 ## อ่านก่อนแบ่งงาน
 
-วิธีทำงานหลัก: คัดลอก prompt รายเฟสจาก Discord ให้ผู้ช่วยของแต่ละคนลงมือทำและทดสอบ แล้วส่งรายงานสั้นให้ทีม คนตรวจภาพรวมและผลที่ AI ระบุให้ลอง ไม่ต้องใช้คำสั่งบอตรับงานหรือส่งงาน ดูรูปแบบรายงานใน [reports/README.md](reports/README.md)
+แต่ละคนทำงานตามเฟสในแผน ทดสอบเอง แล้วส่งรายงานสั้นให้ทีม ดูรูปแบบรายงานใน [reports/README.md](reports/README.md)
 
 - [แผนพัฒนาตั้งแต่เริ่มจนพร้อมนำเสนอ](docs/project-plan.md)
-- [Prompt แยกเฟส — เริ่ม Phase 0](prompts/README.md)
 - [API contract ของ MVP](docs/api-contract.md)
 - [วิธีซ้อมเดโมและแก้ปัญหา](docs/demo-runbook.md)
 - [แผน deploy เว็บจริง — งาน F06 ของ Beer](docs/deployment-plan.md)
 - [สถานะการตรวจสอบ](docs/test-results.md)
-- [ตั้ง Discord bot](bot/README.md)
 
 ## ทดสอบ
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -m pytest backend/tests -q --basetemp backend/tests/.tmp
-python -m unittest discover -s bot/tests -q
 cd frontend
 npm run build
 ```
 
-เก็บ database ที่ `backend/data/sentinel.db` และสถานะบอตที่ `bot/data/state.json` ไฟล์เหล่านี้รวมถึง `.env`, token, การตั้งค่าทีมส่วนตัว และ virtual environments ถูก ignore จาก Git
+เก็บ database ที่ `backend/data/sentinel.db` ไฟล์นี้รวมถึง `.env`, token และ virtual environments ถูก ignore จาก Git
 
 ## สถานะ MVP
 

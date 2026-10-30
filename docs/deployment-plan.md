@@ -14,7 +14,7 @@ FastAPI/SQLite/Ollama อยู่บนเครื่อง RTX 4060 ของ
 
 Cloudflare Pages Free เป็นตัวเลือก frontend อีกทางสำหรับ static build ส่วน Render Free รัน web service ได้แต่พักหลังไม่มี traffic 15 นาทีและไม่มี persistent disk ใน free web service จึงต้องออกแบบที่เก็บ SQLite ใหม่หากย้าย backend ไปที่นั่น
 
-## ขั้นตอนที่ให้ผู้ช่วยของ Beer ทำ
+## ขั้นตอนของ Beer
 
 1. ตรวจโค้ดปัจจุบัน: API ยังเป็น relative `/api`, WebSocket อิง origin หน้าเว็บ และ Vite proxy มีผลเฉพาะ dev ต้องทำ production routing/config ให้ครบ
 2. แยก public configuration เช่น API origin และ WSS URL ออกจาก secrets ค่า `VITE_*` ถูกส่งให้ browser จึงห้ามใส่ bot token, admin key หรือ credential ถาวรในนั้น
