@@ -76,7 +76,7 @@ backend และ Ollama ไม่เปิดพอร์ตสู่อิน�
 
 | ชุด | ผล |
 |---|---|
-| Backend (`backend/tests`): detection, policy, agent, API contract, การเข้าถึง, WebSocket, audit log | 421 passed |
+| Backend (`backend/tests`): detection, policy, agent, API contract, การเข้าถึง, WebSocket, audit log | 423 passed |
 | Bridge เว็บไซต์จริง (`integrations/rod_mai_rod/test_bridge.py`) | passed |
 | ตัวให้คะแนนโมเดล (`model/eval/test_agent_bench.py`) | passed |
 | Frontend `npm run build` | passed |
@@ -91,18 +91,18 @@ GitHub Actions รัน CI ของ backend และ frontend ทุก pull 
 |---|---|---|
 | v1 test | 28 | generator หลัก ปรับ prompt ด้วยชุด dev 19 กรณีที่แยกต่างหาก |
 | v2 | 40 | generator ใหม่ ค่า IP/ชื่อผู้ใช้ไม่ซ้ำกับข้อมูลฝึก |
-| obeto-v3 | 34 | generator อิสระที่เขียนแยก (seed 61106) |
-| obeto-v4 | 33 | generator อิสระรุ่นถัดมา |
+| v3 | 34 | generator อิสระที่เขียนแยก (seed 61106) |
+| v4 | 33 | generator อิสระรุ่นถัดมา สร้างหลังฝึก r3 |
 
 ผลบน MacBook Pro M5 16 GB:
 
-| โมเดล | v1 test | v2 | obeto-v3 | obeto-v4 | False positive | Injection สำเร็จ | เวลาต่อกรณี (มัธยฐาน) |
+| โมเดล | v1 test | v2 | v3 | v4 | False positive | Injection สำเร็จ (v1) | เวลาต่อกรณี (มัธยฐาน) |
 |---|---|---|---|---|---|---|---|
-| qwen3.5:4b (prompt v1) | 26/28 | 33/40 | 28/34 | – | 2–4 ต่อชุด | 0/3 | 29 วินาที |
+| qwen3.5:4b (prompt v1) | 26/28 | 33/40 | 28/34 | – | 2–3 ต่อชุด | 0/3 | 29 วินาที |
 | r2 | 28/28 | 38/40 | 32/34 | – | 0 | 0/3 | 11.5–12.6 วินาที |
-| **r3** | **28/28** | **40/40** | **32/34** | **30/33** | **0** | **0/3** | ~7 วินาที (RTX 4060) |
+| **r3** | **28/28** | **40/40** | **32/34** | **30/33** | **0** | **0/3** | 11.9–14.4 วินาที |
 
-ผลของ r3 บน M5 และบน RTX 4060 ตรงกันทุกกรณี ผลดิบเก็บไว้ที่ `model/eval/results/`
+ผลของ r3 บน M5 และบน RTX 4060 ตรงกันทุกกรณี (บน RTX 4060 ใช้เวลาประมาณ 7 วินาทีต่อกรณี) Injection วัดเฉพาะกรณี injection 3 กรณีในชุด v1 ข้อมูลฝึก r3 ปรับหลังดูข้อผิดพลาดของ r2 ในชุด v2/v3 ผล r3 บน v2/v3 จึงเป็นการตรวจถดถอย ไม่ใช่ชุดทดสอบอิสระ ชุดที่เป็นอิสระสำหรับ r3 คือ v4 (base และ r2 ไม่ได้รันบน v4) ผลดิบเก็บไว้ที่ `model/eval/results/`
 
 ### 3. ทดสอบกับระบบจริง
 

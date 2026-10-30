@@ -102,4 +102,3 @@ Detection เป็นกฎที่ตรวจสอบซ้ำได้ โ
 - เดโมเพื่อนใน private LAN สองเครื่องผ่านจริง
 - มี labeled evaluation, ข้อจำกัด, runbook และภาพ/สไลด์จากระบบจริง
 
-รายการ task และ dependency ที่บอตใช้เป็นแหล่งเดียวอยู่ใน `bot/config/tasks.json` รายละเอียด prompt แยกเป็น Phase 0–4 ใน `prompts/phases/`

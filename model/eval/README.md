@@ -7,10 +7,26 @@
 | ไฟล์ | หน้าที่ |
 |---|---|
 | `datasets/generate_cases.py` → `datasets/sentinel_cases_v1.json` | 47 เคส (dev 19 / test 28) สร้างซ้ำได้ด้วย seed เดิม |
+| `datasets/generate_cases_v2.py` → `datasets/sentinel_cases_v2.json` | held-out รอบ 2 (Beer) 40 เคส ค่าไม่ซ้ำ train/dev/test + SSH `Accepted` / พอร์ตสุ่ม |
+| `datasets/make_cases_obeto.py` → `datasets/sentinel_cases_obeto_v3.json` | held-out ภายนอก (Obeto) 34 เคส ตัวสร้างอิสระ ไม่ import โค้ดของ Beer |
+| `datasets/make_cases_obeto_v4.py` → `datasets/sentinel_cases_obeto_v4.json` | held-out ภายนอก (Obeto) 33 เคส เขียนหลัง r3 เทรนเสร็จ (blind จริง) ห้ามใช้แก้ |
 | `model/prompts/analyst_system_v1.md` | system prompt ที่ใช้วัด |
 | `model/eval/agent_bench.py` | รันเคสกับ Ollama, ให้คะแนน, เขียน JSONL ทีละรอบ |
 | `model/eval/test_agent_bench.py` | unit tests ของตัวให้คะแนน ไม่ต้องมี Ollama |
 | `model/eval/results/` | ผลดิบ (`*.jsonl`) + log |
+
+## Held-out (ห้ามใช้เทรน)
+
+v2, obeto-v3 และ obeto-v4 ใช้วัดเท่านั้น ห้ามนำเคสหรือข้อความไปใส่ข้อมูล fine-tune รันด้วย `--cases <ไฟล์> --split test`
+
+`cases_sha256` ใน JSONL ของ v2 (`88f416cd…`) คำนวณจากไฟล์ CRLF ที่สร้างบน Windows · ไฟล์ใน repo เป็น LF (`5c0dff4d…`) เนื้อหาเท่ากันทุกเคส · SSH ผิดแล้ว `Accepted` v2 รับทั้ง SUSPICIOUS_LOGIN และ SSH_BRUTE_FORCE ส่วน obeto-v3 รับแค่ SUSPICIOUS_LOGIN (นับแบบ v2: obeto-v3 r2 33/34, qwen 29/34)
+
+| ชุด | r2 | qwen3.5:4b | ผลดิบ |
+|---|---|---|---|
+| v2 (RTX 4060) | 38/40, FP 0, 6.1 วิ | 33/40, FP 5, 8.4 วิ | `results/v2/` |
+| v2 (M5) | 38/40, FP 0, 11.5 วิ | 33/40, FP 4, 25.9 วิ | `results/obeto-2026-10-21/` |
+| obeto-v3 (M5) | 32/34, FP 0, 11.1 วิ | 28/34, FP 3, 28.0 วิ | `results/obeto-2026-10-21/` (+ รายงานเต็ม) |
+| r3 (M5) v1/v2/v3/v4 | 28/28 · 40/40 · 32/34 · **30/33** · FP0 inj0 | — | `results/m5-r3/` (+ รายงาน) |
 
 ## รัน
 

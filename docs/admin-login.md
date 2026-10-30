@@ -1,31 +1,31 @@
 # Admin login setup
 
-Dashboard API and WebSocket access require an admin session. Localhost no longer bypasses login. Existing X-Admin-Key integrations continue to authenticate as machine clients; keep this key secret and out of frontend variables.
+Dashboard API and WebSocket access require an admin session. Localhost does not bypass login. Machine clients such as the rod-mai-rod bridge authenticate with `X-Admin-Key`; keep that key secret and out of frontend variables.
 
 Generate a salted password hash interactively from the repository root:
 
     python -m backend.admin_auth
 
-Choose a unique password of at least 8 characters. Store the printed hash in the server environment as SENTINEL_ADMIN_PASSWORD_HASH, and set SENTINEL_ADMIN_USERNAME. Never commit the password or hash. Environment variables must be present when the backend starts; this application does not automatically load .env files.
+Choose a unique password of at least 8 characters. Store the printed hash in the server environment as `SENTINEL_ADMIN_PASSWORD_HASH` and set `SENTINEL_ADMIN_USERNAME`. Never commit the password or hash.
 
-SENTINEL_COOKIE_SECURE defaults to 1. Keep this value for HTTPS hosting. Use 0 only for local HTTP development. Add the exact deployment hostname to SENTINEL_ALLOWED_HOSTS. Serve frontend and API on the same origin. Build frontend then start backend.app:app with the hosting platform port.
+| Where | How the environment is set |
+| --- | --- |
+| VPS (main deployment) | `deploy/vps/.env` read by Docker Compose, see `docs/vps-hosting.md` |
+| M5 LAN fallback | `backend/.env` read by `make -C backend run-lan` (preflight refuses to start without the hash) |
+| Local development | environment variables in the shell before starting uvicorn |
 
-Sessions use random opaque tokens in HttpOnly, SameSite=Strict cookies, expire after eight hours, and are stored as SHA-256 digests in SQLite. Logout revokes the token; changing the configured credentials invalidates existing sessions. Login accepts at most ten attempts per five minutes globally, persisted in SQLite. This conservative global limit can temporarily lock out valid admins during an attack.
+`SENTINEL_COOKIE_SECURE` defaults to 1. Keep 1 for the HTTPS dashboard on the VPS. `make run-lan` sets 0 because the LAN fallback is plain HTTP. Add the exact dashboard hostname to `SENTINEL_ALLOWED_HOSTS`. Frontend and API are served from the same origin.
 
-The SQLite database must be on persistent storage. Before deploying to ephemeral or multiple-instance hosting, migrate application data, sessions, and attempt counters to a shared persistent database such as PostgreSQL. This change does not make the existing SQLite deployment suitable for Heroku's ephemeral filesystem. No deployment has been performed.
+Sessions use random opaque tokens in HttpOnly, SameSite=Strict cookies, expire after eight hours, and are stored as SHA-256 digests in SQLite. Logout revokes the token; changing the configured credentials invalidates existing sessions. Login accepts at most ten attempts per client IP per five minutes, with a global ceiling of 200, persisted in SQLite. Behind Caddy the client IP comes from the forwarded header, trusted only from the Caddy container.
 
-No self registration or default admin password is provided. Until credentials are configured, login returns 503 and protected APIs return 401. Set up credentials and restart the backend before using the dashboard.
+No self registration or default admin password is provided. Until credentials are configured, login returns 503 and protected APIs return 401.
 
-Validation: python -m pytest backend/tests/test_admin_auth.py -q
+## Resetting the password
 
-## One backend on port 8001
+The old password cannot be recovered; only its hash is stored. Generate a new hash with `python -m backend.admin_auth`, replace `SENTINEL_ADMIN_PASSWORD_HASH` in the environment of the running deployment, and restart the backend. Existing sessions end.
 
-The admin backend on `127.0.0.1:8001` is the only SOC backend on the Windows workstation. The old port 8000 process is no longer used; Vite proxies to 8001 by default.
+## Machine key
 
-The Windows bridge authenticates with a machine key (`X-Admin-Key`), not the admin password:
+The bridge sends `X-Admin-Key`. On the VPS the same value is in `deploy/vps/.env` (`SENTINEL_ADMIN_KEY`) and `/etc/sentinel-bridge.env`. For local development on Windows, `scripts/new-admin-key.ps1` creates `%LOCALAPPDATA%\SentinelAI\admin-key.txt` and `scripts/_sentinel-env.ps1` loads it. After replacing the key, restart the backend and the bridge.
 
-1. `powershell -File scripts/new-admin-key.ps1` creates `%LOCALAPPDATA%\SentinelAI\admin-key.txt` (current user only). The key is never printed.
-2. `scripts/_sentinel-env.ps1` loads that file into `SENTINEL_ADMIN_KEY` when the admin backend starts.
-3. `integrations/rod_mai_rod/agent.py` reads the same file and sends to `http://127.0.0.1:8001` (override with `SENTINEL_API_URL`).
-
-After creating or replacing the key, restart the admin backend (`scripts/start-admin-local.ps1`) and the bridge.
+Validation: `python -m pytest backend/tests/test_admin_auth.py -q`
