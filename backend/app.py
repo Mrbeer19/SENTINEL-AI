@@ -459,11 +459,13 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             if action in policy.BLOCK_ACTIONS:
                 decision = policy.evaluate(action, incident["source_ip"], incident, settings.protected_ips)
                 if decision.allowed:
+                    if settings.manual_unblock:
+                        decision.duration_seconds = 0  # 0 = until an admin unblocks it
                     con.execute(
                         "INSERT INTO proposals(incident_id,source_ip,target_ip,action,duration_seconds,status,created_at,source,d3fend,reason,policy_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                         (incident_id, decision.target_ip, decision.target_ip, decision.action, decision.duration_seconds, "pending", utcnow(),
                          source, policy.D3FEND_TECHNIQUE, (reason or analysis.evidence[0])[:500], json.dumps(decision.notes)))
-                    log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} for {decision.duration_seconds} seconds ({source}); pending human approval")
+                    log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} {policy.duration_text(decision.duration_seconds)} ({source}); pending human approval")
                     audit(con, "policy", "proposal_created", incident_id, {"action": decision.action, "target_ip": decision.target_ip, "source": source, "notes": decision.notes})
                     transition(con, incident_id, "awaiting_approval", "policy", "block proposal passed policy")
                 else:
@@ -500,7 +502,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             changed = con.execute("UPDATE proposals SET status='approved',reviewer=? WHERE id=? AND status='pending'", (decision.reviewer, proposal_id))
             if changed.rowcount != 1:
                 raise HTTPException(409, "proposal already decided")
-            expires = (datetime.now(timezone.utc) + timedelta(seconds=proposal["duration_seconds"])).isoformat(timespec="seconds")
+            expires = policy.expires_at(proposal["duration_seconds"])
             con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal_id, proposal["target_ip"], expires, utcnow()))
             transition(con, proposal["incident_id"], "blocked", decision.reviewer, "proposal approved")
             log(con, proposal["incident_id"], "approved", f"{decision.reviewer} approved {proposal['action']}")
