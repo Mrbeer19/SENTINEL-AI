@@ -86,13 +86,13 @@ Beer เพิ่ม F06 deployment ตาม `docs/deployment-plan.md`: URL HTT
 | 3–5 พ.ย. | ซ้อมเดโม แก้ bug สำรองข้อมูล/วิดีโอ |
 | 6 พ.ย. | นำเสนอ |
 
-## กติกาทำงานกับ Git และบอต
+## กติกาทำงานกับ Git
 
 1. ทั้งคู่ clone repository คนละ checkout และ pull ก่อนเริ่มงาน
 2. ใช้ feature branch ของงานที่รับ สร้าง commit ขนาดที่อ่านตรวจได้
-3. คัดลอก prompt ใน Discord ของตนให้ผู้ช่วยทำเฟสที่ dependencies พร้อม
-4. AI ลงมือแก้และรันทดสอบจริง เขียนรายงานใน `reports/` พร้อม commit/PR ถ้ามี และสรุปพร้อมส่งทีม
-5. คนอ่านภาพรวมและลองตามหัวข้อ “คนต้องตรวจ” แล้วส่งรายงานเป็นข้อความปกติ ถ้าทำแทนเพื่อนให้เจ้าของงานตรวจผลเชื่อมระบบด้วย
+3. เริ่มเฟสที่ dependencies พร้อมแล้ว
+4. แก้โค้ดและรันทดสอบจริง เขียนรายงานใน `reports/` พร้อม commit/PR และส่งสรุปให้ทีม
+5. เพื่อนลองตามหัวข้อ “คนต้องตรวจ” ในรายงาน ถ้าทำแทนเพื่อนให้เจ้าของงานตรวจผลเชื่อมระบบด้วย
 6. รวมงานเมื่อ contract, tests และ peer review ผ่าน หาก contract เปลี่ยนให้แก้เอกสารและทั้งสองฝั่งพร้อมกัน
 
 ## เกณฑ์พร้อมนำเสนอ
@@ -103,5 +103,3 @@ Beer เพิ่ม F06 deployment ตาม `docs/deployment-plan.md`: URL HTT
 - Approve/Reject/protected IP/expiry/restart/reconnect ผ่าน
 - เดโมเพื่อนใน private LAN สองเครื่องผ่านจริง
 - มี labeled evaluation, ข้อจำกัด, runbook และภาพ/สไลด์จากระบบจริง
-
-รายการ task และ dependency ที่บอตใช้เป็นแหล่งเดียวอยู่ใน `bot/config/tasks.json` รายละเอียด prompt แยกเป็น Phase 0–4 ใน `prompts/phases/`
