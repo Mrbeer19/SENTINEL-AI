@@ -100,3 +100,45 @@ def test_analyst_output_may_not_choose_the_action(make_app, script_model):
 def test_every_trace_row_names_its_agent(make_app, script_model):
     _, result = run(make_app, script_model, rounds=[LOGS], finals=[analysis()])
     assert {t["agent"] for t in result["trace"]} == {"investigation", "threat_analysis", "defense_planning"}
+
+
+INVENTED = analysis(evidence=["6 failed logins in 60 s", "Accounts tried: root, admin, guest"], explanation_th="ลองรหัสผ่านกับหลายบัญชี")
+
+
+def run_without_usernames(make_app, script_model, final):
+    bodies = script_model(rounds=[LOGS], finals=[final])
+    client = connect(make_app())
+    for _ in range(5):
+        client.post("/api/events", json=event())
+    incident = client.get("/api/incidents").json()[0]
+    return bodies, client.post(f"/api/incidents/{incident['id']}/analyze").json()
+
+
+def test_account_claims_are_dropped_when_logs_name_no_account(make_app, script_model):
+    bodies, result = run_without_usernames(make_app, script_model, INVENTED)
+    assert result["analysis_mode"] == "ollama"
+    assert result["analysis"]["evidence"] == ["6 failed logins in 60 s"]
+    assert "บัญชี" in result["analysis"]["explanation_th"] and "ไม่ระบุชื่อบัญชี" in result["analysis"]["explanation_th"]
+    assert ATTACKER in result["analysis"]["explanation_th"]
+    analyst = [b for b in bodies if "threat_type, severity" in b["messages"][-1]["content"]]
+    assert "carry no username" in analyst[0]["messages"][-1]["content"]
+    done = next(t for t in result["trace"] if t["agent"] == "threat_analysis" and t["operation"] == "invoke_agent")
+    assert "Accounts tried: root, admin, guest" in json.loads(done["output"])["removed_unsupported"]
+
+
+def test_evidence_keeps_a_fact_when_every_line_was_about_accounts(make_app, script_model):
+    _, result = run_without_usernames(make_app, script_model, analysis(evidence=["Usernames: root, admin"]))
+    assert result["analysis"]["evidence"] == [f"5 events from {ATTACKER} within 60 s"]
+    assert result["analysis"]["explanation_th"] == "ลองรหัสผิดซ้ำ"
+
+
+def test_account_claims_stay_when_logs_carry_usernames(make_app, script_model):
+    bodies = script_model(rounds=[LOGS], finals=[INVENTED])
+    client = connect(make_app())
+    for name in ("root", "admin", "guest", "root", "admin"):
+        client.post("/api/events", json=event(username=name))
+    incident = client.get("/api/incidents").json()[0]
+    result = client.post(f"/api/incidents/{incident['id']}/analyze").json()
+    assert result["analysis"]["evidence"] == INVENTED["evidence"]
+    assert result["analysis"]["explanation_th"] == "ลองรหัสผ่านกับหลายบัญชี"
+    assert "carry no username" not in json.dumps(bodies)
