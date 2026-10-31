@@ -1,0 +1,6 @@
+[Unit]
+Description=Expire SENTINEL blocks for rod-mai-rod only
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 __VPS_DIR__/vps_rules.py

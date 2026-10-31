@@ -102,6 +102,16 @@ def test_event_list_limit_is_clamped_newest_first(client, limit, expected):
     assert len(rows) == expected and rows[0]["id"] == 7 and [r["id"] for r in rows] == sorted((r["id"] for r in rows), reverse=True)
 
 
+def test_auth_history_pages_keep_repeated_logins_from_one_ip(client):
+    for outcome in ("failed", "success", "failed"):
+        client.post("/api/events", json=event(ip="192.0.2.8", outcome=outcome))
+    client.post("/api/events", json=event(ip="192.0.2.9", event_type="CONNECTION", outcome="attempt"))
+    first = client.get("/api/events?event_type=HTTP_AUTH&limit=2").json()
+    second = client.get(f"/api/events?event_type=HTTP_AUTH&limit=2&before_id={first[-1]['id']}").json()
+    assert [row["outcome"] for row in first + second] == ["failed", "success", "failed"]
+    assert [row["id"] for row in first + second] == [3, 2, 1]
+
+
 def test_incident_list_and_detail_shapes(client):
     incident = blocked_incident(client)
     assert INCIDENT_KEYS <= set(client.get("/api/incidents").json()[0])

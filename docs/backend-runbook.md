@@ -32,7 +32,7 @@ make -C backend test            # ต้องได้ 395 passed
 
 `run-lan` รัน preflight ก่อน ถ้าไม่ผ่านจะไม่เปิด server · **ห้าม bind `0.0.0.0` บน Mac** (preflight ปฏิเสธ) เพราะจะเปิดทุก interface
 
-เมื่อใช้ `run-lan` server ฟังที่ IP M5 อย่างเดียว ไม่ได้ฟังที่ `127.0.0.1` → บน M5 เปิด dashboard และเรียก `curl` ที่ `http://<IP M5>:8000` (ไม่ใช่ `localhost`) · request ที่มาจาก IP M5 เอง (`SENTINEL_LAN_HOST`) นับเป็นเครื่อง SOC เหมือน `127.0.0.1` จึงกดปุ่มบน dashboard ได้โดยไม่ต้องใช้ `X-Admin-Key`
+เมื่อใช้ `run-lan` server ฟังที่ IP M5 อย่างเดียว ไม่ได้ฟังที่ `127.0.0.1` → บน M5 เปิด dashboard และเรียก `curl` ที่ `http://<IP M5>:8000` (ไม่ใช่ `localhost`) · request ที่มาจาก IP M5 เอง (`SENTINEL_LAN_HOST`) นับเป็นเครื่องเดียวกับ `127.0.0.1` สำหรับการกำหนด IP ต้นทางในโหมดสาธิต แต่ยังต้อง login admin ก่อนกดปุ่มบน dashboard เหมือน `127.0.0.1`
 
 **ห้ามวาง reverse proxy บน M5 ที่ส่งต่อมาที่ `<IP M5>:8000`** (เช่น nginx/Caddy/sidecar) เพราะ request ทุกตัวที่ผ่าน proxy จะมี IP ต้นทางเป็น M5 และถูกนับเป็นเครื่อง SOC ทั้งหมด ใครก็ตามที่เข้าถึง proxy ได้จะเรียก endpoint ของ SOC ได้โดยไม่ต้องมี key · ถ้าต้องมี proxy ให้รันอีกเครื่อง หรือรัน `make -C backend run` (127.0.0.1) แล้วให้ proxy แนบ `X-Admin-Key` เอง
 

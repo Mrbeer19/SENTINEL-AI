@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, kindEvidence, kindName, parseAnalysis, proposalTone, propId, targetIp } from '../ui.jsx'
+import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, kindEvidence, kindName, parseAnalysis, proposalTone, propId, targetIp, durationText, UNTIL_UNBLOCKED } from '../ui.jsx'
 
 export default function Approvals({ ctx, id }) {
   const { proposals, incidents } = ctx.data
@@ -16,20 +16,20 @@ export default function Approvals({ ctx, id }) {
   }, [id, routeStatus])
   const incident = (p) => incidents.find(i => i.id === p.incident_id)
 
-  return <div className="grid approvals">
-    <div className="span3"><Banner tone="warn" icon="alert"><b>Human approval required</b> · Proposals never execute automatically. Approval adds an app-level rule only.</Banner></div>
-    <div className="stats three span3">
-      <Stat icon="clock" tone="amber" label="Pending proposals" value={byStatus('pending').length} />
-      <Stat icon="ok" label="Approved proposals" value={byStatus('approved').length} />
-      <Stat icon="x" tone="coral" label="Rejected proposals" value={byStatus('rejected').length} />
+  return <div className={`grid approvals approvalWorkspace ${selected ? 'hasSelection' : 'noSelection'}`}>
+    <div className="approvalNotice"><Banner tone="info" icon="shield"><b>ผู้ดูแลเป็นผู้ยืนยันทุกครั้ง</b> · AI เสนอคำแนะนำ การอนุมัติจึงจะเพิ่มกฎป้องกันระดับแอป</Banner></div>
+    <div className="stats three approvalStats">
+      <Stat icon="clock" tone="amber" label="ข้อเสนอรออนุมัติ" value={byStatus('pending').length} />
+      <Stat icon="ok" label="อนุมัติแล้ว" value={byStatus('approved').length} />
+      <Stat icon="x" tone="coral" label="ปฏิเสธแล้ว" value={byStatus('rejected').length} />
     </div>
 
-    <Panel title="Approval Queue" icon="rules">
+    <Panel title="รายการข้อเสนอ" icon="rules" className="approvalQueue">
       <div className="tabs" role="group" aria-label="สถานะข้อเสนอ">
         <button aria-pressed={tab === 'pending'} className={tab === 'pending' ? 'on' : ''} onClick={() => { setTab('pending'); setQuery('') }}>รออนุมัติ ({byStatus('pending').length})</button>
         <button aria-pressed={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => { setTab('history'); setQuery('') }}>ประวัติ ({proposals.length - byStatus('pending').length})</button>
       </div>
-      <label className="search"><Icon name="info" size={16} /><span className="sr">Search proposals</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search proposals…" /></label>
+      <label className="search"><Icon name="info" size={16} /><span className="sr">Search proposals</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ค้นหาหมายเลขข้อเสนอ หรือ IP…" /></label>
       <FilterSummary count={list.length} total={tab === 'pending' ? byStatus('pending').length : proposals.length - byStatus('pending').length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <ul className="queue">{list.map(p => {
         const inc = incident(p)
@@ -41,15 +41,19 @@ export default function Approvals({ ctx, id }) {
       })}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'pending' ? <>ไม่มีข้อเสนอรออนุมัติ · <a href="#/incidents">ดูเหตุการณ์ที่ต้องวิเคราะห์</a></> : 'ยังไม่มีประวัติการตัดสินใจ'}</Empty>}
     </Panel>
 
-    <Panel className="span2">
-      {selected ? <Review key={selected.id} ctx={ctx} proposal={selected} /> : <Empty>{query ? 'เลือกรายการใหม่หลังเปลี่ยนตัวกรอง' : 'รายละเอียดจะแสดงเมื่อมีข้อเสนอในรายการนี้'}</Empty>}
+    <Panel className="approvalReview">
+      {selected ? <Review key={selected.id} ctx={ctx} proposal={selected} /> : <ApprovalPlaceholder hasQuery={!!query} tab={tab}/>}
     </Panel>
   </div>
 }
 
+function ApprovalPlaceholder({ hasQuery, tab }) {
+  return <div className="approvalPlaceholder"><span className="approvalPlaceholderIcon"><Icon name="shield" size={48}/></span><h2>{hasQuery ? 'ไม่พบข้อเสนอที่ตรงกับคำค้นหา' : tab === 'history' ? 'ยังไม่มีประวัติการตัดสินใจ' : 'ไม่มีข้อเสนอรออนุมัติ'}</h2><p>{hasQuery ? 'เปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูรายการทั้งหมด' : 'เมื่อ AI วิเคราะห์แล้วมีข้อเสนอ ระบบจะแสดงให้คุณตรวจหลักฐานและตัดสินใจที่นี่'}</p><ol className="approvalProcess"><li><Icon name="alert" size={24}/><b>ตรวจพบเหตุการณ์</b><span>ระบบเก็บหลักฐานที่เกี่ยวข้อง</span></li><li><Icon name="brain" size={24}/><b>AI วิเคราะห์</b><span>ประเมินความเสี่ยงและเสนอแนวทาง</span></li><li><Icon name="check" size={24}/><b>ผู้ดูแลยืนยัน</b><span>ตรวจรายละเอียดก่อนดำเนินการ</span></li></ol><a className="btn ghost" href="#/incidents">ดูเหตุการณ์<Icon name="chevron" size={15}/></a></div>
+}
+
 function Review({ ctx, proposal: p }) {
   const { report, loading, error } = useReport(p.incident_id, ctx.version)
-  const [reviewer, setReviewer] = useState('SOC operator')
+  const [reviewer, setReviewer] = useState(ctx.adminUsername || 'SOC operator')
   const [confirm, setConfirm] = useState(null)
   const confirmation = useRef(null)
   const confirmTrigger = useRef(null)
@@ -57,7 +61,7 @@ function Review({ ctx, proposal: p }) {
   const pending = p.status === 'pending'
   const valid = reviewer.trim().length >= 2 && !!report && !error
   const decide = async (action) => {
-    const result = await ctx.act(`/api/proposals/${p.id}/${action}`, { body: { reviewer: reviewer.trim() }, ok: action === 'approve' ? 'อนุมัติแล้ว · ให้ Neo ส่งคำขอใหม่เพื่อยืนยัน HTTP 403' : 'ปฏิเสธแล้ว · ไม่มีการสร้างกฎ' })
+    const result = await ctx.act(`/api/proposals/${p.id}/${action}`, { body: { reviewer: reviewer.trim() }, ok: action === 'approve' ? 'อนุมัติแล้ว · รอคำขอใหม่เพื่อยืนยัน HTTP 403' : 'ปฏิเสธแล้ว · ไม่มีการสร้างกฎ' })
     if (result) { setConfirm(null); go('approvals', p.id) }
   }
   const analysis = parseAnalysis(report?.analysis)
@@ -66,14 +70,14 @@ function Review({ ctx, proposal: p }) {
     <div className="reviewHead"><h2><Icon name="clock" size={24} />Review {propId(p.id)}</h2><Badge tone={proposalTone[p.status]}>{p.status}</Badge></div>
     <div className="facts slim">
       <div><span>Target IP</span><b className="mono">{targetIp(p)}</b></div>
-      <div><span>TTL</span><b>{p.duration_seconds / 60} minutes</b></div>
+      <div><span>TTL</span><b>{durationText(p.duration_seconds)}</b></div>
       <div><span>Related incident</span><a href={`#/incident/${p.incident_id}`}>{incId(p.incident_id)}</a></div>
       <div><span>Requested</span><b>{fmtDateTime(p.created_at)}</b></div>
     </div>
 
     <div className="twoCol">
       <section className="box">
-        <h3><Icon name="shield" />Evidence Summary</h3>
+        <h3><Icon name="shield" />หลักฐานและคำแนะนำ</h3>
         {error && <Banner tone="bad">โหลดหลักฐานไม่สำเร็จ · กดรีเฟรชก่อนตัดสินใจ</Banner>}
         {loading && !report ? <Loading label="กำลังโหลดหลักฐาน…" /> : report ? <>
           <p><b>{kindEvidence(report)} in 60 seconds</b>{report.attack_technique && <span className="muted small"> · ATT&amp;CK {report.attack_technique}</span>}</p>
@@ -87,13 +91,13 @@ function Review({ ctx, proposal: p }) {
       </section>
       <section className="box">
         <h3><Icon name="trace" />Execution Scope</h3>
-        <div className="scope"><Icon name="server" size={28} /><div><b>Blocks requests to this demo application only.</b><span>Adds a temporary app-level rule for <span className="mono">{targetIp(p)}</span>. No macOS firewall changes.{p.d3fend && <> MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering).</>}</span></div></div>
+        <div className="scope"><Icon name="server" size={28} /><div><b>กฎนี้ครอบคลุมเฉพาะ rod-mai-rod</b><span>เพิ่มกฎชั่วคราวสำหรับ <span className="mono">{targetIp(p)}</span> ในระบบป้องกันเว็บนี้เท่านั้น{p.d3fend && <> · MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering)</>}</span></div></div>
         <h4>Server-side policy</h4>
         <ul className="policy">
           <li>Target must be the incident source IP; loopback and protected addresses are refused (HTTP 400)</li>
           <li>BLOCK_IP (1 hour) only for CRITICAL incidents; otherwise reduced to a 10-minute temporary block</li>
           {p.policy_notes?.map((n, i) => <li key={i}><b>Policy note:</b> {n}</li>)}
-          <li>Rule expires automatically after {p.duration_seconds / 60} minutes</li>
+          <li>{p.duration_seconds ? `กฎหมดอายุอัตโนมัติหลัง ${durationText(p.duration_seconds)}` : 'กฎทำงานจนกว่าแอดมินจะปลดบล็อกในหน้ากฎบล็อก'}</li>
           <li>A decision can only be made once (HTTP 409)</li>
         </ul>
         <p className="note"><Icon name="info" size={14} />Verification stays pending until a new request is denied.</p>
@@ -103,12 +107,12 @@ function Review({ ctx, proposal: p }) {
     {pending ? <>
       <label className="field"><span><Icon name="user" size={16} />ผู้ตรวจทาน</span><input value={reviewer} onChange={e => setReviewer(e.target.value)} maxLength={80} aria-invalid={reviewer.trim().length < 2} />{reviewer.trim().length < 2 && <small className="coral">กรอกชื่ออย่างน้อย 2 ตัวอักษร</small>}</label>
       <div className="decide">
-        <button className="btn primary big" disabled={ctx.busy || !!ctx.error || !valid} onClick={e => { confirmTrigger.current = e.currentTarget; setConfirm('approve') }}><Icon name="ok" />อนุมัติบล็อก {p.duration_seconds / 60} นาที</button>
+        <button className="btn primary big" disabled={ctx.busy || !!ctx.error || !valid} onClick={e => { confirmTrigger.current = e.currentTarget; setConfirm('approve') }}><Icon name="ok" />อนุมัติบล็อก{p.duration_seconds ? ` ${durationText(p.duration_seconds)}` : ''}</button>
         <button className="btn ghost big" disabled={ctx.busy || !!ctx.error || !valid} onClick={e => { confirmTrigger.current = e.currentTarget; setConfirm('reject') }}><Icon name="x" />ปฏิเสธข้อเสนอ</button>
       </div>
       {confirm && <section ref={confirmation} tabIndex={-1} className="decisionConfirm" role="region" aria-label="ตรวจทานการตัดสินใจ">
         <h3>{confirm === 'approve' ? 'ยืนยันบล็อก IP นี้หรือไม่?' : 'ยืนยันปฏิเสธข้อเสนอนี้หรือไม่?'}</h3>
-        <p>{confirm === 'approve' ? <>แอปสาธิตจะปฏิเสธคำขอจาก <b className="mono">{targetIp(p)}</b> เป็นเวลา <b>{p.duration_seconds / 60} นาที</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{targetIp(p)}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
+        <p>{confirm === 'approve' ? <>เว็บ rod-mai-rodจะปฏิเสธคำขอจาก <b className="mono">{targetIp(p)}</b> <b>{p.duration_seconds ? `เป็นเวลา ${durationText(p.duration_seconds)}` : UNTIL_UNBLOCKED}</b> หลังยืนยัน ให้ส่งคำขอใหม่จากแหล่งเดิมเพื่อตรวจผล</> : <>ข้อเสนอสำหรับ <b className="mono">{targetIp(p)}</b> จะถูกปฏิเสธโดยไม่มีการสร้างกฎ</>}</p>
         <p className="muted small">บันทึกการตัดสินใจโดย {reviewer.trim()} · ข้อเสนอนี้ตัดสินใจได้ครั้งเดียว</p>
         <div className="decisionActions"><button className={`btn ${confirm === 'approve' ? 'primary' : 'danger'}`} disabled={ctx.busy || !!ctx.error || !valid} onClick={() => decide(confirm)}>{ctx.busy ? 'กำลังบันทึก…' : confirm === 'approve' ? 'ยืนยันบล็อก IP' : 'ยืนยันปฏิเสธ'}</button><button className="btn ghost" disabled={ctx.busy} onClick={() => { setConfirm(null); confirmTrigger.current?.focus() }}>กลับไปตรวจทาน</button></div>
       </section>}

@@ -1,22 +1,43 @@
 import React from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, actionLabel, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, parseJson, propId, targetIp } from '../ui.jsx'
+import { Badge, Banner, Code, Empty, Icon, Loading, ModeBadge, actionLabel, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, parseJson, propId, targetIp, durationText, UNTIL_UNBLOCKED, useNow } from '../ui.jsx'
 
 // Trace rows follow OpenTelemetry GenAI names (contract v0.2): invoke_agent > chat / execute_tool.
 const statusTone = { ok: 'good', error: 'bad', rejected_by_policy: 'bad', invalid_output: 'warn', fallback: 'warn' }
 const statusText = { ok: 'ok', error: 'error', rejected_by_policy: 'Rejected by policy', invalid_output: 'Invalid output', fallback: 'Fallback' }
-const opText = { invoke_agent: 'Agent run', chat: 'Model call', execute_tool: 'Tool' }
-// Three agents (LangGraph): the planner never sees log text, only fixed fields.
-const agentText = { investigation: '1 · Investigation', threat_analysis: '2 · Threat Analysis', defense_planning: '3 · Defense Planning', rule_fallback: 'Rule fallback (not AI)' }
-const agentNote = { investigation: 'Read-only tools collect evidence', threat_analysis: 'No tools · classifies the evidence', defense_planning: 'Sees fixed fields only, never log text', rule_fallback: 'Model unavailable or output invalid; detection rule result used' }
 const ms = (v) => v == null ? '' : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v} ms`
+
+// Three agents (LangGraph). The planner never sees log text, only fixed fields.
+const AGENTS = [
+  { key: 'investigation', no: '01', title: 'Investigator', th: 'สืบค้นหลักฐาน', note: 'เครื่องมืออ่านอย่างเดียว 4 ตัว', icon: 'search' },
+  { key: 'threat_analysis', no: '02', title: 'Threat Analyst', th: 'วิเคราะห์ภัย', note: 'ไม่ใช้เครื่องมือ · จัดประเภทหลักฐาน', icon: 'brain' },
+  { key: 'defense_planning', no: '03', title: 'Defense Planner', th: 'วางแผนป้องกัน', note: 'เห็นเฉพาะฟิลด์ที่กำหนด ไม่เห็น log', icon: 'shield' },
+]
+const stateText = { done: 'เสร็จแล้ว', active: 'กำลังทำงาน', wait: 'รอคิว', skip: 'ข้าม', fail: 'ไม่ผ่าน' }
+const isBad = (t) => t.status && !['ok', 'fallback'].includes(t.status)
+
+// An agent is finished once its invoke_agent row exists; while the incident is analyzing,
+// the first unfinished agent is the one running now. Rows are written as each step ends.
+function stageStates(report, trace) {
+  const byAgent = Object.fromEntries(AGENTS.map(a => [a.key, trace.filter(t => t.agent === a.key)]))
+  const run = (key) => byAgent[key].find(t => t.operation === 'invoke_agent')
+  const firstOpen = AGENTS.findIndex(a => !run(a.key))
+  return AGENTS.map((a, i) => {
+    if (run(a.key)) return isBad(run(a.key)) ? 'fail' : 'done'
+    if (report.status === 'analyzing' && i === firstOpen) return 'active'
+    if (report.analysis) return byAgent[a.key].length ? 'fail' : 'skip'
+    return 'wait'
+  })
+}
 
 export default function AgentTrace({ ctx, id }) {
   const incidents = ctx.data.incidents
-  const current = id || incidents[0]?.id
+  const live = incidents.find(i => i.status === 'analyzing')
+  const current = id || live?.id || incidents[0]?.id
   const { report, error, loading } = useReport(current, ctx.version)
+  const now = useNow(1000)
 
-  if (!incidents.length) return <Empty>ยังไม่มี incident ให้ดู trace</Empty>
+  if (!incidents.length) return <Empty>ยังไม่มี incident ให้ดูการวิเคราะห์</Empty>
   if (loading && !report) return <Loading />
   if (!report || report.id !== current) return <Banner tone="bad" icon="x" action={<a className="btn ghost sm" href="#/incidents">กลับไปรายการเหตุการณ์</a>}>{error || 'โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่'}</Banner>
 
@@ -26,56 +47,127 @@ export default function AgentTrace({ ctx, id }) {
   const trace = report.trace || []
   const tools = trace.filter(t => (t.operation || 'execute_tool') === 'execute_tool')
   const blockedByPolicy = trace.filter(t => t.status === 'rejected_by_policy')
+  const analyzing = report.status === 'analyzing'
+  const states = stageStates(report, trace)
+  const last = trace[trace.length - 1]
+  const since = last ? Math.max(0, Math.round((now - new Date(last.created_at)) / 1000)) : 0
+  const totalMs = trace.filter(t => t.operation === 'invoke_agent').reduce((s, t) => s + (t.duration_ms || 0), 0)
   const analyze = () => ctx.act(`/api/incidents/${current}/analyze`, { ok: (r) => `วิเคราะห์เสร็จ · โหมด ${r.analysis_mode}` })
 
-  return <div className="grid trace">
-    <div className="traceBar span3">
-      <label className="incidentPick"><Icon name="alert" /><span className="sr">Incident</span>
-        <select value={current} onChange={e => go('trace', e.target.value)}>{incidents.map(i => <option key={i.id} value={i.id}>{incId(i.id)} · {kindName(i.kind)} · {i.source_ip}</option>)}</select>
-      </label>
-      <Badge tone={report.analysis ? 'good' : 'warn'} icon={report.analysis ? 'ok' : 'clock'}>{report.analysis ? 'Investigation complete' : 'Not investigated'}</Badge>
-      <ModeBadge mode={report.analysis_mode} />
-      <div className="spacer" />
-      <span className="muted small">Model <b className="mono">{ctx.data.health?.model || '—'}</b> · Runtime local Ollama · Source <b className="mono">{report.source_ip}</b></span>
-    </div>
+  const approval = p ? (p.status === 'pending' ? 'active' : p.status === 'rejected' ? 'fail' : 'done') : report.analysis ? 'skip' : 'wait'
+  const verify = report.status === 'verified' ? 'done' : report.status === 'blocked' ? 'active' : p?.status === 'rejected' || (report.analysis && !p) ? 'skip' : 'wait'
+  const flow = ['done', ...states, approval, verify]
+  // The connector after a stage lights up once the next stage has started.
+  const linkOn = (i) => ['done', 'fail', 'active'].includes(flow[i + 1])
 
-    {fallback && <div className="span3"><Banner tone="warn" icon="info">โมเดลใช้ไม่ได้หรือผลไม่ผ่าน validation รอบนี้จึงเป็น <b>rule fallback</b> ไม่ใช่ผลวิเคราะห์ของ AI · แถวที่มาจาก fallback ติดป้าย <b>fallback</b> แยกจากแถวของโมเดล</Banner></div>}
-    {blockedByPolicy.length > 0 && <div className="span3"><Banner tone="bad" icon="shield"><b>Policy ปฏิเสธคำขอของโมเดล {blockedByPolicy.length} ครั้ง</b> · เช่น เสนอบล็อก IP ที่ไม่ใช่ต้นทางของ incident หรือ IP ที่ได้รับการป้องกัน — backend ไม่ทำตาม</Banner></div>}
+  return <div className="aiFlow">
+    <header className="aiFlowBar">
+      <div className="aiFlowPicker" role="tablist" aria-label="เลือกเหตุการณ์">
+        {incidents.slice(0, 8).map(i => <a key={i.id} role="tab" aria-selected={i.id === current} className={`aiChip ${i.id === current ? 'on' : ''} ${i.status === 'analyzing' ? 'live' : ''}`} href={`#/trace/${i.id}`}>
+          <b>{incId(i.id)}</b><span>{kindName(i.kind)}</span><small className="mono">{i.source_ip}</small>
+        </a>)}
+        {incidents.length > 8 && <label className="aiChip more"><span className="sr">เหตุการณ์อื่น</span>
+          <select value={current} onChange={e => go('trace', e.target.value)}>{incidents.map(i => <option key={i.id} value={i.id}>{incId(i.id)} · {kindName(i.kind)} · {i.source_ip}</option>)}</select>
+        </label>}
+      </div>
+      <div className="aiFlowMeta">
+        <span className={`aiPulse ${analyzing ? 'on' : ''}`}>{analyzing ? 'LIVE · กำลังวิเคราะห์' : report.analysis ? 'วิเคราะห์เสร็จแล้ว' : 'ยังไม่วิเคราะห์'}</span>
+        <ModeBadge mode={report.analysis_mode} />
+        <small>Model <b className="mono">{ctx.data.health?.model || '—'}</b>{totalMs > 0 && <> · รวม <b>{ms(totalMs)}</b></>}</small>
+      </div>
+    </header>
 
-    <Panel title="Investigation Steps" icon="trace">
-      <ol className="vsteps">
-        <li className="done"><b>Read incident</b><small>{kindName(report.kind)} from {report.source_ip}</small></li>
-        {trace.map((t, i) => <React.Fragment key={t.id}>
-          {t.agent && t.agent !== trace[i - 1]?.agent && <li className="agentHead"><b>{agentText[t.agent] || t.agent}</b><small>{agentNote[t.agent]}</small></li>}
-          <li className={t.status && t.status !== 'ok' ? 'current' : 'done'}>
-            <b className="mono">{t.tool}</b>
-            <small>{fmtTime(t.created_at)} · {opText[t.operation] || 'Tool'}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}{t.source === 'fallback' && ' · fallback'}{t.status && !['ok', 'fallback'].includes(t.status) && ` · ${statusText[t.status] || t.status}`}</small>
-          </li>
-        </React.Fragment>)}
-        <li className={report.analysis ? 'done' : 'current'}><b>Structured analysis</b><small>{report.analysis ? (fallback ? 'Rule fallback (not AI)' : 'Validated JSON') : report.status === 'analyzing' || ctx.busy ? 'Running… (~30 s on the M5)' : 'Not run yet'}</small></li>
-        <li className={p && p.status !== 'pending' ? 'done' : p ? 'current' : ''}><b>Human approval</b><small>{p ? (p.status === 'pending' ? 'No action executed. Waiting for approval.' : `${p.status} by ${p.reviewer}`) : report.analysis && noProposalNote[report.status] ? `No block proposed · ${noProposalNote[report.status]}` : 'No proposal yet'}</small></li>
-      </ol>
-      {!report.analysis && report.status === 'closed' && <p className="muted small">ปิดเหตุการณ์ก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p>}
-      {!report.analysis && report.status !== 'closed' && <button className="btn primary block" disabled={ctx.busy || !!ctx.error || report.status === 'analyzing'} onClick={analyze}>{ctx.busy || report.status === 'analyzing' ? 'กำลังวิเคราะห์หลักฐาน… (บน M5 ประมาณ 30 วินาที)' : 'เริ่มวิเคราะห์'}</button>}
-    </Panel>
+    {fallback && <Banner tone="warn" icon="info">โมเดลใช้ไม่ได้หรือผลไม่ผ่าน validation รอบนี้จึงเป็น <b>rule fallback</b> ไม่ใช่ผลวิเคราะห์ของ AI</Banner>}
+    {blockedByPolicy.length > 0 && <Banner tone="bad" icon="shield"><b>Policy ปฏิเสธคำขอของโมเดล {blockedByPolicy.length} ครั้ง</b> · backend ไม่ทำตาม</Banner>}
 
-    <div className="stack">
-      {tools.length ? tools.map(t => <ToolCall key={t.id} t={t} />) : <Panel title="Tool Execution" icon="terminal"><Empty>ยังไม่มี tool call</Empty></Panel>}
-    </div>
-
-    <div className="stack">
-      <Panel title="Structured Analysis" icon="rules" actions={<CopyButton text={report.analysis ? JSON.stringify(report.analysis, null, 2) : ''} />}>
-        {analysis?.json ? <Code label="Analysis JSON">{JSON.stringify(analysis.json, null, 2)}</Code> : analysis?.text ? <p className="analysisText">{analysis.text}</p> : <Empty>ยังไม่มีผลวิเคราะห์</Empty>}
-      </Panel>
-      <Panel title={p?.status === 'approved' ? 'Approved by human' : p?.status === 'rejected' ? 'Rejected by human' : 'No action executed'} icon="alert" className={p?.status === 'pending' ? 'attention' : ''}>
+    <section className="aiPipeline" aria-label="ลำดับการทำงานของ AI">
+      <Stage state="done" no="00" icon="alert" title="Detection" th="ตรวจพบเหตุการณ์" link={linkOn(0)} next={flow[1]}>
+        <p className="aiStageLine"><b>{kindName(report.kind)}</b></p>
+        <p className="aiStageLine mono">{report.source_ip}</p>
+        <p className="aiStageLine muted">{report.event_count ?? '—'} events · {fmtTime(report.created_at)}</p>
+      </Stage>
+      {AGENTS.map((a, i) => {
+        const rows = trace.filter(t => t.agent === a.key)
+        const run = rows.find(t => t.operation === 'invoke_agent')
+        const steps = rows.filter(t => t.operation !== 'invoke_agent')
+        return <Stage key={a.key} state={states[i]} no={a.no} icon={a.icon} title={a.title} th={a.th} note={a.note} link={linkOn(i + 1)} next={flow[i + 2]} time={run && ms(run.duration_ms)}>
+          {steps.length > 0 && <ol className="aiSteps">
+            {steps.length > 4 && <li className="muted">+{steps.length - 4} ขั้นก่อนหน้า</li>}
+            {steps.slice(-4).map(t => <li key={t.id} className={isBad(t) ? 'bad' : ''}>
+              <Icon name={t.operation === 'chat' ? 'brain' : 'terminal'} size={14} artwork={false} />
+              <span className="mono">{t.operation === 'chat' ? 'model call' : t.tool.replace(/_/g, '_\u200b')}</span>
+              <time>{ms(t.duration_ms)}</time>
+            </li>)}
+          </ol>}
+          {states[i] === 'active' && <p className="aiThinking">{steps.length ? 'กำลังทำขั้นถัดไป' : 'กำลังคิด'}<span>.</span><span>.</span><span>.</span> {since}s</p>}
+          {!steps.length && states[i] !== 'active' && <p className="aiStageLine muted">{states[i] === 'skip' ? 'ไม่ได้ใช้ในรอบนี้' : 'รอขั้นก่อนหน้า'}</p>}
+        </Stage>
+      })}
+      <Stage state={approval} no="04" icon="check" title="Human approval" th="คนอนุมัติ" link={linkOn(4)} next={flow[5]}>
         {p ? <>
-          <p className="muted">{p.status === 'pending' ? 'A temporary app-level block has been proposed. Review the proposal before execution.' : `Decision recorded by ${p.reviewer}.`}</p>
+          <p className="aiStageLine"><b>{actionLabel[p.action] || p.action}</b></p>
+          <p className="aiStageLine mono">{targetIp(p)}</p>
+          <p className="aiStageLine muted">{p.status === 'pending' ? 'รอแอดมินตัดสินใจ' : `${p.status} · ${p.reviewer}`}</p>
+        </> : <p className="aiStageLine muted">{report.analysis ? (noProposalNote[report.status] || 'ไม่มีข้อเสนอบล็อก') : 'รอผลวิเคราะห์'}</p>}
+      </Stage>
+      <Stage state={verify} no="05" icon="shield" title="Verification" th="พิสูจน์ผล" last>
+        <p className="aiStageLine muted">{verify === 'done' ? 'คำขอใหม่ถูกปฏิเสธ 403 ยืนยันว่าบล็อกได้จริง' : verify === 'active' ? 'บล็อกแล้ว รอคำขอใหม่จาก IP นี้' : verify === 'skip' ? 'ไม่มีการบล็อก' : 'รออนุมัติก่อน'}</p>
+      </Stage>
+    </section>
+
+    {analyzing && last && <p className="aiTicker" role="status"><span className="aiDot" />ล่าสุด {fmtTime(last.created_at)} · <b>{AGENTS.find(a => a.key === last.agent)?.title || last.agent}</b> · {last.operation === 'chat' ? 'เรียกโมเดล' : last.operation === 'invoke_agent' ? 'จบขั้นตอน' : `ใช้ ${last.tool}`} ({ms(last.duration_ms)})</p>}
+
+    <section className="aiBottom">
+      <article className="aiCard aiResult">
+        <header><h2><Icon name="brain" size={18} artwork={false} />ผลการวิเคราะห์ของ AI</h2><CopyButton text={report.analysis ? JSON.stringify(report.analysis, null, 2) : ''} /></header>
+        {analysis?.json ? <div className="aiResultBody">
+          <div className="aiVerdict">
+            <span className={`aiSeverity ${String(analysis.json.severity || '').toLowerCase()}`}>{analysis.json.severity || '—'}</span>
+            <div><h3>{kindName(analysis.json.threat_type || report.kind)}</h3><p>{analysis.json.explanation_th}</p></div>
+            {analysis.json.confidence != null && <div className="aiConfidence" style={{ '--c': `${Math.round(analysis.json.confidence * 100)}%` }}><b>{Math.round(analysis.json.confidence * 100)}%</b><small>ความมั่นใจ</small></div>}
+          </div>
+          <ol className="aiEvidence">{analysis.json.evidence.map((e, i) => <li key={i}><span>{i + 1}</span>{e}</li>)}</ol>
+          <details className="analysisJson"><summary>ดูผลวิเคราะห์ JSON</summary><Code label="Analysis JSON">{JSON.stringify(analysis.json, null, 2)}</Code></details>
+        </div> : analysis?.text ? <p className="analysisText">{analysis.text}</p>
+          : <div className="aiWaiting">{analyzing ? <p className="aiThinking">AI กำลังวิเคราะห์หลักฐาน<span>.</span><span>.</span><span>.</span></p> : report.status === 'closed' ? <p className="muted">ปิดเหตุการณ์ก่อนวิเคราะห์ · วิเคราะห์ไม่ได้</p>
+            : <button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={analyze}>{ctx.busy ? 'กำลังเริ่ม…' : 'เริ่มวิเคราะห์'}</button>}</div>}
+      </article>
+
+      <article className={`aiCard aiDecision ${p?.status === 'pending' ? 'attention' : ''}`}>
+        <header><h2><Icon name="check" size={18} artwork={false} />{p?.status === 'approved' ? 'อนุมัติแล้ว' : p?.status === 'rejected' ? 'ปฏิเสธแล้ว' : 'การตัดสินใจ'}</h2></header>
+        {p ? <>
+          <dl className="aiFacts">
+            <div><dt>ข้อเสนอ</dt><dd>{actionLabel[p.action] || p.action}</dd></div>
+            <div><dt>IP เป้าหมาย</dt><dd className="mono">{targetIp(p)}</dd></div>
+            <div><dt>ระยะเวลา</dt><dd>{p.duration_seconds ? `${durationText(p.duration_seconds)} หลังอนุมัติ` : UNTIL_UNBLOCKED}</dd></div>
+            <div><dt>สถานะ</dt><dd><Badge tone={p.status === 'pending' ? 'warn' : p.status === 'approved' ? 'good' : 'muted'}>{p.status === 'pending' ? 'รออนุมัติ' : p.status}</Badge></dd></div>
+          </dl>
           {p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอจาก rule fallback ไม่ใช่โมเดล</Banner>}
-          <KeyVals items={[['Incident', `${incId(report.id)} · ${kindName(report.kind)}`], ['Target', <span className="mono">{targetIp(p)}</span>], ['Action', actionLabel[p.action] || p.action], ['Expires', `${p.duration_seconds / 60} minutes after approval`]]} />
-          {p.status === 'pending' && <a className="btn amber block" href={`#/approvals/${p.id}`}>Review {propId(p.id)}</a>}
+          {p.status === 'pending' ? <a className="btn amber block" href={`#/approvals/${p.id}`}>ตรวจและอนุมัติ {propId(p.id)}</a> : <p className="muted small">บันทึกโดย {p.reviewer}</p>}
         </> : <Empty>{report.analysis && noProposalNote[report.status] ? `ไม่มีข้อเสนอบล็อก · ${noProposalNote[report.status]}` : 'ยังไม่มีข้อเสนอ'}</Empty>}
-      </Panel>
+        <img className="aiMascot" src="/assets/sentinel-investigator.png" alt="" />
+      </article>
+    </section>
+
+    <details className="aiTools">
+      <summary><Icon name="terminal" size={16} artwork={false} />ดู input / output ของเครื่องมือ ({tools.length})</summary>
+      <div className="aiToolsRow">{tools.length ? tools.map(t => <ToolCall key={t.id} t={t} />) : <Empty>ยังไม่มีการเรียกเครื่องมือ</Empty>}</div>
+    </details>
+  </div>
+}
+
+function Stage({ state, no, icon, title, th, note, time, link, next, last, children }) {
+  return <div className={`aiStage ${state}`}>
+    <div className="aiStageCard">
+      <div className="aiStageHead">
+        <span className="aiStageIcon"><Icon name={icon} size={18} artwork={false} /></span>
+        <div><small>{no} · {th}</small><b>{title}</b></div>
+      </div>
+      <span className={`aiState ${state}`}>{stateText[state]}{time && <> · {time}</>}</span>
+      {note && <p className="aiStageNote">{note}</p>}
+      <div className="aiStageBody">{children}</div>
     </div>
+    {!last && <span className={`aiLink ${link ? 'on' : ''} ${next === 'active' ? 'flowing' : ''}`} aria-hidden="true"><i /><i /><i /></span>}
   </div>
 }
 
@@ -101,15 +193,16 @@ function ToolCall({ t }) {
   // get_incident_logs wraps records as untrusted data; show them as a table.
   const output = Array.isArray(raw?.untrusted_log_records) ? raw.untrusted_log_records : raw
   const status = t.status || 'ok'
-  return <Panel title={<><span className="mono">{t.tool}</span>{t.tool === 'propose_block_ip' ? <Badge tone="warn">Proposal pre-check</Badge> : <Badge tone="info">Read only</Badge>}{status !== 'ok' && <Badge tone={statusTone[status] || 'warn'}>{statusText[status] || status}</Badge>}{t.source === 'fallback' && <Badge tone="warn">fallback</Badge>}</>} icon="terminal" actions={<span className="muted small">{fmtTime(t.created_at)}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}</span>}>
-    <h3 className="sub">Input</h3>
+  return <article className="aiCard aiTool">
+    <header><h3 className="mono">{t.tool}</h3>{t.tool === 'propose_block_ip' ? <Badge tone="warn">Proposal pre-check</Badge> : <Badge tone="info">Read only</Badge>}{status !== 'ok' && <Badge tone={statusTone[status] || 'warn'}>{statusText[status] || status}</Badge>}{t.source === 'fallback' && <Badge tone="warn">fallback</Badge>}<small className="muted">{fmtTime(t.created_at)}{t.duration_ms != null && ` · ${ms(t.duration_ms)}`}</small></header>
+    <h4 className="sub">Input</h4>
     <Code>{JSON.stringify(input, null, 2)}</Code>
-    <h3 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}{output !== raw && ' · untrusted log data'}{Object.entries(constantOf(output)).map(([k, v]) => ` · ${colText[k] || k} ${v}`)}</small>}</h3>
+    <h4 className="sub">Output {Array.isArray(output) && <small>· {output.length} record{output.length === 1 ? '' : 's'}{output !== raw && ' · untrusted log data'}{Object.entries(constantOf(output)).map(([k, v]) => ` · ${colText[k] || k} ${v}`)}</small>}</h4>
     {Array.isArray(output) ? (output.length ? <div className="tableWrap short logTable"><table>
       <thead><tr>{columnsOf(output).map(k => <th key={k}>{colText[k] || k}</th>)}</tr></thead>
       <tbody>{output.slice(0, 40).map((row, i) => <tr key={i}>{columnsOf(output).map(k => <td key={k} className={k === 'user' ? 'userCell' : 'mono'}>{cell(k, row[k])}</td>)}</tr>)}</tbody>
     </table></div> : <Empty>Empty result</Empty>) : <Code>{JSON.stringify(localTimes(output), null, 2)}</Code>}
-  </Panel>
+  </article>
 }
 
 function CopyButton({ text }) {

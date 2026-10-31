@@ -39,7 +39,7 @@ def test_enforce_verifies_the_incident(client):
 
 def test_enforce_is_refused_from_remote_without_admin_key(make_app):
     res = connect(make_app(SENTINEL_ADMIN_KEY=KEY), REMOTE).post("/api/enforce", json={"client_ip": ATTACKER})
-    assert res.status_code == 403 and "X-Admin-Key" in res.json()["detail"]
+    assert res.status_code == 401 and "login" in res.json()["detail"]
 
 
 def test_enforce_works_from_a_trusted_proxy_with_admin_key(make_app):

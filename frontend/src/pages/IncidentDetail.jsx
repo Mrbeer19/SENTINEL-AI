@@ -1,6 +1,6 @@
 import React from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, SeverityBadge, StatusBadge, Stepper, actionLabel, fmtDateTime, fmtTime, incId, isActiveRule, isFallback, kindEvidence, kindName, noProposalNote, parseAnalysis, proposalTone, propId, ruleId, targetIp } from '../ui.jsx'
+import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, SeverityBadge, StatusBadge, Stepper, actionLabel, fmtDateTime, fmtTime, incId, isActiveRule, isFallback, kindEvidence, kindName, noProposalNote, parseAnalysis, proposalTone, propId, ruleId, targetIp, durationText } from '../ui.jsx'
 import { incidentEvents } from './Incidents.jsx'
 import { NextStep } from '../components/WorkflowGuide.jsx'
 
@@ -88,17 +88,17 @@ export default function IncidentDetail({ ctx, id }) {
       <p className="muted">{incId(id)} · <span className="mono">{report.source_ip}</span> · opened {fmtDateTime(report.created_at)}{report.rule_id && <> · rule <span className="mono">{report.rule_id}</span></>}{report.attack_technique && <> · ATT&amp;CK <span className="mono">{report.attack_technique}</span></>}</p>
     </div>
 
-    <div className="span3"><NextStep ctx={ctx} incident={report} /></div>
+    <div className="span3 detailNextStep"><NextStep ctx={ctx} incident={report} /></div>
     <Panel className="span3"><Stepper steps={detailStages(report)} /></Panel>
 
     <div className="facts span3">
       <Fact icon="laptop" label="Source IP" value={report.source_ip} mono />
       <Fact icon="clock" label="Window" value="60 seconds" />
       <Fact icon="rules" label="Evidence" value={kindEvidence(report)} />
-      <Fact icon="shield" label="Action TTL" value={p ? `${p.duration_seconds / 60} minutes` : '—'} />
+      <Fact icon="shield" label="Action TTL" value={p ? durationText(p.duration_seconds) : '—'} />
     </div>
 
-    <Panel title="Evidence Timeline" icon="rules" className="span2" actions={<span className="muted small">{events.length} events · {report.kind === 'SSH_BRUTE_FORCE' ? 'synthetic log replay' : 'stored events'}</span>}>
+    <Panel title="หลักฐานที่ตรวจพบ" icon="rules" className="span2" actions={<span className="muted small">{events.length} events · {report.kind === 'SSH_BRUTE_FORCE' ? 'synthetic log replay' : 'stored events'}</span>}>
       {events.length ? <div className="tableWrap tall"><table>
         <thead><tr><th>Time</th><th>Event type</th><th>Outcome</th><th>Port</th><th>Username</th><th /></tr></thead>
         <tbody>{events.map(e => <tr key={e.id} className={e.id === thresholdId ? 'flag' : ''}>
@@ -109,14 +109,14 @@ export default function IncidentDetail({ ctx, id }) {
         </tr>)}</tbody></table></div> : <Empty>ไม่พบ event</Empty>}
     </Panel>
 
-    <div className="stack">
-      <Panel title="Investigation Summary" icon="brain" actions={<ModeBadge mode={report.analysis_mode} />}>
-        {report.status === 'closed' && !analysis ? <p className="muted">ปิดเหตุการณ์ก่อนวิเคราะห์ (เช่น demo reset) · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} meta={report.analysis_meta} />}
+    <div className="stack detailAnalysis">
+      <Panel title="คำแนะนำจาก AI" icon="brain" actions={<ModeBadge mode={report.analysis_mode} />}>
+        {report.status === 'closed' && !analysis ? <p className="muted">เหตุการณ์ปิดก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} meta={report.analysis_meta} />}
       </Panel>
       <Panel title="Proposed Response" icon="shield">
         {p ? <>
           {p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล</Banner>}
-          <KeyVals items={[['Action', actionLabel[p.action] || p.action], ['Target IP', <span className="mono">{targetIp(p)}</span>], ['Duration', `${p.duration_seconds / 60} minutes`], ['Status', <Badge tone={proposalTone[p.status]}>{p.status === 'pending' ? 'Awaiting human decision' : p.status}</Badge>]]} />
+          <KeyVals items={[['Action', actionLabel[p.action] || p.action], ['Target IP', <span className="mono">{targetIp(p)}</span>], ['Duration', durationText(p.duration_seconds)], ['Status', <Badge tone={proposalTone[p.status]}>{p.status === 'pending' ? 'Awaiting human decision' : p.status}</Badge>]]} />
           {p.policy_notes?.length > 0 && <ul className="muted small">{p.policy_notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
           {p.status === 'pending' ? <a className="btn primary block" href={`#/approvals/${p.id}`}>Review approval</a> : <p className="muted small">Decided by {p.reviewer}</p>}
         </> : <Empty>{!report.analysis ? 'ยังไม่มีข้อเสนอ · ต้องวิเคราะห์ก่อน' : report.status === 'needs_review' ? 'ไม่มีข้อเสนอบล็อก · ผลวิเคราะห์ขอให้คนตรวจต่อ หรือ policy ไม่อนุญาต (ดูเหตุผลใน Audit Timeline)' : report.status === 'monitoring' ? 'ไม่มีข้อเสนอบล็อก · ให้เฝ้าดูต่อ' : 'ไม่มีข้อเสนอบล็อก'}</Empty>}
@@ -138,7 +138,7 @@ function Fact({ icon, label, value, mono }) {
 }
 
 export function AnalysisView({ analysis, fallback, meta }) {
-  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบบน M5 อ่านหลักฐานและเสนอการตอบสนอง</p>
+  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบอ่านหลักฐานและเสนอการตอบสนอง</p>
   if (analysis.text) return <div className="analysis"><Banner tone="warn" icon="info">ผลนี้ไม่ใช่ JSON ตาม contract</Banner><p>{analysis.text}</p></div>
   const a = analysis.json
   return <div className="analysis">
@@ -161,8 +161,8 @@ export function VerificationView({ v, report }) {
     : report.status === 'rejected' || (!report.proposal && noProposalNote[report.status])
       ? <div className="verifyState muted"><Icon name="x" size={34} /><div><b>Not applicable</b><span>{report.status === 'rejected' ? 'Proposal was rejected, so no rule was created.' : 'No block was proposed, so there is nothing to verify.'}</span></div></div>
       : v.rule
-        ? <div className="verifyState warn"><Icon name="clock" size={34} /><div><b>Approved · not verified yet</b><span>{isActiveRule(v.rule) ? 'Send a new request from the tester (Neo) to prove the block.' : 'Rule expired before any new request was denied.'}</span></div></div>
-        : <div className="verifyState muted"><Icon name="clock" size={34} /><div><b>Not verified yet</b><span>Approve, then send a new request from Neo.</span></div></div>
+        ? <div className="verifyState warn"><Icon name="clock" size={34} /><div><b>Approved · not verified yet</b><span>{isActiveRule(v.rule) ? 'A new request from this source must be denied to verify the block.' : 'Rule expired or was removed before any new request was denied.'}</span></div></div>
+        : <div className="verifyState muted"><Icon name="clock" size={34} /><div><b>Not verified yet</b><span>Approve the proposal, then inspect the next request from this source.</span></div></div>
   return <div className="verify">
     {status}
     <div className="beforeAfter">
@@ -179,6 +179,6 @@ function RequestCard({ title, sub, t, waiting = 'No request recorded' }) {
   return <div className={`reqCard ${denied ? 'bad' : 'good'}`}>
     <small>{title} <em>({sub})</em></small>
     <b>{denied ? 'HTTP 403 · Denied' : 'Allowed'}</b>
-    <Code>{`demo app request\nsource ${t.source_ip}\n${fmtTime(t.created_at)} · ${t.decision}`}</Code>
+    <Code>{`app request\nsource ${t.source_ip}\n${fmtTime(t.created_at)} · ${t.decision}`}</Code>
   </div>
 }

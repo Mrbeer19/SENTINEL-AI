@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getJson, useReport } from '../api.js'
-import { Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, StatusBadge, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, isReplayIp, kindName, noProposalNote, parseAnalysis, ruleId } from '../ui.jsx'
+import { Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, StatusBadge, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, kindName, noProposalNote, parseAnalysis, ruleId } from '../ui.jsx'
 import { VerificationView, verification } from './IncidentDetail.jsx'
 import { incidentEvents } from './Incidents.jsx'
 
@@ -42,7 +42,7 @@ function ReportView({ ctx, id }) {
   const decision = stage('approved') || stage('rejected')
   const events = incidentEvents(report.events, report)
   const rows = [...events.map(e => ({ at: e.timestamp, kind: 'event', text: `${e.event_type} · ${e.outcome}${e.destination_port ? ` · port ${e.destination_port}` : ''}`, result: e.outcome })),
-    ...report.traffic.map(t => ({ at: t.created_at, kind: 'request', text: 'demo app request', result: t.decision }))]
+    ...report.traffic.map(t => ({ at: t.created_at, kind: 'request', text: 'app request', result: t.decision }))]
     .sort((a, b) => new Date(b.at) - new Date(a.at))
 
   return <div className="stack">
@@ -53,7 +53,7 @@ function ReportView({ ctx, id }) {
         <a className="btn primary noprint" href={`/api/reports/${report.id}`} download={`sentinel-${incId(report.id)}.json`}><Icon name="download" />Export JSON</a>
         <button className="btn ghost noprint" onClick={() => window.print()}>Print report</button>
       </div>
-      <p className="muted">Source <span className="mono">{report.source_ip}</span>{isReplayIp(report.source_ip) && ' (local replay, not the Neo tester)'} · opened {fmtDateTime(report.created_at)}{report.rule_id && <> · rule <span className="mono">{report.rule_id}</span></>}{report.attack_technique && <> · ATT&amp;CK <span className="mono">{report.attack_technique}</span></>}</p>
+      <p className="muted">Source <span className="mono">{report.source_ip}</span> · opened {fmtDateTime(report.created_at)}{report.rule_id && <> · rule <span className="mono">{report.rule_id}</span></>}{report.attack_technique && <> · ATT&amp;CK <span className="mono">{report.attack_technique}</span></>}</p>
       <ol className="reportSteps">
         <li><span>1</span><b>Detection</b><time>{fmtTime(report.created_at)}</time><p>{stage('detected')?.detail || `${report.event_count} events from ${report.source_ip}`}</p></li>
         <li className={report.analysis ? '' : 'todo'}><span>2</span><b>Investigation</b><time>{fmtTime(stage('analysis')?.created_at)}</time>
@@ -76,11 +76,10 @@ function ReportView({ ctx, id }) {
       </Panel>
       <Panel title="Limitations" icon="info">
         <ul className="plain">
-          <li>Controlled local lab, not a production environment</li>
+          <li>Evidence is limited to events received by the configured collectors</li>
           <li>App-level enforcement only; host firewall unchanged</li>
-          {report.kind === 'SSH_BRUTE_FORCE' && <li>SSH events are synthetic log replay</li>}
+          {report.kind === 'SSH_BRUTE_FORCE' && <li>SSH detection uses collected authentication logs; inspect evidence to distinguish live and test events</li>}
           {isFallback(report) && <li>Analysis is rule fallback, not a model result</li>}
-          {isReplayIp(report.source_ip) && <li>Source is a documentation-range IP replayed on the M5, not traffic from the Neo tester</li>}
           {report.analysis_meta?.model && !isFallback(report) && <li>Model {report.analysis_meta.model} · prompt {report.analysis_meta.prompt_version || '—'}</li>}
           <li>Approved rules require a new denied request to count as verified</li>
         </ul>

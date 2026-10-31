@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import os
 import sqlite3
 import sys
 
@@ -58,6 +59,8 @@ def main() -> int:
         results.append(check(True, f"database writable at {DEFAULT_DB}"))
     except sqlite3.Error as exc:
         results.append(check(False, "database writable", str(exc)))
+    results.append(check(bool(os.getenv("SENTINEL_ADMIN_PASSWORD_HASH")), "admin password configured",
+                         "python -m backend.admin_auth, then put SENTINEL_ADMIN_PASSWORD_HASH in backend/.env"))
     if args.host:
         addr = ipaddress.ip_address(args.host)
         results.append(check(addr.is_private and not addr.is_unspecified, f"bind host {addr} is a private LAN address",

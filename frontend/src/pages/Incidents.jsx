@@ -1,3 +1,4 @@
+import TablePagination, { usePagedRows } from '../components/TablePagination.jsx'
 import React, { useMemo, useState } from 'react'
 import { Empty, FilterSummary, Icon, NoResults, Panel, SeverityBadge, Stat, StatusBadge, Stepper, SEVERITIES, fmtTime, incId, incidentStatus, isOpenIncident, kindEvidence, kindName, noProposalNote, perMinute, useNow } from '../ui.jsx'
 
@@ -46,17 +47,18 @@ export default function Incidents({ ctx }) {
     return order === 'newest' ? list : [...list].reverse()
   }, [data.incidents, query, severity, status, order])
 
-  const selected = rows.find(i => i.id === selectedId) || rows[0]
+  const paging = usePagedRows(rows, `${query}|${severity}|${status}|${order}`)
+  const selected = rows.find(i => i.id === selectedId) || paging.rows[0]
   const count = (fn) => data.incidents.filter(fn).length
   const filtered = !!query || severity !== 'all' || status !== 'all'
   const clear = () => { setQuery(''); setSeverity('all'); setStatus('all') }
 
   return <div className="grid incidents">
     <div className="stats four span3">
-      <Stat icon="rules" label="Open" value={count(isOpenIncident)} />
-      <Stat icon="alert" tone="coral" label="High / critical" value={count(i => ['HIGH', 'CRITICAL'].includes(String(i.severity).toUpperCase()))} />
-      <Stat icon="clock" tone="amber" label="Awaiting approval" value={count(i => i.status === 'awaiting_approval')} />
-      <Stat icon="ok" label="Verified blocked" value={count(i => i.status === 'verified')} />
+      <Stat icon="rules" label="เหตุการณ์ที่ยังเปิดอยู่" value={count(isOpenIncident)} />
+      <Stat icon="alert" tone="coral" label="ความเสี่ยงสูง / วิกฤต" value={count(i => ['HIGH', 'CRITICAL'].includes(String(i.severity).toUpperCase()))} />
+      <Stat icon="clock" tone="amber" label="รอการอนุมัติ" value={count(i => i.status === 'awaiting_approval')} />
+      <Stat icon="ok" label="ยืนยันการบล็อกแล้ว" value={count(i => i.status === 'verified')} />
     </div>
 
     <Panel className="span2">
@@ -70,15 +72,16 @@ export default function Incidents({ ctx }) {
       {rows.length > 0 && <p className="tableHint">เลือกหมายเลข incident เพื่อดูสรุป หรือกด “เปิดรายละเอียด” เพื่อดำเนินการต่อ</p>}
       {rows.length ? <div className="tableWrap"><table>
         <thead><tr><th>Incident</th><th>Detection</th><th>Source IP</th><th>Evidence</th><th>Severity</th><th>Status</th><th>Last event</th></tr></thead>
-        <tbody>{rows.map(i => {
+        <tbody>{paging.rows.map(i => {
           const last = incidentEvents(data.events, i)[0]
-          return <tr key={i.id} className={`clickable ${selected?.id === i.id ? 'selected' : ''}`} onClick={() => setSelectedId(i.id)}>
+          return <tr key={i.id} className={`clickable ${selected?.id === i.id ? 'selected' : ''}`} tabIndex={0} aria-selected={selected?.id === i.id} onKeyDown={e=>{if(e.target===e.currentTarget && ['Enter',' '].includes(e.key)){e.preventDefault();setSelectedId(i.id)}}} onClick={() => setSelectedId(i.id)}>
             <td><button className="link" onClick={() => setSelectedId(i.id)} aria-pressed={selected?.id === i.id}>{incId(i.id)}</button></td>
             <td>{kindName(i.kind)}</td><td className="mono">{i.source_ip}</td><td>{kindEvidence(i)}</td>
             <td><SeverityBadge value={i.severity} /></td><td><StatusBadge status={i.status} /></td><td className="mono">{fmtTime(last?.timestamp || i.created_at)}</td>
           </tr>
         })}</tbody></table></div>
-        : filtered ? <NoResults onClear={clear} /> : <Empty>ยังไม่มี incident · เริ่มจาก <a href="#/lab">Demo Lab</a> หรือส่งคำขอทดสอบจาก Neo</Empty>}
+        : filtered ? <NoResults onClear={clear} /> : <Empty>ยังไม่มี incident · ระบบจะเพิ่มรายการเมื่อตรวจพบเหตุการณ์จาก rod-mai-rod</Empty>}
+      <TablePagination state={paging}/>
     </Panel>
 
     <Panel className="side">

@@ -8,27 +8,26 @@ import AgentTrace from './pages/AgentTrace.jsx'
 import Approvals from './pages/Approvals.jsx'
 import Rules from './pages/Rules.jsx'
 import Reports from './pages/Reports.jsx'
-import DemoLab from './pages/DemoLab.jsx'
 import { WorkflowGuide } from './components/WorkflowGuide.jsx'
+import { ThemeToggle } from './components/Appearance.jsx'
 
 const NAV = [
-  { key: 'overview', label: 'Overview', icon: 'home' },
-  { key: 'incidents', label: 'Incidents', icon: 'alert' },
-  { key: 'trace', label: 'Agent Trace', icon: 'trace' },
-  { key: 'approvals', label: 'Approvals', icon: 'check' },
-  { key: 'rules', label: 'Rules', icon: 'rules' },
-  { key: 'reports', label: 'Reports', icon: 'reports' },
+  { key: 'overview', label: 'ภาพรวมระบบ', icon: 'home' },
+  { key: 'incidents', label: 'เหตุการณ์', icon: 'alert' },
+  { key: 'trace', label: 'การวิเคราะห์', icon: 'trace' },
+  { key: 'approvals', label: 'รออนุมัติ', icon: 'check' },
+  { key: 'rules', label: 'จัดการบล็อก', icon: 'rules' },
+  { key: 'reports', label: 'รายงาน', icon: 'reports' },
 ]
 
 const PAGES = {
-  overview: ['Security Operations Center', 'ภาพรวมเหตุการณ์ สถานะการป้องกัน และงานที่ต้องทำต่อ'],
-  incidents: ['Incident Queue', 'เลือกเหตุการณ์ → ตรวจหลักฐาน → เริ่มวิเคราะห์'],
+  overview: ['Security overview', 'ภาพรวมสถานการณ์ความปลอดภัยไซเบอร์'],
+  incidents: ['เหตุการณ์ความปลอดภัย', 'ตรวจพบและติดตามเหตุการณ์ด้านความปลอดภัยของระบบ'],
   incident: ['Incident Detail', 'ตรวจหลักฐาน ผลวิเคราะห์ และผลการทดสอบของเหตุการณ์นี้'],
-  trace: ['Agent Investigation', 'ดูว่า agent อ่านหลักฐานอะไร และสรุปผลอย่างไร'],
-  approvals: ['Response Approvals', 'ตรวจ IP และระยะเวลา ก่อนยืนยันการบล็อกระดับแอป'],
-  rules: ['App Firewall Rules', 'ดูกฎที่ทำงาน เวลาคงเหลือ และคำขอที่ถูกบล็อก'],
-  reports: ['Incident Reports', 'สรุปหลักฐาน การตัดสินใจ และผลทดสอบ เพื่อส่งต่อให้ทีม'],
-  lab: ['Controlled Demo Lab', 'สร้างเหตุการณ์จำลองบน M5 เพื่อซ้อมขั้นตอนการนำเสนอ'],
+  trace: ['การวิเคราะห์ของ AI', 'ติดตามหลักฐาน ลำดับการวิเคราะห์ และแนวทางตอบสนอง'],
+  approvals: ['ตรวจคำแนะนำและอนุมัติ', 'AI เสนอคำแนะนำ · คุณเป็นผู้ตัดสินใจ'],
+  rules: ['กฎป้องกันเว็บไซต์', 'จัดการ IP ต้นทางที่ถูกบล็อก และตรวจสอบผลคำขอใหม่'],
+  reports: ['รายงานการตรวจสอบ', 'หลักฐาน ผลวิเคราะห์ และบันทึกการตัดสินใจในที่เดียว'],
 }
 
 function parseHash() {
@@ -37,8 +36,9 @@ function parseHash() {
 }
 
 
-export default function App() {
+export default function App({ adminUsername, onLogout, theme, onToggleTheme }) {
   const [route, setRoute] = useState(parseHash)
+  const [searchTerm, setSearchTerm] = useState('')
   const live = useLiveData()
   const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState(null)
@@ -52,12 +52,13 @@ export default function App() {
   }, [])
 
   useEffect(() => { document.getElementById('main')?.focus({ preventScroll: true }) }, [route.page, route.id])
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [route.page])
 
   // Every write goes through here so buttons disable while a request is in flight.
   const act = useCallback(async (path, { method = 'POST', body = {}, accept, ok } = {}) => {
     if (actionLock.current) return null
     actionLock.current = true
-    setActionLabel(path.endsWith('/analyze') ? 'กำลังวิเคราะห์หลักฐานบน M5… อาจใช้เวลาสักครู่' : 'กำลังบันทึกการดำเนินการบน M5…')
+    setActionLabel(path.endsWith('/analyze') ? 'กำลังวิเคราะห์หลักฐาน… อาจใช้เวลาสักครู่' : 'กำลังบันทึกการดำเนินการ…')
     setBusy(true); setFlash(null)
     try {
       const result = await request(path, { method, body: method === 'DELETE' ? undefined : body, accept })
@@ -65,23 +66,23 @@ export default function App() {
       await live.refresh(true)
       return result
     } catch (err) {
-      const text = err.status === 403 ? 'ไม่มีสิทธิ์ดำเนินการ กรุณาเปิดหน้าผู้ดูแลจากเครื่อง M5 (localhost)' : err.status === 409 ? 'รายการนี้เปลี่ยนไปแล้ว กำลังโหลดข้อมูลล่าสุดให้ตรวจทานอีกครั้ง' : err.status === 400 || err.status === 422 ? 'ข้อมูลไม่ผ่านการตรวจสอบ กรุณาตรวจ IP และค่าที่กรอกอีกครั้ง' : err.status === 404 ? 'ไม่พบรายการนี้ ลองรีเฟรชข้อมูลแล้วเลือกรายการใหม่' : err.status ? 'บันทึกไม่สำเร็จ ตรวจการทำงานของ M5 แล้วลองอีกครั้ง' : 'เชื่อมต่อ M5 ไม่ได้ ตรวจว่าเซิร์ฟเวอร์ยังเปิดอยู่ แล้วลองอีกครั้ง'
+      const text = err.status === 403 ? 'ไม่มีสิทธิ์ดำเนินการ กรุณาตรวจบัญชีและสิทธิ์ผู้ดูแลระบบ' : err.status === 409 ? 'รายการนี้เปลี่ยนไปแล้ว กำลังโหลดข้อมูลล่าสุดให้ตรวจทานอีกครั้ง' : err.status === 400 || err.status === 422 ? 'ข้อมูลไม่ผ่านการตรวจสอบ กรุณาตรวจ IP และค่าที่กรอกอีกครั้ง' : err.status === 404 ? 'ไม่พบรายการนี้ ลองรีเฟรชข้อมูลแล้วเลือกรายการใหม่' : err.status ? 'บันทึกไม่สำเร็จ กรุณาตรวจการเชื่อมต่อเซิร์ฟเวอร์แล้วลองอีกครั้ง' : 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจการเชื่อมต่อแล้วลองอีกครั้ง'
       setFlash({ tone: 'bad', text, detail: `${err.status ? `HTTP ${err.status}: ` : ''}${err.message}` })
       if (err.status === 409) await live.refresh(true)
       return null
     } finally { actionLock.current = false; setBusy(false) }
   }, [live.refresh])
 
-  const ctx = { ...live, act, busy, route, setFlash }
+  const ctx = { ...live, act, busy, route, setFlash, searchTerm, adminUsername, theme }
   const { data, connected, error, loading, updatedAt, refreshing } = live
   const pending = data.proposals.filter(p => p.status === 'pending').length
   const active = route.page === 'incident' ? 'incidents' : route.page
   const [title, subtitle] = PAGES[route.page]
 
-  return <div className="shell">
+  return <div className={`shell route-${route.page}`}>
     <a className="skip" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus() }}>ข้ามไปยังเนื้อหา</a>
     <aside className="sidebar">
-      <a className="brand" href="#/overview" aria-label="SENTINEL AI overview"><span className="brandSymbol"><Icon name="shield" size={28} /></span><span>SENTINEL <b>AI</b><small>SECURITY OPERATIONS</small></span></a>
+      <a className="brand sentinelBrand" href="#/overview" aria-label="SENTINEL AI overview"><img src={theme === 'light' ? '/assets/sentinel-orbit-logo-light.svg' : '/assets/sentinel-orbit-logo.svg'} alt="SENTINEL AI · Security Operations"/></a>
       <div className="navLabel">WORKSPACE</div>
       <nav aria-label="Main">
         {NAV.map(item => <a key={item.key} href={`#/${item.key}`} className={active === item.key ? 'active' : ''} aria-current={active === item.key ? 'page' : undefined}>
@@ -89,31 +90,27 @@ export default function App() {
         </a>)}
       </nav>
       <div className="sideFoot">
-        <div className="sessionCard"><span className={`sessionSignal ${connected && !error ? 'online' : ''}`}><i className="dot" />{error ? 'Server unavailable' : connected ? 'System connected' : 'Reconnecting'}</span><small>Local network · controlled lab</small></div>
-        <a href="#/lab" className={active === 'lab' ? 'active' : ''} aria-current={active === 'lab' ? 'page' : undefined}><Icon name="lab" size={20} /><span>Demo Lab</span></a>
-        <div className="operator"><span className="operatorAvatar"><Icon name="user" size={20} /></span><span>SOC operator<small>Local M5 workspace</small></span><Icon name="chevron" size={14} /></div>
+        {route.page !== 'overview' && <div className="sidebarArtwork" aria-hidden="true"><span className="artworkStripes"/><img src="/assets/sentinel-laptop.png" alt=""/><span className="sidebarCaption">SENTINEL / SECURITY OPERATIONS</span></div>}
+        <div className="sessionCard"><span className={`sessionSignal ${connected && !error ? 'online' : ''}`}><i className="dot" />{error ? 'Server unavailable' : connected ? 'System connected' : 'Reconnecting'}</span><small>rod-mai-rod · live monitoring</small></div>
       </div>
     </aside>
 
     <main id="main" tabIndex={-1}>
-      <div className="workspaceBar"><div className="workspaceCrumb"><Icon name="shield" size={15} /><span>Workspace</span><span className="crumbSlash">/</span><b>{NAV.find(item => item.key === active)?.label || (active === 'lab' ? 'Demo Lab' : 'Overview')}</b></div><div className="workspaceActions"><span className="lastUpdated">{updatedAt ? <>Updated <time dateTime={updatedAt}>{fmtTime(updatedAt)}</time></> : 'Waiting for server'}</span><button className={`refreshButton ${refreshing ? 'refreshing' : ''}`} onClick={live.refresh} disabled={refreshing} aria-label="Refresh live data" title="Refresh live data"><Icon name="refresh" size={16} /></button></div></div>
-      <header className="topbar">
-        <div><div className="eyebrow"><i className="dot mint" />LOCAL SECURITY WORKSPACE</div><h1>{title}</h1><p>{subtitle}</p></div>
-        <div className="topStatus">
-          <span className={`chip ${connected && !error ? 'good' : 'bad'}`}><i className="dot" />M5 Server · {error ? 'Offline' : connected ? 'Online' : 'Reconnecting'}</span>
-          <span className={`chip ${data.health?.model_ready ? 'good' : 'warn'}`}><i className="dot" />{data.health ? (data.health.model_ready ? data.health.model : 'Model unavailable') : 'Model —'}</span>
-          <span className="chip outline">{connected && !error && <span className="livePulse" />}{error ? (data.health ? 'SAVED DATA' : 'NO DATA') : connected ? 'LIVE DATA' : 'REFRESH · 15s'}</span>
-        </div>
+      <div className="workspaceBar"><form className="globalSearch" onSubmit={e => { e.preventDefault(); location.hash='/overview'; setTimeout(() => document.querySelector('.sourcePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),150) }}><Icon name="search" size={18}/><input aria-label="ค้นหา IP และเหตุการณ์" placeholder="ค้นหา IP ต้นทาง หรือเหตุการณ์..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/><button type="submit">ค้นหา <span>↵</span></button></form><div className="workspaceActions"><RuntimeStatus health={data.health} connected={connected} error={error}/><ThemeToggle theme={theme} onToggle={onToggleTheme}/><a className="notificationLink" href="#/approvals" aria-label={`ข้อเสนอรออนุมัติ ${pending} รายการ`}><Icon name="alert" size={22}/>{pending > 0 && <span>{pending}</span>}</a><div className="headerAccount"><button className="headerLogout" onClick={onLogout} title="ออกจากระบบ" aria-label="ออกจากระบบบัญชีแอดมิน"><Icon name="logout" size={19}/></button><span>{(adminUsername || 'AD').slice(0,2).toUpperCase()}</span><div><b>{adminUsername || 'admin'}</b><small>ผู้ดูแลระบบ</small></div></div></div></div>
+      <header className={`topbar ${route.page === 'overview' ? 'overviewTopbar' : ''}`}>
+        <div className="pageTitleGroup"><div><div className="eyebrow">SECURITY OPERATIONS / {String(NAV.findIndex(n=>n.key===active)+1).padStart(2,'0')}</div><h1><Icon name={NAV.find(item=>item.key===active)?.icon || 'shield'} size={34}/>{title}</h1><p>{subtitle}</p></div></div>
+        <div className="pageMeta"><span className={connected && !error ? 'mint' : 'amber'}><i className={`dot ${connected && !error ? 'mint' : 'amber'}`}/>{error ? 'การเชื่อมต่อขัดข้อง' : connected ? 'เชื่อมต่อระบบแล้ว' : 'กำลังเชื่อมต่อ'}</span><small>อัปเดต {updatedAt ? fmtTime(updatedAt) : '—'}</small><button className="btn ghost sm" onClick={()=>live.refresh()} disabled={refreshing} aria-label="รีเฟรชข้อมูล"><Icon name="refresh" size={16}/>{refreshing ? 'กำลังโหลด…' : 'รีเฟรช'}</button></div>
       </header>
 
-      {error && <Banner tone="bad" icon="x" action={<button className="btn ghost sm" onClick={live.refresh} disabled={refreshing}>ลองเชื่อมต่อใหม่</button>}>เชื่อมต่อ M5 ไม่ได้ · ตรวจว่าเซิร์ฟเวอร์เปิดอยู่{updatedAt && ' ข้อมูลที่แสดงเป็นข้อมูลเดิม'}</Banner>}
+      {error && <Banner tone="bad" icon="x" action={<button className="btn ghost sm" onClick={live.refresh} disabled={refreshing}>ลองเชื่อมต่อใหม่</button>}>เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ · กรุณาตรวจการเชื่อมต่อแล้วลองอีกครั้ง{updatedAt && ' ข้อมูลที่แสดงเป็นข้อมูลเดิม'}</Banner>}
       {!error && !connected && !loading && <Banner tone="warn" icon="pulse">WebSocket หลุด กำลังเชื่อมใหม่ ข้อมูลจะรีเฟรชทุก 15 วินาทีระหว่างนี้</Banner>}
       {data.health && !data.health.model_ready && <Banner tone="warn" icon="brain">ไม่พบโมเดล {data.health.model} ใน Ollama — การวิเคราะห์จะเป็น <b>rule fallback</b> และจะไม่แสดงเป็นผล AI</Banner>}
-      <WorkflowGuide />
 
-      {loading ? <Loading /> : !data.health ? <div className="empty">ยังโหลดข้อมูลไม่ได้ · เมื่อต่อกับ M5 สำเร็จ ข้อมูลจะแสดงที่นี่</div> : <Page route={route} ctx={ctx} />}
-      <footer className="workspaceFooter"><span><Icon name="shield" size={13} />SENTINEL AI <span className="footerDivider">/</span> Local operations</span><span>Human-approved response<span className="footerDot">·</span>App-level protection</span></footer>
-      {(busy || flash) && <div className="feedbackToast">{busy ? <Banner icon="clock"><span className="spinner" aria-hidden="true" />{actionLabel}</Banner> : <Banner tone={flash.tone} icon={flash.tone === 'good' ? 'ok' : 'x'} action={<button className="btn ghost sm" onClick={() => setFlash(null)} aria-label="ปิดการแจ้งเตือน">✕</button>}>{flash.text}{flash.detail && <details><summary>ดูรายละเอียดข้อผิดพลาด</summary><p className="mono small">{flash.detail}</p></details>}</Banner>}</div>}
+
+      {loading ? <Loading /> : !data.health ? <div className="empty">ยังโหลดข้อมูลไม่ได้ · เมื่อเชื่อมต่อเซิร์ฟเวอร์สำเร็จ ข้อมูลจะแสดงที่นี่</div> : <Page route={route} ctx={ctx} />}
+      <WorkflowGuide />
+      <footer className="workspaceFooter"><span><Icon name="shield" size={13} />SENTINEL AI <span className="footerDivider">/</span> Security operations</span><span>Human-approved response<span className="footerDot">·</span>App-level protection</span></footer>
+      {(busy || flash) && <div className="feedbackToast">{busy ? <Banner icon="clock"><span className="spinner" aria-hidden="true" />{actionLabel}</Banner> : <Banner tone={flash.tone} icon={flash.tone === 'good' ? 'ok' : 'x'} action={<button className="btn ghost sm" onClick={() => setFlash(null)} aria-label="ปิดการแจ้งเตือน"><Icon name="x" size={16}/></button>}>{flash.text}{flash.detail && <details><summary>ดูรายละเอียดข้อผิดพลาด</summary><p className="mono small">{flash.detail}</p></details>}</Banner>}</div>}
     </main>
   </div>
 }
@@ -126,7 +123,11 @@ function Page({ route, ctx }) {
     case 'approvals': return <Approvals ctx={ctx} id={route.id} />
     case 'rules': return <Rules ctx={ctx} id={route.id} />
     case 'reports': return <Reports ctx={ctx} id={route.id} />
-    case 'lab': return <DemoLab ctx={ctx} />
     default: return <Overview ctx={ctx} />
   }
+}
+
+function RuntimeStatus({ health, connected, error }) {
+  const tone = error ? 'coral' : connected ? 'mint' : 'amber'
+  return <details className="runtimeStatus"><summary aria-label="สถานะระบบ" title="ดูสถานะ Backend และโมเดล"><Icon name="server" size={16} artwork={false}/><span>สถานะระบบ</span><i className={`dot ${tone}`}/></summary><div><span>Backend · {error ? 'Offline' : health ? 'Online' : 'Checking'}</span><span>การเชื่อมต่อ · {error ? 'ขัดข้อง' : connected ? 'เชื่อมต่อแล้ว' : 'กำลังเชื่อมต่อใหม่'}</span><span>Model · {health?.model || '—'}</span><span>{health?.model_ready ? 'พร้อมวิเคราะห์' : 'โมเดลยังไม่พร้อม'}</span></div></details>
 }
