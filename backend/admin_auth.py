@@ -12,6 +12,14 @@ def password_hash(password):
     digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex()
     return f"scrypt${salt}${digest}"
 
+def is_password_hash(encoded):
+    parts = (encoded or '').split('$')
+    return len(parts) == 3 and parts[0] == 'scrypt' and all(p and all(c in '0123456789abcdef' for c in p) for p in parts[1:])
+
+def env_line(encoded):
+    # Single quotes: `. backend/.env` and Docker Compose would otherwise expand $<salt> and leave only "scrypt".
+    return f"SENTINEL_ADMIN_PASSWORD_HASH='{encoded}'"
+
 def verify_password(password, encoded):
     try:
         kind, salt, expected = encoded.split('$')
@@ -59,4 +67,4 @@ if __name__ == '__main__':
     password = getpass.getpass('New admin password (minimum 8 characters): ')
     if len(password) < 8: raise SystemExit('Use at least 8 characters')
     if password != getpass.getpass('Confirm password: '): raise SystemExit('Passwords do not match')
-    print('SENTINEL_ADMIN_PASSWORD_HASH=' + password_hash(password))
+    print(env_line(password_hash(password)))
