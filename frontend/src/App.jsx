@@ -40,14 +40,17 @@ export default function App() {
     [user, setUser] = useState("admin"),
     [password, setPassword] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [offline, setOffline] = useState(false);
   const check = useCallback(async () => {
     setBusy(true);
     try {
       setSession((await request("/api/auth/session")).data);
       setError("");
+      setOffline(false);
     } catch {
       setSession({ authenticated: false });
+      setOffline(true);
       setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ เปิด Backend แล้วลองใหม่");
     } finally {
       setBusy(false);
@@ -74,6 +77,7 @@ export default function App() {
       setPassword("");
       await check();
     } catch (err) {
+      if (err.status === 0) setOffline(true);
       setError(
         err.status === 0
           ? "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"
@@ -171,14 +175,16 @@ export default function App() {
           {busy ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
           <Icon name="arrow" size={17} />
         </button>
-        <button
-          type="button"
-          className="textButton"
-          disabled={busy}
-          onClick={check}
-        >
-          ลองเชื่อมต่อเซิร์ฟเวอร์ใหม่
-        </button>
+        {offline && (
+          <button
+            type="button"
+            className="textButton"
+            disabled={busy}
+            onClick={check}
+          >
+            ลองเชื่อมต่อเซิร์ฟเวอร์ใหม่
+          </button>
+        )}
         <small>การยืนยันตัวตนตรวจที่ Backend ไม่ได้บันทึกรหัสในหน้าเว็บ</small>
       </form>
     </div>
