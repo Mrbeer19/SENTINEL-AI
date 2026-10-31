@@ -34,10 +34,35 @@ OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จา
 }
 ```
 
-- `event_type` = `HTTP_AUTH | SSH_AUTH | CONNECTION` · `outcome` = `failed | success | attempt` · port 1–65535 (optional)
+- `event_type` = `HTTP_AUTH | SSH_AUTH | CONNECTION` · `outcome` = `failed | success | attempt` · port 1–65535 (optional) · `HTTP_REQUEST` ใช้รูปแบบของตัวเอง ([ด้านล่าง](#http_request-web-log-bridge))
 - `timestamp` ต้องมี timezone ไม่เกินอนาคต 5 นาที **เก็บเป็น UTC เสมอ** (`+00:00`) ไม่ส่ง = เวลารับ
 - `username` optional รับได้ ≤1024 ตัว (เกิน = 422) **เก็บแค่ 80 ตัวแรก** ตัวพิมพ์ได้เท่านั้น · ถูกตัดเมื่อไหร่ `username_truncated = 1` (event ไม่หายจากการตรวจจับ) · ไม่เก็บ password · `label` ใช้ประเมินเท่านั้น ไม่ส่งให้โมเดล
 - Record เพิ่ม `id`, `ocsf_class_uid` ([OCSF](#ocsf)) และ `username_truncated` (0/1 · แถวเก่าก่อนเพิ่ม field = `null`) · `GET /api/events?limit=100` ใหม่ก่อน สูงสุด 500
+
+### HTTP_REQUEST (web log bridge)
+
+bridge ส่ง **ยอดรวมต่อ IP ต่อช่วง 10 วิ** ไม่ใช่ทีละ request (flood 1,000 req/วิ = event ไม่กี่รายการ) · ช่วงที่ไม่มี request ไม่ต้องส่ง
+
+```json
+{
+  "source_ip": "198.51.100.7",
+  "event_type": "HTTP_REQUEST",
+  "count": 42,
+  "not_found": 12,
+  "paths": ["/.env", "/wp-admin/setup.php"],
+  "honeypot": false,
+  "window_s": 10,
+  "timestamp": "2026-11-01T10:00:10+07:00"
+}
+```
+
+- **ไม่ส่ง `outcome`** (ส่ง = 422) · backend ตั้งเอง: `honeypot` ถ้า `honeypot: true` ไม่งั้น `attempt`
+- `count` = request ทั้งหมดในช่วง **ไม่นับไฟล์ static** (`/_next/static`, รูป, ฟอนต์, favicon) · `not_found` = จำนวน 404 · ทั้งคู่ 0–1,000,000
+- `paths` ≤5 รายการ ไม่มี query · เก็บรายการละ 100 ตัวแรก ตัวพิมพ์ได้เท่านั้น (ข้อความของผู้โจมตี) · ช่วงที่แตะ path กับดัก ให้ `honeypot: true` และใส่ path นั้นใน `paths`
+- `timestamp` = เวลาปลายช่วง · `window_s` 1–300 ใช้อ้างอิงเท่านั้น ไม่เก็บ
+- field `count`, `not_found`, `paths`, `honeypot` ใช้กับ `HTTP_REQUEST` เท่านั้น (event_type อื่นส่งมา = 422) · event_type อื่นยังต้องมี `outcome`
+- Record เพิ่ม `request_count`, `not_found`, `scan_paths` (จำนวน path ที่ตรงรายการบอท `SCANNER_PATTERNS` ใน `backend/detection.py`), `paths` (JSON) · แถว event_type อื่น = `null`
+- **ไม่ส่งให้โมเดล:** tool ของ agent อ่านเฉพาะ `HTTP_AUTH`, `SSH_AUTH`, `CONNECTION` (ชนิดที่ r3 ถูกวัดผลมา)
 
 ### Raw log ingest
 
@@ -59,6 +84,13 @@ OpenAPI ที่ `/docs` และ `/openapi.json` (เปิดได้จา
 | `sentinel-port-scan` | `PORT_SCAN` | `CONNECTION` ≥8 พอร์ตต่างกัน / 60 วิ / IP | T1046 | MEDIUM |
 | `sentinel-traffic-anomaly` | `TRAFFIC_ANOMALY` | `CONNECTION` ≥100 ครั้ง / 60 วิ / IP (พอร์ตใดก็ได้) · สเปก scenario E (เสริม) | T1498 | MEDIUM |
 | `sentinel-suspicious-login` | `SUSPICIOUS_LOGIN` | login **success** หลัง failed ≥5 ช่องทางเดียวกัน (HTTP/SSH) / 60 วิ / IP · `event_count` = จำนวน failed | T1078 | HIGH |
+| `sentinel-web-honeypot` | `HONEYPOT` | `HTTP_REQUEST` ที่ `honeypot: true` ≥1 ช่วง / 60 วิ / IP | T1595.003 | HIGH |
+| `sentinel-web-scan-not-found` | `WEB_SCAN` | ผลรวม `not_found` ≥10 / 60 วิ / IP | T1595.003 | MEDIUM |
+| `sentinel-web-scan-paths` | `WEB_SCAN` | ผลรวม `scan_paths` ≥3 / 60 วิ / IP | T1595.003 | MEDIUM |
+| `sentinel-http-flood` | `HTTP_FLOOD` | ผลรวม `request_count` ≥300 / 60 วิ / IP (bridge ไม่นับไฟล์ static) | T1499.002 | MEDIUM |
+
+- correlation `event_sum` (ใช้กับ `HTTP_REQUEST`) = ผลรวมของคอลัมน์ `request_count`, `not_found` หรือ `scan_paths` เท่านั้น · กฎ 2 ไฟล์ของ `WEB_SCAN` เปิด incident เดียวกันต่อ IP
+- **`HONEYPOT`, `WEB_SCAN`, `HTTP_FLOOD` วิเคราะห์ด้วยกฎ ไม่ส่งเข้าโมเดล** (prompt ของ r3 รับ threat_type ได้แค่ 5 ชนิดเดิม และไม่เคยถูกวัดผลกับการโจมตีเว็บ) → `analysis_mode: rule_fallback`, `confidence: null`, `threat_type` = kind · ข้อเสนอบล็อกผ่าน policy + คนอนุมัติเหมือนเดิม
 
 - หน้าต่างเวลานับย้อนจาก **เวลาของ event** (UTC)
 - ≥3 เท่าของเกณฑ์ → `CRITICAL`
@@ -99,7 +131,7 @@ blocked → closed (ปลดกฎก่อน verify)
 
 | field | ค่า |
 |---|---|
-| `threat_type` | `HTTP_AUTH_BRUTE_FORCE \| SSH_BRUTE_FORCE \| PORT_SCAN \| SUSPICIOUS_LOGIN \| TRAFFIC_ANOMALY \| BENIGN \| UNKNOWN` |
+| `threat_type` | `HTTP_AUTH_BRUTE_FORCE \| SSH_BRUTE_FORCE \| PORT_SCAN \| SUSPICIOUS_LOGIN \| TRAFFIC_ANOMALY \| BENIGN \| UNKNOWN` · ผลจากกฎของ kind เว็บ: `WEB_SCAN \| HONEYPOT \| HTTP_FLOOD` |
 | `severity` | `LOW \| MEDIUM \| HIGH \| CRITICAL` |
 | `confidence` | 0–1 จากโมเดล · **`null` เมื่อ `rule_fallback`** · ใช้แสดงผลเท่านั้น ไม่ใช้แทนการอนุมัติ |
 | `evidence` | string 1–10 รายการ |
@@ -219,6 +251,7 @@ Errors: 422 validation · 404 ไม่พบ · 400 policy / Host ไม่อ�
 |---|---|
 | `HTTP_AUTH`, `SSH_AUTH` | Authentication (`class_uid` 3002) |
 | `CONNECTION` | Network Activity (`class_uid` 4001) |
+| `HTTP_REQUEST` | HTTP Activity (`class_uid` 4002) |
 | `source_ip` | `src_endpoint.ip` |
 | `destination_port` | `dst_endpoint.port` |
 | `outcome` | `status` (Success / Failure) |
