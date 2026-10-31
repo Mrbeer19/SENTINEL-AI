@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from pathlib import Path
 from typing import Awaitable, Callable, Literal, TypedDict
@@ -53,6 +54,12 @@ PLANNER_PROMPT = (
     f"recommended_action is one of {list(ACTIONS)}; reason is one short English sentence."
 )
 AGENTS = ("investigation", "threat_analysis", "defense_planning")
+# The model tends to list "accounts tried" even when no record names one (web logins and the simulations carry no
+# username). Claims about accounts are kept only when the tool results actually contain a username.
+ACCOUNT_CLAIM = re.compile(r"\b(accounts?|usernames?|user ?names?|users)\b|ชื่อผู้ใช้|บัญชี", re.I)
+NO_USERNAME_HINT = "The log records carry no username: do not name, list or count accounts. "
+KIND_TH = {"HTTP_AUTH_BRUTE_FORCE": "ล็อกอินเว็บผิดซ้ำ", "SSH_BRUTE_FORCE": "ล็อกอิน SSH ผิดซ้ำ", "PORT_SCAN": "สแกนพอร์ต",
+           "SUSPICIOUS_LOGIN": "ล็อกอินน่าสงสัย", "TRAFFIC_ANOMALY": "ทราฟฟิกผิดปกติ"}
 
 
 class Analysis(BaseModel):
@@ -113,6 +120,24 @@ def analyst_instruction() -> str:
 
 def planner_instruction() -> str:
     return "Output one JSON object only with keys: " + ", ".join(DefensePlan.model_fields) + "."
+
+
+def has_usernames(evidence: list[dict]) -> bool:
+    return any(record.get("user") for item in evidence if item["tool"] == "get_incident_logs"
+               for record in (item["result"].get("untrusted_log_records") or []))
+
+
+def without_account_claims(threat: ThreatAnalysis, incident: dict) -> tuple[ThreatAnalysis, list[str]]:
+    """Drop evidence and explanation text about accounts when the logs name none. Returns (threat, removed text)."""
+    removed = [line for line in threat.evidence if ACCOUNT_CLAIM.search(line)]
+    evidence = [line for line in threat.evidence if line not in removed] or [
+        f"{incident['event_count']} events from {incident['source_ip']} within 60 s"]
+    explanation = threat.explanation_th
+    if ACCOUNT_CLAIM.search(explanation):
+        removed.append(explanation)
+        kind = KIND_TH.get(threat.threat_type, threat.threat_type)
+        explanation = f"IP {incident['source_ip']} มีพฤติกรรม{kind} {incident['event_count']} ครั้งภายใน 1 นาที (log ไม่ระบุชื่อบัญชี)"
+    return threat.model_copy(update={"evidence": evidence, "explanation_th": explanation}), removed
 
 
 def parse_model(text: str, model: type[BaseModel]) -> BaseModel:
@@ -321,15 +346,21 @@ class Agent:
 
     async def _threat_analysis(self, state: RunState) -> dict:
         started = time.perf_counter()
+        usernames = has_usernames(state["evidence"])
         messages = [{"role": "system", "content": self.analyst_prompt},
                     {"role": "user", "content": "Incident: " + json.dumps(state["public"]) + "\nTool results: " + json.dumps(state["evidence"], ensure_ascii=False)
-                     + "\nInvestigator summary: " + json.dumps(state.get("summary", "")[:2000], ensure_ascii=False) + "\n" + analyst_instruction()}]
+                     + "\nInvestigator summary: " + json.dumps(state.get("summary", "")[:2000], ensure_ascii=False) + "\n"
+                     + ("" if usernames else NO_USERNAME_HINT) + analyst_instruction()}]
         try:
             threat, retried = await self._ask_json(state, "threat_analysis", messages, ThreatAnalysis, analyst_instruction())
         except MODEL_ERRORS as exc:
             return await self._failed(state, "threat_analysis", exc)
+        removed = []
+        if not usernames:
+            threat, removed = without_account_claims(threat, state["incident"])
         await self._trace(state["notify"], state["incident"]["id"], "threat_analysis", "invoke_agent", "threat_analysis", "ok", "model",
-                          started, {"evidence_items": len(state["evidence"])}, {"threat_type": threat.threat_type, "severity": threat.severity})
+                          started, {"evidence_items": len(state["evidence"])},
+                          {"threat_type": threat.threat_type, "severity": threat.severity, **({"removed_unsupported": removed} if removed else {})})
         return {"threat": threat, "retried": state.get("retried", False) or retried}
 
     async def _defense_planning(self, state: RunState) -> dict:
