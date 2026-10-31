@@ -243,7 +243,8 @@ def test_demo_endpoints_are_rate_limited_for_remote_peers(tmp_path: Path, monkey
 
 def test_rules_load_from_yaml_and_reject_unsafe_fields(tmp_path: Path):
     rules = RuleSet(Path(__file__).resolve().parents[1] / "rules")
-    assert {r.kind for r in rules.rules} == {"HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY"}
+    assert {r.kind for r in rules.rules} == {"HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY",
+                                             "WEB_SCAN", "HONEYPOT"}
     assert len(rules.version) == 12
     (tmp_path / "bad.yml").write_text(
         "title: bad\nid: bad\nlevel: low\ndetection:\n  selection:\n    source_ip: 1.2.3.4\n  condition: selection\n"

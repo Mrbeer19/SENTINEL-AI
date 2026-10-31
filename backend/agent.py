@@ -26,6 +26,11 @@ from backend.config import Settings, same_model
 from backend.store import Store, utcnow
 
 THREAT_TYPES = ("HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "SUSPICIOUS_LOGIN", "TRAFFIC_ANOMALY", "BENIGN", "UNKNOWN")
+# Web detections the fine-tuned model was never trained or evaluated on: analysed by the rule, never sent to the model.
+RULE_ONLY_KINDS = ("HTTP_FLOOD", "WEB_SCAN", "HONEYPOT")
+# Event types the model sees through its tools: exactly the ones it was evaluated on.
+MODEL_EVENT_TYPES = ("HTTP_AUTH", "SSH_AUTH", "CONNECTION")
+MODEL_EVENTS_SQL = f"event_type IN {MODEL_EVENT_TYPES}"  # constants only, never user input
 SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
 ACTIONS = ("NO_ACTION", "MONITOR", "INVESTIGATE", "TEMP_BLOCK_IP", "BLOCK_IP")
 MAX_TOOL_CALLS = 6
@@ -57,7 +62,7 @@ AGENTS = ("investigation", "threat_analysis", "defense_planning")
 
 class Analysis(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    threat_type: Literal[THREAT_TYPES]
+    threat_type: Literal[THREAT_TYPES + RULE_ONLY_KINDS]
     severity: Literal[SEVERITIES]
     confidence: float | None = Field(ge=0, le=1)
     evidence: list[str] = Field(min_length=1, max_length=10)
@@ -140,15 +145,17 @@ def load_prompt(path: Path, builtin: str) -> tuple[str, str]:
         return builtin, f"builtin:{path.stem}"
 
 
-def rule_fallback(incident: dict, evidence_count: int) -> Analysis:
+def rule_fallback(incident: dict, evidence_count: int, extra_evidence: list[str] | None = None) -> Analysis:
+    rule_only = incident["kind"] in RULE_ONLY_KINDS
     return Analysis(
-        threat_type=incident["kind"] if incident["kind"] in THREAT_TYPES else "UNKNOWN",
+        threat_type=incident["kind"] if incident["kind"] in THREAT_TYPES + RULE_ONLY_KINDS else "UNKNOWN",
         severity=incident["severity"],
         confidence=None,
         evidence=[f"Rule {incident.get('rule_id') or incident['kind']} matched {incident['event_count']} events from {incident['source_ip']}",
-                  f"{evidence_count} recent events inspected without the model"],
+                  f"{evidence_count} recent events inspected without the model", *(extra_evidence or [])][:10],
         recommended_action="TEMP_BLOCK_IP",
-        explanation_th="ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลใช้งานไม่ได้หรือผลไม่ผ่านการตรวจ) ต้องให้คนตรวจก่อนอนุมัติ",
+        explanation_th=("ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลยังไม่ได้ฝึกกับการโจมตีเว็บประเภทนี้) ต้องให้คนตรวจก่อนอนุมัติ" if rule_only else
+                        "ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลใช้งานไม่ได้หรือผลไม่ผ่านการตรวจ) ต้องให้คนตรวจก่อนอนุมัติ"),
     )
 
 
@@ -199,7 +206,7 @@ class Agent:
         if name == "get_incident_logs":
             if args["incident_id"].strip().upper() not in {incident_ref(incident["id"]), str(incident["id"])}:
                 return "error", {"error": "incident not found"}
-            records = self.store.rows("SELECT timestamp,source_ip,event_type,outcome,destination_port,username FROM events WHERE source_ip=? ORDER BY id DESC LIMIT ?", (src, LOG_LIMIT))
+            records = self.store.rows(f"SELECT timestamp,source_ip,event_type,outcome,destination_port,username FROM events WHERE source_ip=? AND {MODEL_EVENTS_SQL} ORDER BY id DESC LIMIT ?", (src, LOG_LIMIT))
             logs = [{"t": r["timestamp"], "src": r["source_ip"], "type": r["event_type"], "outcome": r["outcome"],
                      **({"port": r["destination_port"]} if r["destination_port"] else {}),
                      **({"user": r["username"][:USERNAME_LIMIT]} if r["username"] else {})} for r in reversed(records)]
@@ -209,13 +216,14 @@ class Agent:
                 return "error", {"ip": ip, "error": "no records for this IP in the incident scope"}
             stats = self.store.one(
                 "SELECT MIN(timestamp) first_seen, MAX(timestamp) last_seen, COUNT(*) total_events,"
-                " SUM(outcome='failed') failed_logins, SUM(outcome='success') success_logins FROM events WHERE source_ip=?", (src,))
+                f" SUM(outcome='failed') failed_logins, SUM(outcome='success') success_logins FROM events WHERE source_ip=? AND {MODEL_EVENTS_SQL}", (src,))
             ports = [r["destination_port"] for r in self.store.rows("SELECT DISTINCT destination_port FROM events WHERE source_ip=? AND destination_port IS NOT NULL ORDER BY destination_port LIMIT 20", (src,))]
             return "ok", {"ip": src, **stats, "ports_touched": ports}
         if name == "get_related_incidents":
             if ip != src:
                 return "ok", []
-            return "ok", self.store.rows("SELECT id,kind,status,created_at FROM incidents WHERE source_ip=? AND id!=? ORDER BY id DESC LIMIT 10", (src, incident["id"]))
+            return "ok", self.store.rows(f"SELECT id,kind,status,created_at FROM incidents WHERE source_ip=? AND id!=? AND kind NOT IN {RULE_ONLY_KINDS} ORDER BY id DESC LIMIT 10",
+                                         (src, incident["id"]))
         # get_firewall_status
         try:
             protected = policy.is_protected(ip, self.settings.protected_ips)
@@ -356,6 +364,23 @@ class Agent:
                           state["failure"], analysis.model_dump())
         return {"fallback": analysis}
 
+    async def _rule_only(self, incident: dict, notify: Notify) -> Analysis:
+        started = time.perf_counter()
+        totals = self.store.one(
+            "SELECT COUNT(*) events, COALESCE(SUM(request_count),0) requests, COALESCE(SUM(not_found),0) not_found,"
+            " COALESCE(SUM(scan_paths),0) scan_paths, SUM(outcome='honeypot') honeypot FROM events"
+            " WHERE source_ip=? AND event_type='HTTP_REQUEST'", (incident["source_ip"],))
+        paths = []
+        for row in self.store.rows("SELECT paths FROM events WHERE source_ip=? AND event_type='HTTP_REQUEST' AND paths!='[]' ORDER BY id DESC LIMIT 20",
+                                   (incident["source_ip"],)):
+            paths += [path for path in json.loads(row["paths"]) if path not in paths]
+        extra = [f"{totals['requests']} requests, {totals['not_found']} not found, {totals['scan_paths']} scanner paths, {totals['honeypot']} decoy hits"]
+        extra += [f"Requested path (untrusted): {path}" for path in paths[:5]]
+        analysis = rule_fallback(incident, totals["events"], extra)
+        await self._trace(notify, incident["id"], "rule_fallback", "invoke_agent", "rule_fallback", "fallback", "fallback", started,
+                          {"reason": f"{incident['kind']} is analysed by its detection rule, not the model"}, analysis.model_dump())
+        return analysis
+
     def _build_graph(self):
         graph = StateGraph(RunState)
         graph.add_node("investigation", self._investigation)
@@ -378,6 +403,8 @@ class Agent:
     async def investigate(self, incident: dict, notify: Notify) -> tuple[Analysis, str, dict, str | None]:
         """Returns (analysis, analysis_mode, meta, reason). Never raises for model problems: falls back to the rule result."""
         meta = {"model": self.settings.model, "model_digest": await self.model_digest(), "prompt_version": self.prompt_version}
+        if incident["kind"] in RULE_ONLY_KINDS:
+            return await self._rule_only(incident, notify), "rule_fallback", meta, None
         public = {"id": incident_ref(incident["id"]), "source_ip": incident["source_ip"], "event_count": incident["event_count"], "window_s": 60}
         final = await self.graph.ainvoke({"incident": incident, "notify": notify, "public": public, "retried": False})
         if final.get("fallback"):

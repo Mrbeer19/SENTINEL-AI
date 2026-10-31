@@ -1,0 +1,28 @@
+# Sigma-inspired rule: a decoy path that no real visitor of the site ever asks for.
+title: Web honeypot path requested
+id: sentinel-web-honeypot
+status: experimental
+description: A source IP requested a decoy path planted on the public site. The web log bridge sets honeypot=true for that window. One hit is enough.
+references:
+  - https://attack.mitre.org/techniques/T1595/003/
+tags:
+  - attack.reconnaissance
+  - attack.t1595.003
+level: high
+logsource:
+  product: sentinel
+  category: web
+detection:
+  selection:
+    event_type: HTTP_REQUEST
+    outcome: honeypot
+  condition: selection
+correlation:
+  type: event_count
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 1
+sentinel:
+  kind: HONEYPOT
