@@ -1142,3 +1142,46 @@ a.operatorHint:hover > svg:last-child, a.operatorHint:focus-visible > svg:last-c
 @media (prefers-reduced-motion: reduce) {
   a.operatorHint > svg:last-child { transition: none; transform: none !important; }
 }
+
+/* Login: Thai text needs more size, line height and contrast than the dense workspace UI. */
+.loginArt > p {
+  font-size: 16px;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--text) 82%, transparent);
+}
+.loginForm h2 {
+  font-size: 28px;
+  line-height: 1.4;
+}
+.loginForm > p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+}
+.loginForm .field {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.loginForm .field input {
+  font-size: 15px;
+  min-height: 44px;
+}
+.loginForm .button {
+  font-size: 15px;
+  min-height: 46px;
+}
+.loginForm .notice,
+.loginForm .textButton {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.loginForm > small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
+}
+@media (max-width: 700px) {
+  .loginArt > p { font-size: 15px; }
+  .loginForm h2 { font-size: 24px; }
+}
