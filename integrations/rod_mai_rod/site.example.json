@@ -4,5 +4,6 @@
   "caddyfile": "/path/to/gateway/Caddyfile",
   "caddy_container": "caddy-container-name",
   "upstream": "web-container:8000",
+  "honeypot_paths": ["/admin-backup.zip", "/backup.sql", "/.aws/credentials", "/config.php.bak"],
   "caddyfile_sha256": "sha256 of the shared Caddyfile at inspection time (install_caddy.py only)"
 }

@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react'
 import { Empty, FilterSummary, Icon, NoResults, Panel, SeverityBadge, Stat, StatusBadge, Stepper, SEVERITIES, fmtTime, incId, incidentStatus, isOpenIncident, kindEvidence, kindName, noProposalNote, perMinute, useNow } from '../ui.jsx'
 
 // Event types each detection rule reads; SUSPICIOUS_LOGIN covers both login channels.
-const typesFor = { HTTP_AUTH_BRUTE_FORCE: ['HTTP_AUTH'], SSH_BRUTE_FORCE: ['SSH_AUTH'], PORT_SCAN: ['CONNECTION'], TRAFFIC_ANOMALY: ['CONNECTION'], SUSPICIOUS_LOGIN: ['HTTP_AUTH', 'SSH_AUTH'] }
+const typesFor = { HTTP_AUTH_BRUTE_FORCE: ['HTTP_AUTH'], SSH_BRUTE_FORCE: ['SSH_AUTH'], PORT_SCAN: ['CONNECTION'], TRAFFIC_ANOMALY: ['CONNECTION'], SUSPICIOUS_LOGIN: ['HTTP_AUTH', 'SSH_AUTH'], HTTP_FLOOD: ['HTTP_REQUEST'], WEB_SCAN: ['HTTP_REQUEST'], HONEYPOT: ['HTTP_REQUEST'] }
 export const incidentEvents = (events, incident) => events.filter(e => e.source_ip === incident.source_ip && (typesFor[incident.kind] || [e.event_type]).includes(e.event_type))
 
 export function stagesFor(incident) {

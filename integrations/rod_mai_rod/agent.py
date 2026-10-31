@@ -1,4 +1,4 @@
-"""Bridge: rod-mai-rod auth logs -> SENTINEL, approved rules -> Caddy.
+"""Bridge: rod-mai-rod auth logs and request totals -> SENTINEL, approved rules -> Caddy.
 
 Runs on Windows over SSH, or on the VPS itself with --local (no SSH hop)."""
 
@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 API = os.getenv("SENTINEL_API_URL", "http://127.0.0.1:8001").rstrip("/")
+MAX_BATCHES = 10
+WINDOW_S = 10  # same as vps_logs.WINDOW_S
 # Machine key for X-Admin-Key: env first, else a file readable only by this Windows user.
 KEY_FILE = Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "SentinelAI" / "admin-key.txt"
 
@@ -108,8 +110,25 @@ def run_once(args, state):
         save_state(args.state, state)
         return 0
 
-    batch = json.loads(ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_logs.py --inode {int(state['inode'])} --offset {int(state['offset'])}"))
     active = {row["source_ip"] for row in rules}
+    processed = 0
+    for _ in range(MAX_BATCHES):  # a flood can write more than one batch between two polls
+        batch = json.loads(ssh(args, f"python3 {shlex.quote(args.remote_dir)}/vps_logs.py --inode {int(state['inode'])} --offset {int(state['offset'])}"))
+        processed += process_batch(batch, state, args, active)
+        if not batch.get("more"):
+            break
+    if getattr(args, "network_sensor", False): processed += collect_sensor(args, state)
+    return processed
+
+
+def request_event(total):
+    """One HTTP_REQUEST event: a source IP's request totals for one window (docs/api-contract.md)."""
+    end = datetime.fromtimestamp(total["window_end"], timezone.utc).isoformat()
+    return {"source_ip": total["ip"], "event_type": "HTTP_REQUEST", "timestamp": end, "window_s": WINDOW_S,
+            "count": total["count"], "not_found": total["not_found"], "paths": total["paths"], "honeypot": total["honeypot"]}
+
+
+def process_batch(batch, state, args, active):
     processed = 0
     for item in batch["events"]:
         if item["kind"] == "auth":
@@ -123,9 +142,13 @@ def run_once(args, state):
         state.update(inode=batch["inode"], offset=item["offset"])
         save_state(args.state, state)
         processed += 1
+    for total in batch.get("requests", []):
+        status, _ = api("/api/events", request_event(total))
+        if status != 201:
+            raise RuntimeError(f"SENTINEL request totals ingest returned HTTP {status}")
+        processed += 1
     state.update(inode=batch["inode"], offset=batch["offset"])
     save_state(args.state, state)
-    if getattr(args, "network_sensor", False): processed += collect_sensor(args, state)
     return processed
 
 
@@ -151,7 +174,7 @@ def main():
         try:
             count = run_once(args, state)
             if count:
-                emit(args.state, f"rod-mai-rod: {count} auth/denial records processed")
+                emit(args.state, f"rod-mai-rod: {count} auth/denial/request records processed")
         except (OSError, ValueError, KeyError, RuntimeError, subprocess.TimeoutExpired) as error:
             emit(args.state, f"rod-mai-rod bridge: {error}", error=True)
             if args.once:
