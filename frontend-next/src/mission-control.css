@@ -1,0 +1,1144 @@
+/* Shared visual tokens. Detection, routes, requests and stored values are independent. */
+:root {
+  --type-http-brute: #6CB2EC;
+  --type-http-brute-bg: #242E34;
+  --type-http-brute-line: #354E61;
+  --type-ssh-brute: #AA9FEC;
+  --type-ssh-brute-bg: #2C2B34;
+  --type-ssh-brute-line: #4B4761;
+  --type-port-scan: #3EBFC6;
+  --type-port-scan-bg: #1D2F2F;
+  --type-port-scan-line: #255254;
+  --type-anomaly: #DC8EBB;
+  --type-anomaly-bg: #33292D;
+  --type-anomaly-line: #5D4150;
+  --type-login: #ADC0D8;
+  --type-login-bg: #2D2E2F;
+  --type-login-line: #4C5054;
+  --bg: #0e0e0c;
+  --surface: #181816;
+  --surface-2: #1f1f1c;
+  --line: #2c2b27;
+  --text: #e8e4da;
+  --text-dim: #8a877f;
+  --accent: #ff5f1f;
+  --data: #8fb3a0;
+  --critical: #e5534b;
+  --review: #e8c24a;
+  --ok: #7fa88f;
+  --radius: 4px;
+  --critical-bg: #3a1714;
+  --critical-text: #f07a72;
+  --critical-line: #6b2a24;
+  --review-bg: #332b12;
+  --review-line: #5c4c1c;
+  --ok-bg: #1b2a22;
+  --ok-text: #8fb3a0;
+  --ok-line: #2f4a3b;
+  --accent-ink: #0e0e0c;
+  --mask-visible: #ffffff;
+  --mask-hidden: #000000;
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --data-soft: color-mix(in srgb, var(--data) 10%, var(--surface));
+  --scrim: color-mix(in srgb, var(--bg) 85%, transparent);
+  --font-ui: "IBM Plex Sans", "IBM Plex Sans Thai", sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Sans Thai", monospace;
+  --font-tech: var(--font-ui);
+  --ink: var(--text);
+  --muted: var(--text-dim);
+  --dim: var(--text-dim);
+  --raised: var(--surface-2);
+  --line-hi: var(--line);
+  --line2: var(--line);
+  --teal: var(--data);
+  --teal-soft: var(--data-soft);
+  --mint: var(--data);
+  --mint-soft: var(--data-soft);
+  --amber: var(--review);
+  --amber-soft: var(--review-bg);
+  --red: var(--critical);
+  --red-soft: var(--critical-bg);
+  --blue: var(--data);
+  --shadow: transparent;
+  --panel-shadow: none;
+}
+:root[data-theme="light"] {
+  --type-http-brute: #256393;
+  --type-http-brute-bg: #E6EFF7;
+  --type-http-brute-line: #A2BCD0;
+  --type-ssh-brute: #62539C;
+  --type-ssh-brute-bg: #EEEAF7;
+  --type-ssh-brute-line: #BEB4D6;
+  --type-port-scan: #176D73;
+  --type-port-scan-bg: #E2F0EF;
+  --type-port-scan-line: #97BFC1;
+  --type-anomaly: #8F456F;
+  --type-anomaly-bg: #F5E8EF;
+  --type-anomaly-line: #D0A9BF;
+  --type-login: #4D6179;
+  --type-login-bg: #E9EDF2;
+  --type-login-line: #AFBBC8;
+  --bg: #f2efe7;
+  --surface: #fffcf5;
+  --surface-2: #e9e5da;
+  --line: #d2ccbd;
+  --text: #28271f;
+  --text-dim: #6d695e;
+  --data: #4d725f;
+  --critical: #ae3933;
+  --review: #85690e;
+  --ok: #4b7158;
+}
+html,
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+.nShell p,
+.nShell .button.compact,
+.nShell .operator small,
+.nShell .railFoot small,
+.nShell .connection > div *,
+.nShell .targetStrip > span,
+.nShell .confidence small,
+.nShell .recommendation small,
+.nShell .recommendation b,
+.nShell .proof b,
+.nShell .proof small,
+.nShell .raw summary,
+.nShell .pagination,
+.nShell .playback > span,
+.nShell .canvasCaption,
+.nShell .subhead,
+.fixtureBar > span,
+.fixtureBar > a,
+.fixtureBar > button {
+  font-size: 13px;
+}
+.nShell {
+  background: var(--surface);
+}
+#workspace {
+  background: var(--bg);
+  align-self: stretch;
+}
+.nHeader,
+.nRail {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.nRail > a {
+  border-radius: 0;
+  border: 0;
+  border-left: 2px solid transparent;
+}
+.nRail > a[aria-current="page"] {
+  background: var(--surface-2);
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+.nRail > a[aria-current="page"] > svg {
+  color: var(--accent);
+}
+.nRail > a:hover {
+  background: var(--surface-2);
+}
+.navCount {
+  background: var(--review-bg);
+  color: var(--review);
+  border: 1px solid var(--review-line);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+.railFoot > svg,
+.railFoot b {
+  color: var(--text-dim);
+}
+.railFoot b {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.brand .sentinelLogo {
+  display: block;
+  width: 155px;
+  max-width: 100%;
+  max-height: 38px;
+  height: auto;
+}
+.instrument,
+.agentLab,
+.metricStrip > div,
+.metricStrip > div:first-child,
+.metricStrip > div:last-child,
+.operatorHint,
+.signalCard,
+.queueCard,
+.dossierHeader,
+.workContext {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.instrument > header {
+  border-color: var(--line);
+}
+.instrument > header h2,
+.navSectionLabel,
+.micro,
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.pageHeading h1 {
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 500;
+}
+.pageHeading p,
+.pageBreadcrumb,
+.pageActions time,
+.nFooter,
+.operatorHint p {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.pageHeading p {
+  line-height: 1.7;
+}
+.pageActions time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.pageBreadcrumb {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.metricStrip strong,
+.trafficHeader strong,
+.trafficInsights b,
+.countdown strong,
+.confidence b,
+.sourceTitle,
+.pagination,
+.playback > span,
+.toolRecord time,
+.timeline time,
+.mono,
+kbd,
+code,
+pre {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.metricStrip strong {
+  font-size: 30px;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.metricStrip strong.actionableKpi {
+  color: var(--accent);
+}
+.metricStrip small {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.metricStrip p,
+.metricTop small {
+  font-family: var(--font-ui);
+}
+.metricStrip p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.metricIcon {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  box-shadow: none;
+  color: var(--text-dim);
+  border-radius: var(--radius);
+}
+.button,
+.segmented,
+.segmented > button,
+.search,
+input,
+select,
+textarea,
+.field input,
+.themeButton,
+.tag,
+.notice,
+.recommendation,
+.proof,
+.dataScroll,
+.queueCard,
+.toolRecord,
+.confirmDialog,
+.toast,
+.raw pre {
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.button {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font: 500 13px var(--font-ui);
+}
+.button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+:root[data-theme="light"] .button.primary {
+  color: var(--accent-ink);
+}
+.button.primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  outline: 1px solid var(--text-dim);
+  outline-offset: 2px;
+}
+.button:hover:not(:disabled),
+.button.ghost:hover {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.button.danger {
+  color: var(--critical-text);
+  background: var(--critical-bg);
+  border-color: var(--critical-line);
+}
+.textButton,
+a {
+  color: var(--accent);
+}
+.textButton:hover,
+a:hover {
+  color: var(--accent);
+}
+.segmented {
+  padding: 0;
+  gap: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.segmented > button {
+  padding: 7px 10px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.segmented > button:last-child {
+  border-right: 0;
+}
+.segmented > button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--surface-2);
+  box-shadow: none;
+  border-bottom: 2px solid var(--accent);
+}
+.commandSearch,
+.search,
+.field input,
+select,
+textarea {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text);
+}
+.commandSearch:focus-within,
+.search:focus-within,
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+.search input,
+.commandSearch input,
+.field input,
+.field,
+.facts dt,
+.facts dd,
+.signalCard,
+.signalLine,
+.queueCard,
+.policy,
+.hint,
+.geoIpList span,
+.geoIpList small,
+.geoNote,
+.geoControls > span,
+.connectionMapFooter,
+.mapPagination {
+  font-size: 13px;
+}
+.facts dd,
+.targetStrip strong,
+.reportIdentity > .mono,
+.sourceTitle,
+.queueCard .mono,
+.signalCard .mono,
+.signalLine .mono {
+  font-family: var(--font-mono);
+}
+.operator > span {
+  color: var(--text);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+.connection > summary,
+.connection > div,
+.operator details > button {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: none;
+  border-color: var(--line);
+}
+.tag {
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+}
+.tag.bad,
+.tag[data-status="blocked"],
+.tag[data-status="denied"],
+.tag[data-status="CRITICAL"],
+.tag[data-status="HIGH"] {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  border-color: var(--critical-line);
+}
+.tag.warn {
+  background: var(--review-bg);
+  color: var(--review);
+  border-color: var(--review-line);
+}
+.tag.warn[data-status="blocked"] {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  border-color: var(--critical-line);
+}
+.tag.good {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+  border-color: var(--ok-line);
+}
+.tag.quiet {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border-color: var(--line);
+}
+.notice,
+.ruleOnlyNotice {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--line);
+  font-size: 13px;
+}
+.notice.warn {
+  background: var(--review-bg);
+  color: var(--review);
+  border-color: var(--review-line);
+}
+.agentLab > .notice {
+  margin: 16px;
+}
+.eventCriterion {
+  margin: 12px 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.notice.bad {
+  background: var(--critical-bg);
+  color: var(--critical-text);
+  border-color: var(--critical-line);
+}
+.signalCard.attention {
+  background: var(--surface-2);
+  border-color: var(--line);
+  border-left: 2px solid var(--review);
+}
+.signalCard.attention small {
+  color: var(--review);
+  font-size: 13px;
+}
+.signalCard.attention > .mono {
+  font-size: 13px;
+}
+.signalCard > footer {
+  font-size: 13px;
+}
+.signalLine > span > small {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.signalColumn .signalLine > .tag {
+  flex: 0 0 92px;
+  width: 92px;
+  justify-content: center;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+.signalLine > span:not(.tag) {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.evidencePoints li {
+  font-size: 13px;
+}
+.evidencePoints li > span {
+  min-width: 22px;
+  font: 13px var(--font-mono);
+}
+.decisionButtons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.decisionButtons .button {
+  width: 100%;
+  white-space: nowrap;
+}
+.button.dangerOutline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
+}
+.button.dangerOutline:hover:not(:disabled) {
+  color: var(--critical-text);
+  border-color: var(--critical-line);
+  background: var(--surface-2);
+}
+.countdown progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 10px;
+  appearance: none;
+  accent-color: var(--data);
+  border: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.countdown progress::-webkit-progress-bar {
+  background: var(--surface-2);
+}
+.countdown progress::-webkit-progress-value {
+  background: var(--data);
+}
+.countdown progress::-moz-progress-bar {
+  background: var(--data);
+}
+.operatorHint > svg {
+  flex-shrink: 0;
+  color: var(--data);
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.operatorHint b {
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+@media (min-width: 851px) {
+  .nRail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    margin-top: -67px;
+    padding-top: 90px;
+  }
+}
+@media (max-width: 850px) {
+  .nShell {
+    background: var(--bg);
+  }
+}
+.signalColumn .segmented > button {
+  font-size: 13px;
+}
+.operatorHint img {
+  filter: grayscale(1);
+}
+.operatorHint b {
+  font-size: 13px;
+}
+.operatorHint p {
+  margin-top: 4px;
+}
+.dataScroll th {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.dataScroll td,
+.dataScroll td.mono {
+  font-size: 13px;
+}
+.dataScroll tr:hover {
+  background: var(--surface-2);
+}
+.dataScroll tr.selected {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+.dataScroll td:first-child {
+  border-left: 2px solid transparent;
+}
+.dataScroll tr.selected td:first-child {
+  border-left-color: var(--accent);
+}
+.dataScroll tr[data-result="denied"] td:first-child {
+  border-left-color: var(--critical);
+}
+.dataScroll tr[data-threshold="true"] td:first-child {
+  border-left-color: var(--review);
+}
+.eventPaths {
+  display: block;
+  min-width: 180px;
+  max-width: 360px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.thresholdLabel {
+  color: var(--review);
+  font-size: 13px;
+}
+.telemetryRow .dataScroll {
+  max-height: 464px;
+}
+.telemetryRow .dataScroll td {
+  height: 42px;
+  padding-block: 8px;
+}
+.trafficPlot text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  fill: var(--text-dim);
+}
+.trafficPlot .plotArea {
+  fill: var(--ok);
+  fill-opacity: 0.14;
+}
+.trafficPlot .plotDeniedArea {
+  fill: var(--critical);
+  fill-opacity: 0.14;
+}
+.trafficPlot .plotLine {
+  stroke: var(--ok);
+  stroke-width: 1.5;
+}
+.plotTotalLine {
+  stroke: var(--critical);
+  stroke-width: 1.5;
+}
+.plotGrid,
+.plotAxisTick {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.plotAxisTick {
+  fill: none;
+}
+.trafficPlot circle {
+  fill: var(--data);
+  stroke: var(--surface);
+}
+.legendLine {
+  background: var(--ok);
+}
+.legendLine.total {
+  background: var(--critical);
+}
+.trafficTooltip rect {
+  fill: var(--surface-2);
+  stroke: var(--line);
+  rx: 4px;
+}
+.trafficTooltip text {
+  fill: var(--text);
+  font-size: 13px;
+}
+.trafficHeader strong small,
+.trafficHeader > span,
+.trafficInsights small,
+.trafficInsights em,
+.trafficInsights > span {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.trafficInsights b {
+  font-size: 21px;
+}
+.connectionOrbit {
+  stroke: var(--line);
+  opacity: 0.6;
+}
+.connectionRoute {
+  stroke: var(--data);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.connectionSource.attention .connectionRoute {
+  stroke: var(--review);
+}
+.connectionSource.blocked .connectionRoute {
+  stroke: var(--critical);
+  stroke-dasharray: 6 7;
+}
+.connectionSource .connectionPacket {
+  fill: var(--data);
+  filter: none;
+}
+.connectionSource.attention .connectionPacket {
+  fill: var(--review);
+}
+.connectionSource.blocked .connectionPacket {
+  fill: var(--critical);
+  opacity: 0.4;
+}
+.connectionFocus {
+  fill: var(--data-soft);
+  stroke: var(--data);
+}
+.connectionSource.attention .connectionFocus {
+  fill: none;
+  stroke: var(--review);
+  animation: reviewRing 3s ease-in-out infinite;
+}
+.connectionSource.blocked .connectionFocus {
+  fill: none;
+  stroke: var(--critical);
+}
+.connectionSource.selected .connectionFocus,
+.connectionEndpoint:focus-visible .connectionFocus {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.connectionSource.normal .connectionEndpoint > circle[r="5"] {
+  fill: var(--data);
+}
+.connectionSource.attention .connectionEndpoint > circle[r="5"] {
+  fill: var(--review);
+}
+.connectionSource.blocked .connectionEndpoint > circle[r="5"] {
+  fill: var(--critical);
+}
+.connectionHub > circle:first-child {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.connectionHub > circle:nth-child(2) {
+  fill: var(--surface-2);
+  stroke: var(--line);
+}
+.connectionHub > text {
+  fill: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.connectionMap text {
+  fill: var(--text);
+}
+.connectionMap .connectionNodeState {
+  fill: var(--text-dim);
+}
+.topologyPanel {
+  height: 640px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.networkExplorer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+.mapTools,
+.mapBreadcrumb,
+.connectionMapFooter,
+.mapPagination,
+.mapLegend {
+  flex-shrink: 0;
+}
+.mapBreadcrumb,
+.connectionMapFooter,
+.mapPagination {
+  margin-block: 0;
+}
+.mapViewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.mapViewport > .connectionMap {
+  height: 100%;
+}
+.mapViewport .connectionMap > svg {
+  width: 100%;
+  height: 100%;
+}
+.mapViewport > .dataScroll {
+  max-height: none;
+  overflow: visible;
+}
+.mapViewport > .geoExplorer {
+  margin-top: 0;
+  min-height: 100%;
+}
+.mapViewport .geoNote {
+  font-size: 13px;
+}
+@media (max-width: 700px) {
+  .topologyPanel {
+    height: 600px;
+  }
+}
+.connectionMapFooter small,
+.mapLegend {
+  font-size: 13px;
+}
+@keyframes reviewRing {
+  0%,
+  100% {
+    stroke-opacity: 0.3;
+  }
+  50% {
+    stroke-opacity: 0.95;
+  }
+}
+.geoLand {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-opacity: 1;
+}
+.geoGrid {
+  stroke: var(--line);
+  opacity: 0.5;
+}
+.geoPinHalo {
+  fill: none;
+  stroke: var(--data);
+}
+.geoPin.selected .geoPinHalo,
+.geoPin:focus-visible .geoPinHalo {
+  fill: none;
+  stroke: var(--text);
+}
+.geoPin.attention .geoPinHalo {
+  fill: none;
+  stroke: var(--review);
+}
+.geoPin.blocked .geoPinHalo {
+  fill: none;
+  stroke: var(--critical);
+}
+.geoPin text {
+  fill: var(--text);
+  stroke: var(--surface);
+  font-family: var(--font-mono);
+}
+.geoIpList b {
+  font-size: 13px;
+}
+.geoIpList > button[aria-pressed="true"] {
+  background: var(--surface-2);
+  border-left: 2px solid var(--accent);
+}
+.geoSummary b {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.geoSummary span,
+.geoListHeader {
+  font-size: 13px;
+}
+.agentLab {
+  --spatial-bg: var(--surface);
+  --spatial-text: var(--text);
+  --spatial-idle: var(--text-dim);
+  --spatial-line: var(--line);
+  --spatial-done: var(--data);
+  --spatial-active: var(--review);
+  --spatial-fail: var(--critical);
+}
+.agentLab .labCanvas,
+.labViewport {
+  background: var(--surface);
+}
+.stageRail button[aria-pressed="true"] {
+  background: var(--surface-2);
+  border-top-color: var(--accent);
+  box-shadow: none;
+}
+.stageRail button b {
+  font-size: 13px;
+  font-family: var(--font-ui);
+}
+.stageRail button small,
+.stageRail button > span {
+  font-size: 13px;
+}
+.stageRail button.done > span {
+  color: var(--data);
+}
+.stageRail button.active > span {
+  color: var(--review);
+}
+.stageRail button.fail > span {
+  color: var(--critical);
+}
+.stageDetail > p,
+.agentLab .stageDetail .button,
+.agentLab .stageDetail .textButton,
+.traceSnippets p,
+.traceSnippets small,
+.labFootnote,
+.labFootnote small {
+  font-size: 13px;
+}
+.toolRecord > header time,
+.toolRecord > header > span,
+.facts dd,
+.targetStrip strong,
+.reportIdentity > .mono {
+  font-family: var(--font-mono);
+}
+.queueCard.selected,
+.queueCard:hover,
+.instrument .queueCard.selected {
+  background: var(--surface-2);
+  border-color: var(--line);
+  border-left: 2px solid var(--accent);
+}
+.queueCard > small,
+.queueCard > span:not(.tag),
+.reportIdentity > small {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.targetStrip > svg,
+.recommendation b,
+.countdown strong {
+  color: var(--text);
+}
+.timeline li {
+  border-color: var(--line);
+}
+.confirmDialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.confirmDialog::backdrop {
+  background: var(--scrim);
+  backdrop-filter: none;
+}
+.raw pre {
+  background: var(--surface-2);
+  border-color: var(--line);
+  font-size: 13px;
+}
+.fixtureBar {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border-color: var(--line);
+}
+.fixtureBar b,
+.fixtureBar a,
+.fixtureBar button {
+  color: var(--text);
+}
+.fixtureBar select,
+.fixtureBar button {
+  border-color: var(--line);
+}
+@media (max-width: 850px) {
+  .nRail {
+    background: var(--surface);
+    border-color: var(--line);
+    box-shadow: none;
+    border-radius: var(--radius);
+  }
+  .nRail > a {
+    border-radius: 0;
+  }
+  .nRail > a[aria-current="page"] {
+    background: var(--surface-2);
+    color: var(--text);
+    border-left: 2px solid var(--accent);
+  }
+  .nRail > a > span {
+    font-size: 11px;
+  }
+}
+@media (max-width: 700px) {
+  .pageHeading h1 {
+    font-size: 25px;
+  }
+  .pageHeading p {
+    font-size: 13px;
+  }
+  .metricStrip small {
+    font-size: 11px;
+  }
+  .metricStrip p {
+    font-size: 13px;
+  }
+  .metricTop {
+    align-items: flex-start;
+  }
+  .instrument > header h2 {
+    font-size: 11px;
+  }
+  .signalColumn .instrument > header {
+    flex-wrap: wrap;
+  }
+  .nRail > a > span {
+    font-size: 10px;
+  }
+  .geoIpList b,
+  .geoIpList span,
+  .geoIpList small,
+  .facts dt,
+  .facts dd {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connectionSource.attention .connectionFocus {
+    animation: none;
+    stroke-opacity: 1;
+  }
+}
+@media print {
+  :root {
+    --bg: var(--surface);
+    --surface: var(--mask-visible);
+    --surface-2: var(--mask-visible);
+    --text: var(--mask-hidden);
+    --text-dim: var(--mask-hidden);
+  }
+}
+
+/* Threat categories are separate from severity and connection status. */
+[data-type="http-brute"] {
+  --type-color: var(--type-http-brute);
+  --type-bg: var(--type-http-brute-bg);
+  --type-line: var(--type-http-brute-line);
+}
+[data-type="ssh-brute"] {
+  --type-color: var(--type-ssh-brute);
+  --type-bg: var(--type-ssh-brute-bg);
+  --type-line: var(--type-ssh-brute-line);
+}
+[data-type="port-scan"] {
+  --type-color: var(--type-port-scan);
+  --type-bg: var(--type-port-scan-bg);
+  --type-line: var(--type-port-scan-line);
+}
+[data-type="anomaly"] {
+  --type-color: var(--type-anomaly);
+  --type-bg: var(--type-anomaly-bg);
+  --type-line: var(--type-anomaly-line);
+}
+[data-type="login"] {
+  --type-color: var(--type-login);
+  --type-bg: var(--type-login-bg);
+  --type-line: var(--type-login-line);
+}
+
+.typeName { color: var(--type-color); }
+.signalLine[data-type] { border-left: 3px solid var(--type-color); padding-left: 8px; }
+.dataScroll tr[data-type] > td:first-child { border-left: 3px solid var(--type-color); }
+.queueCard[data-type], .instrument .queueCard.selected[data-type] { border-left: 3px solid var(--type-color); }
+.typeChip { background: var(--type-bg); color: var(--type-color); border: 1px solid var(--type-line); border-radius: var(--radius); padding: 3px 7px; font-size: 13px; }
+.connectionMap .connectionSource .connectionRoute { stroke: var(--type-color, var(--data)); }
+.connectionMap .connectionTypeLabel { fill: var(--type-color); font-size: 12px; }
+.attacksByType { border-top: 1px solid var(--line); padding-top: 12px; }
+.attacksByType header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; }
+.attacksByType h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.attacksByType small, .attacksByType p { color: var(--text-dim); font-size: 13px; }
+.attacksByType > svg { display: block; width: 100%; height: 14px; border-radius: 2px; overflow: hidden; }
+.typeBarTrack { fill: var(--surface-2); }
+.typeBarSegment { fill: var(--type-color); }
+.attacksByType ul { display: flex; flex-wrap: wrap; gap: 8px 16px; list-style: none; padding: 0; margin: 10px 0 0; }
+.attacksByType li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.attacksByType li > i { width: 8px; height: 8px; background: var(--type-color); border-radius: 2px; }
+.attacksByType b { font-family: var(--font-mono); color: var(--text); font-weight: 400; }
+
+/* Usability pass: attention queue, freshness, reviewer, dossier badges */
+.signalCard.attention + .signalCard.attention { margin-top: 8px; }
+.signalCard.attention small { display: flex; align-items: center; gap: 8px; }
+.signalCard.attention small .tag { margin-left: auto; }
+.signalCard.attention.needsAnalysis { border-left-color: var(--critical); }
+.signalCard.attention.needsAnalysis small { color: var(--critical-text); }
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px var(--font-mono);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.freshness .dot { background: var(--ok); width: 6px; height: 6px; }
+.reviewerField output {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  margin-top: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.reviewerField output svg { color: var(--text-dim); }
+.reviewerField small { display: block; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+.dossierBadges { display: inline-flex; gap: 8px; align-items: center; }
+a.operatorHint {
+  display: flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--dur-hover, 150ms);
+}
+a.operatorHint > svg:last-child { margin-left: auto; color: var(--text-dim); transition: transform var(--dur-hover, 150ms), color var(--dur-hover, 150ms); }
+a.operatorHint:hover, a.operatorHint:focus-visible { border-color: var(--text-dim); }
+a.operatorHint:hover > svg:last-child, a.operatorHint:focus-visible > svg:last-child { color: var(--accent); transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) {
+  a.operatorHint > svg:last-child { transition: none; transform: none !important; }
+}

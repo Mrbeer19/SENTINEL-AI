@@ -63,20 +63,20 @@ export default function Incidents({ ctx }) {
 
     <Panel className="span2">
       <div className="filters" role="search">
-        <label className="search"><Icon name="search" size={16} /><span className="sr">Search</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search incident, IP or type" /></label>
-        <label><span className="sr">Severity</span><select value={severity} onChange={e => setSeverity(e.target.value)}><option value="all">Severity: All</option>{SEVERITIES.map(v => <option key={v} value={v}>{v[0] + v.slice(1).toLowerCase()}</option>)}</select></label>
-        <label><span className="sr">Status</span><select value={status} onChange={e => setStatus(e.target.value)}><option value="all">Status: All</option>{Object.entries(incidentStatus).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
-        <label><span className="sr">Order</span><select value={order} onChange={e => setOrder(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+        <label className="search"><Icon name="search" size={16} /><span className="sr">Search</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ค้นหาเหตุการณ์ IP หรือประเภท…" /></label>
+        <label><span className="sr">Severity</span><select value={severity} onChange={e => setSeverity(e.target.value)}><option value="all">ทุกความรุนแรง</option>{SEVERITIES.map(v => <option key={v} value={v}>{v[0] + v.slice(1).toLowerCase()}</option>)}</select></label>
+        <label><span className="sr">Status</span><select value={status} onChange={e => setStatus(e.target.value)}><option value="all">ทุกสถานะ</option>{Object.entries(incidentStatus).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+        <label><span className="sr">Order</span><select value={order} onChange={e => setOrder(e.target.value)}><option value="newest">ใหม่ไปเก่า</option><option value="oldest">เก่าไปใหม่</option></select></label>
       </div>
       <FilterSummary count={rows.length} total={data.incidents.length} active={filtered} onClear={clear} />
       {rows.length > 0 && <p className="tableHint">เลือกหมายเลข incident เพื่อดูสรุป หรือกด “เปิดรายละเอียด” เพื่อดำเนินการต่อ</p>}
       {rows.length ? <div className="tableWrap"><table>
-        <thead><tr><th>Incident</th><th>Detection</th><th>Source IP</th><th>Evidence</th><th>Severity</th><th>Status</th><th>Last event</th></tr></thead>
+        <thead><tr><th>Incident</th><th>Detection</th><th>Source IP</th><th>Severity</th><th>Status</th><th>Last event</th></tr></thead>
         <tbody>{paging.rows.map(i => {
           const last = incidentEvents(data.events, i)[0]
           return <tr key={i.id} className={`clickable ${selected?.id === i.id ? 'selected' : ''}`} tabIndex={0} aria-selected={selected?.id === i.id} onKeyDown={e=>{if(e.target===e.currentTarget && ['Enter',' '].includes(e.key)){e.preventDefault();setSelectedId(i.id)}}} onClick={() => setSelectedId(i.id)}>
             <td><button className="link" onClick={() => setSelectedId(i.id)} aria-pressed={selected?.id === i.id}>{incId(i.id)}</button></td>
-            <td>{kindName(i.kind)}</td><td className="mono">{i.source_ip}</td><td>{kindEvidence(i)}</td>
+            <td>{kindName(i.kind)}</td><td className="mono">{i.source_ip}</td>
             <td><SeverityBadge value={i.severity} /></td><td><StatusBadge status={i.status} /></td><td className="mono">{fmtTime(last?.timestamp || i.created_at)}</td>
           </tr>
         })}</tbody></table></div>

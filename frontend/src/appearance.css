@@ -76,7 +76,21 @@
 :root[data-theme] .shell :is(.vsteps li b,.vsteps li small,.aiRecommendation p,.analysisHeadline p,.analysisEvidence li,.analysisJson summary) { color:var(--muted); }
 :root[data-theme] .shell .analysisHeadline h3 { color:var(--text); }:root[data-theme] .shell .analysisEvidence li>span { background:var(--mint-soft); color:var(--mint); }
 :root[data-theme] .shell .stepper .done .stepDot { color:var(--mint); background:var(--mint-soft); border-color:var(--line2); }:root[data-theme] .shell .stepper .current .stepDot { color:var(--amber); background:var(--amber-soft); border-color:var(--line2); }
-:root[data-theme] .shell .decisionConfirm { background:var(--amber-soft); border-color:#dcae61; color:var(--text); }
+:root[data-theme] .shell .decisionConfirm { background:var(--panel2); border-color:var(--line2); border-radius:10px; color:var(--text); }
+/* Native dialogs are promoted to the top layer but share dashboard tokens. */
+:root[data-theme] .responseDialog { background:var(--card-surface); color:var(--text); border:1px solid var(--card-border); border-radius:14px; box-shadow:0 24px 80px #0005; font:inherit; }
+:root[data-theme] .responseDialog::backdrop { background:#0007; backdrop-filter:blur(4px); }
+:root[data-theme='dark'] .responseDialog::backdrop { background:#000b; }
+:root[data-theme] .responseDialog .dialogTarget { background:var(--panel2); border-color:var(--line); border-radius:10px; }
+:root[data-theme] .responseDialog :is(.dialogTarget small,.dialogTarget>.icon) { color:var(--mint); }
+:root[data-theme] .responseDialog :is(.quickEvidence p,.dialogDetails,.scopeNote,.field>span,.sectionIndex) { color:var(--muted); }
+:root[data-theme] .responseDialog .dialogDetails { background:var(--panel2); border-color:var(--line); border-radius:8px; }
+:root[data-theme] .responseDialog .dialogDetails a { color:var(--mint); }
+:root[data-theme] .responseDialog .dialogInner>footer { border-color:var(--line); }
+:root[data-theme] .responseDialog .dialogTarget>div { min-width:0; }
+:root[data-theme] .responseDialog .dialogTarget strong { color:var(--text); overflow-wrap:anywhere; }
+:root[data-theme] .shell .btn.danger { background:var(--coral-soft); color:var(--coral); border-color:var(--coral); }
+:root[data-theme] .shell .btn.danger:hover { background:color-mix(in srgb,var(--coral) 18%,var(--panel)); }
 :root[data-theme] .shell .code { background:var(--bg2); color:var(--text); border-color:var(--line); }
 :root[data-theme] .shell :is(.reqCard.good,.verifyState.good) { background:var(--mint-soft); color:var(--mint); border-color:var(--line2); }
 :root[data-theme] .shell .reqCard.bad { background:var(--coral-soft); color:var(--coral); border-color:var(--line2); }

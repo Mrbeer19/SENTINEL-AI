@@ -1,5 +1,5 @@
 import React from 'react'
-import { Icon, incId, isActiveRule, useNow } from '../ui.jsx'
+import { Icon, incId, isActiveRule, isRuleOnly, useNow } from '../ui.jsx'
 
 const STEPS = ['ตรวจพบ', 'วิเคราะห์', 'ตัดสินใจ', 'ยืนยันผล', 'รายงาน']
 
@@ -31,7 +31,7 @@ export function NextStep({ ctx, incident, overview = false }) {
     href = '#/overview'; label = 'ดูประวัติการล็อกอิน'
   } else if (p?.status === 'pending') {
     step = 2; tone = 'warn'; title = 'มีข้อเสนอรอคนตรวจทาน'
-    note = `ตรวจหลักฐานและ IP เป้าหมาย ${p.target_ip || p.source_ip} ก่อนตัดสินใจ ยังไม่มีการบล็อกจากข้อเสนอนี้${p.source === 'rule_fallback' ? ' · ข้อเสนอนี้มาจาก rule fallback ไม่ใช่โมเดล' : ''}`
+    note = `ตรวจหลักฐานและ IP เป้าหมาย ${p.target_ip || p.source_ip} ก่อนตัดสินใจ ยังไม่มีการบล็อกจากข้อเสนอนี้${isRuleOnly(incident.kind) ? ' · ตรวจด้วยกฎเฉพาะทาง' : p.source === 'rule_fallback' ? ' · ข้อเสนอนี้มาจาก rule fallback ไม่ใช่โมเดล' : ''}`
     href = `#/approvals/${p.id}`; label = 'ตรวจข้อเสนอ'
   } else if (incident.status === 'rejected') {
     step = 4; title = 'ปฏิเสธข้อเสนอแล้ว'
@@ -79,6 +79,6 @@ export function NextStep({ ctx, incident, overview = false }) {
         return <li key={name} aria-current={index === step ? 'step' : undefined} className={skipped ? 'skipped' : index === step ? 'current' : index < step ? 'done' : ''}>{index + 1}. {name}{skipped && ' (ไม่ต้องทำ)'}</li>
       })}</ol>
     </div>
-    {analyze ? <button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={() => ctx.act(`/api/incidents/${incident.id}/analyze`, { ok: r => r.analysis_mode === 'rule_fallback' ? 'วิเคราะห์เสร็จด้วย rule fallback · ตรวจข้อเสนอก่อนอนุมัติ' : 'วิเคราะห์ด้วยโมเดลเสร็จแล้ว · ตรวจข้อเสนอก่อนอนุมัติ' })}><Icon name="brain" />{ctx.busy ? 'กำลังวิเคราะห์… (~30 วินาที)' : label}</button> : <a className="btn primary" href={href}>{label}<Icon name="chevron" size={15} /></a>}
+    {analyze ? <button className="btn primary" disabled={ctx.busy || !!ctx.error} onClick={() => ctx.act(`/api/incidents/${incident.id}/analyze`, { ok: r => isRuleOnly(incident.kind) ? 'ตรวจด้วยกฎเฉพาะทางแล้ว · ตรวจข้อเสนอก่อนอนุมัติ' : r.analysis_mode === 'rule_fallback' ? 'วิเคราะห์เสร็จด้วย rule fallback · ตรวจข้อเสนอก่อนอนุมัติ' : 'วิเคราะห์ด้วยโมเดลเสร็จแล้ว · ตรวจข้อเสนอก่อนอนุมัติ' })}><Icon name="brain" />{ctx.busy ? 'กำลังวิเคราะห์… (~30 วินาที)' : label}</button> : <a className="btn primary" href={href}>{label}<Icon name="chevron" size={15} /></a>}
   </section>
 }

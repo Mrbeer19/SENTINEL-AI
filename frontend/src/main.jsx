@@ -20,3 +20,5 @@ import './appearance.css'
 import './icon-artwork.css'
 import './overview-details.css'
 import './ai-flow.css'
+
+import './console-theme.css'

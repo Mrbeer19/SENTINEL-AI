@@ -1,6 +1,6 @@
 import React from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, SeverityBadge, StatusBadge, Stepper, actionLabel, fmtDateTime, fmtTime, incId, isActiveRule, isFallback, kindEvidence, kindName, noProposalNote, parseAnalysis, proposalTone, propId, ruleId, targetIp, durationText } from '../ui.jsx'
+import { Badge, Banner, Code, Empty, Icon, KeyVals, Loading, ModeBadge, Panel, RuleOnlyNotice, SeverityBadge, StatusBadge, Stepper, actionLabel, fmtDateTime, fmtTime, formatEventPaths, incId, isActiveRule, isFallback, isRuleOnly, kindEvidence, kindName, noProposalNote, parseAnalysis, proposalTone, propId, ruleId, targetIp, durationText } from '../ui.jsx'
 import { incidentEvents } from './Incidents.jsx'
 import { NextStep } from '../components/WorkflowGuide.jsx'
 
@@ -22,14 +22,23 @@ const RULES = {
   PORT_SCAN: { distinctPorts: 8 },
   TRAFFIC_ANOMALY: { count: 100 },
   SUSPICIOUS_LOGIN: { success: true, count: 5 },
+  HONEYPOT: { eventType: 'HTTP_REQUEST', match: e => e.outcome === 'honeypot', first: true },
+  HTTP_FLOOD: { eventType: 'HTTP_REQUEST', totals: { request_count: 300 } },
+  WEB_SCAN: { eventType: 'HTTP_REQUEST', totals: { not_found: 10, scan_paths: 3 } },
 }
 
 export function thresholdEvent(events, kind) {
   const rule = RULES[kind]
   if (!rule) return null
   const at = (e) => new Date(e.timestamp).getTime()
-  return events.find((e, i) => {
-    const window = events.slice(0, i + 1).filter(x => at(e) - at(x) <= 60000)
+  const ordered = rule.eventType ? events.filter(e => e.event_type === rule.eventType).slice().sort((a, b) => at(a) - at(b)) : events
+  if (rule.first) return ordered.find(rule.match) || null
+  return ordered.find((e, i) => {
+    const window = ordered.slice(0, i + 1).filter(x => at(e) - at(x) >= 0 && at(e) - at(x) <= 60000)
+    if (rule.totals) return Object.entries(rule.totals).some(([field, count]) => window.reduce((sum, event) => {
+      const value = ['number', 'string'].includes(typeof event[field]) ? Number(event[field]) : 0
+      return sum + (Number.isFinite(value) && value > 0 ? value : 0)
+    }, 0) >= count)
     if (rule.distinctPorts) return new Set(window.map(x => x.destination_port)).size >= rule.distinctPorts
     if (rule.success) return e.outcome === 'success' && window.filter(x => x.outcome === 'failed' && x.event_type === e.event_type).length >= rule.count
     return (!rule.match || rule.match(e)) && window.filter(rule.match || (() => true)).length >= rule.count
@@ -82,40 +91,33 @@ export default function IncidentDetail({ ctx, id }) {
       <div className="titleRow">
         <h2>{kindName(report.kind)}</h2><SeverityBadge value={report.severity} /><StatusBadge status={report.status} />
         <div className="spacer" />
-        <a className="btn ghost" href={`#/trace/${id}`}><Icon name="trace" />View agent trace</a>
-        <a className="btn ghost" href={`/api/reports/${id}`} download={`sentinel-${incId(id)}.json`}><Icon name="download" />Export JSON</a>
+        <a className="btn ghost" href={`#/trace/${id}`}><Icon name="trace" />ดูเส้นทาง Agent</a>
+        <a className="btn ghost" href={`/api/reports/${id}`} download={`sentinel-${incId(id)}.json`}><Icon name="download" />ดาวน์โหลด JSON</a>
       </div>
       <p className="muted">{incId(id)} · <span className="mono">{report.source_ip}</span> · opened {fmtDateTime(report.created_at)}{report.rule_id && <> · rule <span className="mono">{report.rule_id}</span></>}{report.attack_technique && <> · ATT&amp;CK <span className="mono">{report.attack_technique}</span></>}</p>
     </div>
 
     <div className="span3 detailNextStep"><NextStep ctx={ctx} incident={report} /></div>
+    {isRuleOnly(report.kind) && <div className="span3"><RuleOnlyNotice kind={report.kind} /></div>}
     <Panel className="span3"><Stepper steps={detailStages(report)} /></Panel>
 
     <div className="facts span3">
-      <Fact icon="laptop" label="Source IP" value={report.source_ip} mono />
-      <Fact icon="clock" label="Window" value="60 seconds" />
-      <Fact icon="rules" label="Evidence" value={kindEvidence(report)} />
-      <Fact icon="shield" label="Action TTL" value={p ? durationText(p.duration_seconds) : '—'} />
+      <Fact icon="clock" label="ช่วงตรวจจับ" value="60 วินาที" />
+      <Fact icon="rules" label="หลักฐาน" value={kindEvidence(report)} />
+      <Fact icon="shield" label="ระยะเวลาบล็อก" value={p ? durationText(p.duration_seconds) : '—'} />
     </div>
 
     <Panel title="หลักฐานที่ตรวจพบ" icon="rules" className="span2" actions={<span className="muted small">{events.length} events · {report.kind === 'SSH_BRUTE_FORCE' ? 'synthetic log replay' : 'stored events'}</span>}>
-      {events.length ? <div className="tableWrap tall"><table>
-        <thead><tr><th>Time</th><th>Event type</th><th>Outcome</th><th>Port</th><th>Username</th><th /></tr></thead>
-        <tbody>{events.map(e => <tr key={e.id} className={e.id === thresholdId ? 'flag' : ''}>
-          <td className="mono">{fmtTime(e.timestamp)}</td><td>{e.event_type}</td>
-          <td><span className={`code-pill ${e.outcome === 'failed' ? 'coral' : e.outcome === 'success' ? 'mint' : 'amber'}`}>{e.outcome}</span></td>
-          <td className="mono">{e.destination_port ?? '—'}</td><td className="mono userCell">{e.username ?? '—'}</td>
-          <td>{e.id === thresholdId && <span className="coral small">Detection threshold reached</span>}</td>
-        </tr>)}</tbody></table></div> : <Empty>ไม่พบ event</Empty>}
+      <EventEvidenceTable events={events} thresholdId={thresholdId} />
     </Panel>
 
     <div className="stack detailAnalysis">
-      <Panel title="คำแนะนำจาก AI" icon="brain" actions={<ModeBadge mode={report.analysis_mode} />}>
-        {report.status === 'closed' && !analysis ? <p className="muted">เหตุการณ์ปิดก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} meta={report.analysis_meta} />}
+      <Panel title={isRuleOnly(report.kind) ? 'ผลตรวจด้วยกฎเฉพาะทาง' : 'คำแนะนำจาก AI'} icon="brain" actions={<ModeBadge mode={report.analysis_mode} kind={report.kind} />}>
+        {report.status === 'closed' && !analysis ? <p className="muted">เหตุการณ์ปิดก่อนวิเคราะห์ · วิเคราะห์ incident ที่ปิดแล้วไม่ได้</p> : <AnalysisView analysis={analysis} fallback={isFallback(report)} kind={report.kind} meta={report.analysis_meta} />}
       </Panel>
       <Panel title="Proposed Response" icon="shield">
         {p ? <>
-          {p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล</Banner>}
+          {!isRuleOnly(report.kind) && p.source === 'rule_fallback' && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล</Banner>}
           <KeyVals items={[['Action', actionLabel[p.action] || p.action], ['Target IP', <span className="mono">{targetIp(p)}</span>], ['Duration', durationText(p.duration_seconds)], ['Status', <Badge tone={proposalTone[p.status]}>{p.status === 'pending' ? 'Awaiting human decision' : p.status}</Badge>]]} />
           {p.policy_notes?.length > 0 && <ul className="muted small">{p.policy_notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
           {p.status === 'pending' ? <a className="btn primary block" href={`#/approvals/${p.id}`}>Review approval</a> : <p className="muted small">Decided by {p.reviewer}</p>}
@@ -137,20 +139,37 @@ function Fact({ icon, label, value, mono }) {
   return <div className="fact"><Icon name={icon} size={26} /><div><span>{label}</span><b className={mono ? 'mono' : ''}>{value}</b></div></div>
 }
 
-export function AnalysisView({ analysis, fallback, meta }) {
-  if (!analysis) return <p className="muted">ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบอ่านหลักฐานและเสนอการตอบสนอง</p>
+export function EventEvidenceTable({ events, thresholdId }) {
+  if (!events.length) return <Empty>ไม่พบ event</Empty>
+  const web = events.some(e => e.event_type === 'HTTP_REQUEST')
+  const other = events.some(e => e.event_type !== 'HTTP_REQUEST')
+  return <div className="tableWrap tall"><table>
+    <thead><tr><th>Time</th><th>Event type</th><th>Outcome</th>{other && <><th>Port</th><th>Username</th></>}{web && <><th>Requests</th><th>404</th><th>Paths</th></>}<th /></tr></thead>
+    <tbody>{events.map(e => <tr key={e.id} className={e.id === thresholdId ? 'flag' : ''}>
+      <td className="mono">{fmtTime(e.timestamp)}</td><td>{e.event_type}</td>
+      <td><span className={`code-pill ${e.outcome === 'failed' || e.outcome === 'honeypot' ? 'coral' : e.outcome === 'success' ? 'mint' : 'amber'}`}>{e.outcome}</span></td>
+      {other && <><td className="mono">{e.destination_port ?? '—'}</td><td className="mono userCell">{e.username ?? '—'}</td></>}
+      {web && <><td className="mono">{e.event_type === 'HTTP_REQUEST' ? e.request_count ?? '—' : '—'}</td><td className="mono">{e.event_type === 'HTTP_REQUEST' ? e.not_found ?? '—' : '—'}</td><td className="mono userCell" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{e.event_type === 'HTTP_REQUEST' ? formatEventPaths(e.paths) : '—'}</td></>}
+      <td>{thresholdId != null && e.id === thresholdId && <span className="coral small">Detection threshold reached</span>}</td>
+    </tr>)}</tbody>
+  </table></div>
+}
+
+export function AnalysisView({ analysis, fallback, meta, kind }) {
+  const ruleOnly = isRuleOnly(kind)
+  if (!analysis) return <p className="muted">{ruleOnly ? 'ยังไม่มีผลตรวจจากกฎเฉพาะทาง' : 'ยังไม่ได้วิเคราะห์ · กด “เริ่มวิเคราะห์” ในแถบขั้นตอนถัดไป เพื่อให้ระบบอ่านหลักฐานและเสนอการตอบสนอง'}</p>
   if (analysis.text) return <div className="analysis"><Banner tone="warn" icon="info">ผลนี้ไม่ใช่ JSON ตาม contract</Banner><p>{analysis.text}</p></div>
   const a = analysis.json
   return <div className="analysis">
-    {fallback && <Banner tone="warn" icon="info">ผลนี้มาจาก rule fallback ไม่ใช่การวิเคราะห์ของโมเดล</Banner>}
+    {fallback && !ruleOnly && <Banner tone="warn" icon="info">ผลนี้มาจาก rule fallback ไม่ใช่การวิเคราะห์ของโมเดล</Banner>}
     <p className="lead">{a.explanation_th}</p>
     <KeyVals items={[
       ['Threat type', <span className="mono">{a.threat_type}</span>],
       ['Severity', <SeverityBadge value={a.severity} />],
-      ['Confidence', a.confidence === null ? <span className="muted">— (rule fallback)</span> : `${Math.round(a.confidence * 100)}%`],
+      ['Confidence', a.confidence === null ? <span className="muted">{ruleOnly ? '— (ตรวจด้วยกฎเฉพาะทาง)' : '— (rule fallback)'}</span> : `${Math.round(a.confidence * 100)}%`],
       ['Evidence', <ul>{a.evidence.map((e, i) => <li key={i}>{e}</li>)}</ul>],
       ['Recommended action', actionLabel[a.recommended_action] || a.recommended_action],
-      ...(meta?.model && !fallback ? [['Model', <span className="mono small">{meta.model}{meta.prompt_version ? ` · ${meta.prompt_version}` : ''}</span>]] : []),
+      ...(meta?.model && !fallback && !ruleOnly ? [['Model', <span className="mono small">{meta.model}{meta.prompt_version ? ` · ${meta.prompt_version}` : ''}</span>]] : []),
     ]} />
   </div>
 }

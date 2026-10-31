@@ -26,11 +26,10 @@ export default function Rules({ ctx, id }) {
 
   return <div className="grid rules">
     <div className="span3"><Banner tone="info" icon="info"><b>Scope:</b> กฎนี้ใช้กับ rod-mai-rod เท่านั้น</Banner></div>
-    <div className="stats four span3">
-      <Stat icon="shield" label="Active rules" value={active.length} />
-      <Stat icon="clock" tone="amber" label="Expired / removed" value={rules.length - active.length} />
-      <Stat icon="ok" label="Verified rules" value={rules.filter(r => ruleProof(r, traffic)).length} note="a new request was denied" />
-      <Stat icon="rules" label="Default policy" value="Allow" note="unless a rule blocks the source" />
+    <div className="stats three span3">
+      <Stat icon="shield" label="กฎที่ทำงาน" value={active.length} />
+      <Stat icon="clock" tone="amber" label="หมดอายุ / ปลดแล้ว" value={rules.length - active.length} />
+      <Stat icon="ok" label="ยืนยันผลแล้ว" value={rules.filter(r => ruleProof(r, traffic)).length} note="มีคำขอใหม่ถูกปฏิเสธ" />
     </div>
 
     <Panel className="span2">
@@ -39,11 +38,11 @@ export default function Rules({ ctx, id }) {
           <button aria-pressed={tab === 'active'} className={tab === 'active' ? 'on' : ''} onClick={() => { setTab('active'); setQuery(''); setConfirm(null) }}>กำลังทำงาน ({active.length})</button>
           <button aria-pressed={tab === 'history'} className={tab === 'history' ? 'on' : ''} onClick={() => { setTab('history'); setQuery(''); setConfirm(null) }}>ประวัติ ({rules.length - active.length})</button>
         </div>
-        <label className="search"><Icon name="info" size={16} /><span className="sr">Filter rules</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter by source IP, incident, or rule ID…" /></label>
+        <label className="search"><Icon name="info" size={16} /><span className="sr">Filter rules</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="ค้นหา IP หมายเลขกฎ หรือเหตุการณ์…" /></label>
       </div>
       <FilterSummary count={list.length} total={tab === 'active' ? active.length : rules.length - active.length} active={!!query} onClear={() => setQuery('')} />
       {list.length ? <div className="tableWrap"><table>
-        <thead><tr><th>Rule</th><th>Source IP</th><th>Incident</th><th>Expires</th><th>Status</th><th>Verification</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Rule</th><th>Source IP</th><th>Incident</th><th>Expires</th><th>Status</th><th>Verification</th></tr></thead>
         <tbody>{paging.rows.map(r => {
           const on = isActiveRule(r, now)
           const proof = ruleProof(r, traffic)
@@ -53,23 +52,21 @@ export default function Rules({ ctx, id }) {
             <td className="mono">{fmtExpiry(r)}</td>
             <td><Badge tone={on ? 'good' : 'muted'}>{on ? 'Active' : 'Expired'}</Badge></td>
             <td><Badge tone={proof ? 'good' : 'muted'} icon={proof ? 'ok' : undefined}>{proof ? 'Verified 403' : 'Not verified'}</Badge></td>
-            <td onClick={e => e.stopPropagation()}>{on ? (confirm === r.id
-              ? <span className="confirm"><button className="btn danger sm" disabled={ctx.busy} onClick={() => unblock(r)}>Confirm</button><button className="btn ghost sm" onClick={() => setConfirm(null)}>Cancel</button></span>
-              : <button className="btn ghost sm" disabled={ctx.busy} onClick={() => setConfirm(r.id)}>Unblock</button>) : '—'}</td>
+
           </tr>
         })}</tbody></table></div> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'active' ? <>ไม่มีกฎที่ทำงานอยู่ · <a href="#/approvals">ดูข้อเสนอที่รออนุมัติ</a></> : 'ยังไม่มีกฎที่หมดอายุหรือถูกปลด'}</Empty>}
       <TablePagination state={paging}/>
     </Panel>
 
-    <div className="stack">
+    <div className="stack ruleInspector">
       <Panel title="รายละเอียดกฎ" icon="shield" actions={selected && <Badge tone={isActiveRule(selected, now) ? 'good' : 'muted'}>{isActiveRule(selected, now) ? 'Active' : 'Expired'}</Badge>}>
         {selected ? <RuleDetail rule={selected} now={now} incident={incidentOf(selected)} traffic={traffic} onRemove={() => setConfirm(selected.id)} confirming={confirm === selected.id} busy={ctx.busy || !!ctx.error} unblock={() => unblock(selected)} cancel={() => setConfirm(null)} /> : <Empty>ไม่มีกฎในรายการที่เลือก</Empty>}
       </Panel>
-      <Panel title="Protected Sources" icon="shield">
+      <details className="consolePolicy"><summary>ที่อยู่ที่ระบบไม่อนุญาตให้บล็อก</summary>
         <p className="muted small">Loopback and unspecified addresses are excluded from app-level blocks.</p>
         <div className="chips"><code>127.0.0.1 (localhost)</code><code>::1 (IPv6 localhost)</code><code>0.0.0.0</code></div>
         <p className="muted small">Review the target IP before approving a rule. Only the listed addresses are protected automatically.</p>
-      </Panel>
+      </details>
     </div>
 
     <Panel title="Recent Decisions" icon="rules" className="span3" actions={<span className="muted small">คำขอที่ระบบบันทึกไว้</span>}>
@@ -100,7 +97,7 @@ function RuleDetail({ rule, now, incident, traffic, onRemove, confirming, busy, 
       <div><dt>Expires at</dt><dd className="mono">{fmtExpiry(rule)}</dd></div>
     </dl>
     {on && isPermanentRule(rule) ? <p className="muted small">กฎนี้ไม่หมดอายุเอง ปลดได้ด้วยปุ่ม Unblock ด้านล่าง</p>
-      : on ? <div className="ttl"><div className="ruleTimer" style={{"--remaining":`${Math.min(100,Math.max(0,total>0?left/total*100:0))}%`}}><div><small>เวลาที่เหลือ</small><strong>{remaining(rule, now)}</strong><span>นาที : วินาที</span></div></div><div className="ttlHead"><span>Time remaining</span><b>{remaining(rule, now)}</b></div><div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(left / total * 100)}><span style={{ width: `${(left / total) * 100}%` }} /></div></div>
+      : on ? <div className="ttl"><div className="ttlHead"><span>เวลาที่เหลือ</span><b>{remaining(rule, now)}</b></div><div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(left / total * 100)}><span style={{ width: `${(left / total) * 100}%` }} /></div></div>
       : <p className="muted small">Rule expired or was removed at {fmtTime(rule.expires_at)}.</p>}
     {on && (confirming
       ? <div className="confirm block"><span>ปลดบล็อก {rule.source_ip}?</span><button className="btn danger sm" disabled={busy} onClick={unblock}>Confirm</button><button className="btn ghost sm" onClick={cancel}>Cancel</button></div>

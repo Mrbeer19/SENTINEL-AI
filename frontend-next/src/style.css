@@ -1,0 +1,3477 @@
+/* Observatory B: standalone design system, no imports from dashboard A. */
+:root {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 13px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+a {
+  color: var(--teal);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+a:hover {
+  text-decoration: none;
+}
+button {
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+input,
+select,
+textarea {
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  min-width: 0;
+}
+input::placeholder {
+  color: var(--dim);
+}
+input[type="range"] {
+  padding: 0;
+  accent-color: var(--teal);
+  border: 0;
+  background: none;
+}
+input:focus {
+  border-color: var(--teal);
+}
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  font-weight: 600;
+}
+h2 {
+  font-size: 18px;
+}
+h3 {
+  font-size: 15px;
+}
+svg {
+  flex-shrink: 0;
+}
+[hidden] {
+  display: none !important;
+}
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+tr:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+::selection {
+  color: var(--bg);
+  background: var(--teal);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.mono,
+kbd {
+  font-family: var(--font-mono);
+}
+.muted {
+  color: var(--muted);
+}
+.micro,
+.eyebrow {
+  font: 10px/1.6 var(--font-tech);
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.eyebrow {
+  color: var(--teal);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+}
+.large {
+  font-size: 23px;
+}
+.dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex: 0 0 5px;
+}
+.dot.amber {
+  background: var(--amber);
+}
+.dot.red {
+  background: var(--red);
+}
+.nShell {
+  display: block;
+  min-height: 100dvh;
+  background: var(--surface);
+}
+.skipLink {
+  position: fixed;
+  z-index: 100;
+  left: 12px;
+  top: 0;
+  transform: translateY(-110%);
+  padding: 10px 18px;
+  background: var(--teal);
+  color: var(--bg);
+}
+.skipLink:focus {
+  transform: translateY(0);
+}
+.nHeader {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  height: 67px;
+  padding: 0 25px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: block;
+  flex: 0 0 155px;
+}
+.brand img {
+  display: block;
+  width: 155px;
+  height: 35px;
+  object-fit: contain;
+}
+.headerLabel {
+  font: 9px var(--font-tech);
+  color: var(--dim);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.headerLabel b {
+  color: var(--teal);
+}
+.commandSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  min-width: 100px;
+  flex: 1;
+  margin-left: auto;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding: 5px 0;
+}
+.commandSearch input {
+  width: 100%;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  padding: 6px;
+}
+.commandSearch kbd {
+  font-size: 12px;
+  color: var(--dim);
+}
+.connection {
+  position: relative;
+  font: 9px var(--font-tech);
+  letter-spacing: 0.5px;
+}
+.connection > summary {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 0;
+  list-style: none;
+}
+.connection[open] > div {
+  display: grid;
+  gap: 10px;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  padding: 18px;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--surface);
+  border: 1px solid var(--line-hi);
+  box-shadow: none;
+  z-index: 60;
+  font:
+    11px/1.6 "IBM Plex Sans Thai",
+    sans-serif;
+  letter-spacing: 0;
+}
+.connection small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.themeButton {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 32px;
+  color: var(--muted);
+}
+.themeButton:hover {
+  color: var(--teal);
+}
+.operator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-left: 1px solid var(--line);
+  padding-left: 20px;
+}
+.operator > span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-hi);
+  color: var(--teal);
+  font: 11px var(--font-tech);
+}
+.operator details {
+  position: relative;
+}
+.operator summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 11px;
+}
+.operator small {
+  display: block;
+  color: var(--dim);
+  font-size: 8px;
+}
+.operator details button {
+  position: absolute;
+  top: calc(100% + 15px);
+  right: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 13px 18px;
+  border: 1px solid var(--line-hi);
+  background: var(--surface);
+  box-shadow: none;
+}
+.nRail {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: none;
+  border: 1px solid var(--line-hi);
+  box-shadow: none;
+  z-index: 45;
+  max-width: calc(100vw - 24px);
+}
+.nRail > a {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  width: 82px;
+  flex-shrink: 0;
+  min-height: 55px;
+  gap: 6px;
+  color: var(--muted);
+  border-bottom: 1px solid transparent;
+  transition:
+    color 0.16s,
+    background 0.16s,
+    border-color 0.16s;
+}
+.nRail > a > small {
+  position: absolute;
+  top: 3px;
+  left: 7px;
+  color: var(--dim);
+  font: 7px var(--font-tech);
+}
+.nRail > a > span {
+  font-size: 8px;
+}
+.nRail > a:hover {
+  background: var(--raised);
+  color: var(--ink);
+}
+.nRail > a[aria-current="page"] {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+  background: var(--surface);
+}
+.railFoot {
+  display: none;
+}
+#workspace {
+  min-width: 0;
+  padding: 24px 30px 100px;
+  max-width: 1960px;
+  width: 100%;
+  margin: 0 auto;
+  align-self: start;
+  outline: none;
+}
+.pageHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 23px;
+}
+.pageHeading h1 {
+  font: 400 clamp(28px, 3.2vw, 45px) / 1.2 var(--font-tech);
+  letter-spacing: -0.6px;
+  margin: 5px 0 6px;
+}
+.pageHeading p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.pageActions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+.pageActions time {
+  color: var(--dim);
+  font: 10px var(--font-tech);
+  text-transform: uppercase;
+}
+.nFooter {
+  border-top: 1px solid var(--line);
+  margin-top: 26px;
+  padding-top: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--dim);
+  font: 8px/1.6 var(--font-tech);
+  letter-spacing: 0.5px;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  min-height: 36px;
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--radius);
+  font-size: 11px;
+  line-height: 1.6;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.12s,
+    border-color 0.15s;
+}
+.button:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.button.primary {
+  background: var(--teal);
+  color: var(--bg);
+  border-color: var(--teal);
+  font-weight: 600;
+}
+.button.primary:hover:not(:disabled) {
+  box-shadow: none;
+  background: color-mix(in srgb, var(--teal) 90%, white);
+}
+.button.danger {
+  border-color: color-mix(in srgb, var(--red) 60%, var(--line));
+  background: var(--red-soft);
+  color: var(--red);
+}
+.button.compact {
+  min-height: 29px;
+  padding: 5px 10px;
+  font-size: 10px;
+}
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--teal);
+  font-size: 10px;
+  padding: 6px 0;
+}
+.textButton:hover {
+  text-decoration: underline;
+}
+.inlineActions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.field {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.field input {
+  width: 100%;
+  min-height: 40px;
+}
+.instrument {
+  position: relative;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 16px 0;
+}
+.instrument::before,
+.instrument::after {
+  display: none;
+}
+.instrument > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 0 13px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+  min-width: 0;
+}
+.instrument > header h2 {
+  font: 600 11px/1.5 var(--font-tech);
+  letter-spacing: 0.7px;
+}
+.instrument > header h2 small {
+  color: var(--dim);
+  margin-right: 6px;
+  font-size: 8px;
+  font-weight: 400;
+}
+.instrument > header > .segmented {
+  margin-left: auto;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  font-size: 9px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--raised);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag > i {
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.tag.good {
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-color: color-mix(in srgb, var(--teal) 25%, var(--line));
+}
+.tag.warn {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 25%, var(--line));
+}
+.tag.bad {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 25%, var(--line));
+}
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-hi);
+  background: var(--raised);
+  padding: 13px 15px;
+  margin-bottom: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.notice.bad {
+  border-color: color-mix(in srgb, var(--red) 35%, var(--line));
+  background: var(--red-soft);
+  color: var(--red);
+}
+.notice > .textButton {
+  margin-left: auto;
+}
+.empty {
+  min-height: 130px;
+  padding: 30px 15px;
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.empty svg {
+  color: var(--line-hi);
+}
+.segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.segmented > button {
+  padding: 5px 10px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+.segmented > button[aria-pressed="true"] {
+  color: var(--teal);
+  background: var(--teal-soft);
+  border-color: color-mix(in srgb, var(--teal) 20%, var(--line));
+}
+.segmented > button:hover {
+  color: var(--ink);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  color: var(--dim);
+  background: var(--bg);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  font-size: 11px;
+  border: 0;
+  padding: 5px 0;
+  background: none;
+}
+.search button {
+  display: grid;
+  place-items: center;
+}
+.filterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.filterBar .search {
+  flex: 1;
+  max-width: 380px;
+}
+.tableMeta {
+  font-size: 10px;
+  color: var(--dim);
+  margin: 0 0 13px;
+}
+.dataScroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow: auto;
+  max-height: 450px;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.dataScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.dataScroll th {
+  color: var(--dim);
+  font: 9px/1.5 var(--font-tech);
+  letter-spacing: 0.6px;
+  padding: 11px 10px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.dataScroll td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.dataScroll tr:last-child td {
+  border-bottom: 0;
+}
+.dataScroll tbody tr {
+  transition: background 0.14s;
+}
+.dataScroll tr[tabindex] {
+  cursor: pointer;
+}
+.dataScroll tr:hover {
+  background: color-mix(in srgb, var(--raised) 75%, transparent);
+}
+.dataScroll tr.selected {
+  background: var(--teal-soft);
+  box-shadow: none;
+}
+.pagination {
+  padding-top: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+.pagination > div {
+  display: flex;
+  gap: 6px;
+}
+.metricStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 0;
+  margin-bottom: 18px;
+  background: transparent;
+}
+.metricStrip > div {
+  padding: 16px 20px 15px;
+  position: relative;
+  border: 0;
+  min-width: 0;
+}
+.metricStrip > div:first-child {
+  padding-left: 4px;
+}
+.metricStrip > div:last-child {
+  border: 0;
+}
+.metricStrip small {
+  display: flex;
+  gap: 12px;
+  color: var(--muted);
+  font: 9px var(--font-tech);
+  letter-spacing: 0.6px;
+}
+.metricStrip small span {
+  color: var(--dim);
+}
+.metricStrip strong {
+  display: block;
+  font: 400 43px/1.2 var(--font-tech);
+  color: var(--ink);
+  margin: 7px 0;
+}
+.metricStrip p {
+  font-size: 10px;
+  color: var(--muted);
+}
+.metricStrip > div > i {
+  position: absolute;
+  right: 19px;
+  bottom: 24px;
+  width: 20px;
+  height: 5px;
+  background: var(--surface);
+  opacity: 0.6;
+}
+.metricStrip > div > i.hot {
+  background: var(--surface);
+}
+.observatoryGrid {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 265px;
+  gap: 16px;
+  align-items: start;
+}
+.insightColumn,
+.signalColumn {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.radar {
+  margin: 0;
+}
+.radar svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.radarGrid {
+  fill: none;
+  stroke: var(--line-hi);
+  stroke-width: 0.65;
+}
+.radarShape {
+  stroke: var(--teal);
+  fill: color-mix(in srgb, var(--teal) 12%, transparent);
+  stroke-width: 1.5;
+}
+.radar text {
+  fill: var(--muted);
+  font: 8px var(--font-tech);
+}
+.radar tspan,
+.radar circle {
+  fill: var(--teal);
+}
+.radar figcaption {
+  font-size: 8px;
+  color: var(--dim);
+  text-align: center;
+  margin-bottom: 12px;
+  line-height: 1.7;
+}
+.companionNote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 13px 5px;
+  border-bottom: 1px solid var(--line);
+}
+.companionNote img {
+  width: 105px;
+  height: 120px;
+  filter: none;
+  object-fit: contain;
+}
+.companionNote small {
+  color: var(--teal);
+  font: 8px var(--font-tech);
+  letter-spacing: 0.5px;
+}
+.companionNote p {
+  font-size: 11px;
+  margin-top: 7px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.scopeCard {
+  display: flex;
+  gap: 10px;
+  padding: 10px 5px;
+  color: var(--teal);
+}
+.scopeCard > span {
+  font: 9px var(--font-tech);
+}
+.scopeCard small {
+  display: block;
+  font:
+    9px/1.8 "IBM Plex Sans Thai",
+    sans-serif;
+  color: var(--dim);
+  margin-top: 8px;
+}
+.topologyPanel {
+  padding: 16px 16px 10px;
+  background: var(--surface);
+}
+.topologyPanel > header {
+  border: 0;
+  margin-bottom: 0;
+}
+.connectionMap {
+  min-width: 0;
+}
+.connectionMap > svg {
+  width: 100%;
+  height: 420px;
+  display: block;
+}
+.connectionOrbit {
+  fill: none;
+  stroke: var(--line-hi);
+  stroke-width: 0.6;
+  stroke-dasharray: 2 5;
+  opacity: 0.5;
+}
+.connectionRoute {
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.connectionSource.attention .connectionRoute {
+  stroke: var(--amber);
+}
+.connectionSource.blocked .connectionRoute {
+  stroke: var(--red);
+}
+.connectionSource.selected .connectionRoute,
+.connectionSource:hover .connectionRoute {
+  opacity: 1;
+  stroke-width: 1.5;
+}
+.connectionPacket {
+  fill: var(--teal);
+  filter: none;
+  pointer-events: none;
+}
+.connectionSource.attention .connectionPacket {
+  fill: var(--amber);
+}
+.connectionSource.blocked .connectionPacket {
+  fill: var(--red);
+}
+.connectionEndpoint {
+  cursor: pointer;
+  outline: none;
+}
+.connectionFocus {
+  fill: var(--teal-soft);
+  stroke: var(--line-hi);
+  stroke-width: 1;
+}
+.selected .connectionFocus,
+.connectionEndpoint:focus-visible .connectionFocus {
+  stroke: var(--teal);
+  stroke-width: 2;
+}
+.connectionMap text {
+  font: 13px var(--font-tech);
+  fill: var(--ink);
+}
+.connectionMap .connectionNodeState {
+  fill: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.connectionHub > circle:first-child {
+  fill: none;
+  stroke: var(--teal);
+  stroke-opacity: 0.65;
+}
+.connectionHub > text {
+  font-size: 12px;
+  fill: var(--teal);
+}
+.connectionMap .connectionAwaiting {
+  font:
+    12px "IBM Plex Sans Thai",
+    sans-serif;
+  fill: var(--muted);
+}
+.connectionMapFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 9px;
+  color: var(--muted);
+  padding: 0 0 12px;
+}
+.connectionMapFooter > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.connectionMapFooter small {
+  font-size: 8px;
+}
+.mapLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding: 11px 0 0;
+  font-size: 8px;
+  color: var(--muted);
+}
+.mapLegend > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mapLegend small {
+  margin-left: auto;
+  font-size: 8px;
+  color: var(--dim);
+}
+.signalCard {
+  display: grid;
+  gap: 7px;
+  padding: 14px 12px;
+  margin-bottom: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  transition:
+    border-color 0.16s,
+    background 0.16s;
+}
+.signalCard.attention {
+  border-left: 1px solid var(--amber);
+  background: var(--surface);
+}
+.signalCard:hover {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+.signalCard > small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: var(--amber);
+}
+.signalCard b {
+  font-size: 12px;
+  font-weight: 600;
+}
+.signalCard > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.signalCard footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  padding-top: 4px;
+  font-size: 9px;
+}
+.signalLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.signalLine:last-child {
+  border: 0;
+}
+.signalLine > span:not(.tag) {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+}
+.signalLine small {
+  display: block;
+  color: var(--dim);
+  font-size: 9px;
+  margin-top: 4px;
+}
+.signalLine .tag {
+  font-size: 7px;
+  padding: 2px 4px;
+}
+.sourceTitle {
+  font-size: 19px;
+  margin-bottom: 14px;
+}
+.geo {
+  border-left: 2px solid var(--teal);
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.geo small {
+  display: block;
+  color: var(--dim);
+  font-size: 9px;
+}
+.telemetryRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+.telemetryRow .dataScroll {
+  max-height: 440px;
+}
+.telemetryRow .dataScroll td {
+  height: 40px;
+  padding-block: 9px;
+}
+.trafficHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.trafficHeader strong {
+  font: 600 29px var(--font-tech);
+  color: var(--ink);
+}
+.trafficHeader strong small {
+  font:
+    9px "IBM Plex Sans Thai",
+    sans-serif;
+  color: var(--dim);
+  margin-left: 8px;
+}
+.trafficHeader > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.traffic svg {
+  width: 100%;
+  display: block;
+  margin-top: 15px;
+  max-height: 240px;
+  overflow: visible;
+}
+.plotGrid {
+  stroke: var(--line);
+  stroke-dasharray: 2 5;
+  stroke-width: 1;
+}
+.plotArea {
+  fill: color-mix(in srgb, var(--teal) 8%, transparent);
+}
+.plotLine {
+  stroke: var(--teal);
+  fill: none;
+  stroke-width: 1.5;
+}
+.traffic circle {
+  fill: var(--teal);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.traffic circle:focus {
+  r: 5px;
+  outline: none;
+  stroke: var(--ink);
+}
+.traffic text {
+  font: 8px var(--font-tech);
+  fill: var(--muted);
+}
+.facts {
+  margin: 17px 0;
+  display: grid;
+  gap: 12px;
+}
+.facts > div {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.facts dt {
+  font-size: 10px;
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.verdict {
+  display: grid;
+  gap: 16px;
+}
+.verdictHead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.verdictHead > div {
+  flex: 1;
+  min-width: 0;
+}
+.verdictHead h3 {
+  font-size: 18px;
+  margin-top: 6px;
+}
+.verdict > p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+.confidence {
+  display: grid;
+  gap: 3px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.confidence b {
+  font: 600 23px var(--font-tech);
+  color: var(--teal);
+}
+.confidence small {
+  font-size: 8px;
+  color: var(--dim);
+}
+.evidencePoints {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.evidencePoints li {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.evidencePoints li > span {
+  font: 10px var(--font-tech);
+  color: var(--teal);
+  flex-shrink: 0;
+}
+.recommendation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  padding: 12px;
+}
+.recommendation small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.recommendation b {
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 500;
+}
+.raw {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 0;
+}
+.raw > summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.raw > span {
+  font-size: 9px;
+  margin-left: 10px;
+}
+.raw pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11px/1.8 var(--font-tech);
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  padding: 12px;
+  background: var(--bg);
+  color: var(--muted);
+}
+.policy {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 13px 0;
+  margin: 18px 0;
+}
+.policy summary {
+  color: var(--ink);
+  cursor: pointer;
+}
+.policy p {
+  margin: 12px 0;
+}
+.hint {
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--dim);
+  margin: 12px 0;
+}
+.subhead {
+  font-size: 12px;
+  padding-top: 20px;
+  margin: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.decisionLayout,
+.archiveLayout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.decisionLayout > .instrument:last-of-type {
+  padding: 22px;
+}
+.queue {
+  display: grid;
+  gap: 8px;
+  max-height: 660px;
+  overflow: auto;
+  margin-top: 14px;
+  scrollbar-width: thin;
+}
+.queueCard {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  padding: 14px;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.queueCard > small {
+  font: 9px var(--font-tech);
+  color: var(--muted);
+}
+.queueCard > b {
+  font-size: 12px;
+}
+.queueCard > span:not(.tag) {
+  font-size: 10px;
+  color: var(--dim);
+}
+.queueCard .tag {
+  justify-self: start;
+}
+.queueCard.selected,
+.queueCard:hover {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+}
+.decisionClear {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 15px;
+  padding: 65px 20px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+.decisionClear > svg {
+  color: var(--teal);
+}
+.decisionClear h2 {
+  color: var(--ink);
+  font-size: 19px;
+}
+.decisionClear p {
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 350px;
+}
+.targetStrip {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+  padding: 3px 0 20px;
+}
+.targetStrip > svg {
+  color: var(--teal);
+}
+.targetStrip small {
+  display: block;
+  font: 9px var(--font-tech);
+  color: var(--dim);
+}
+.targetStrip strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 4px;
+}
+.targetStrip > span {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--amber);
+}
+.decisionButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.decisionButtons .primary {
+  flex: 1;
+}
+.rulesLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 18px;
+  align-items: start;
+}
+.countdown {
+  padding: 12px 0 18px;
+}
+.countdown small {
+  font: 9px var(--font-tech);
+  color: var(--muted);
+}
+.countdown strong {
+  display: block;
+  font: 600 35px var(--font-tech);
+  color: var(--teal);
+}
+.countdown em {
+  font-size: 12px;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--dim);
+}
+.proof {
+  display: grid;
+  gap: 7px;
+  border-left: 2px solid var(--line-hi);
+  padding: 12px;
+  background: var(--raised);
+  margin: 20px 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.proof > svg {
+  color: var(--teal);
+}
+.proof b {
+  font-weight: 500;
+}
+.proof small {
+  color: var(--dim);
+  font-size: 9px;
+}
+.proof.good {
+  border-color: var(--teal);
+}
+.reportIdentity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.reportIdentity h2 {
+  flex: 1 1 60%;
+  font-size: 21px;
+}
+.reportIdentity > span:not(.tag) {
+  color: var(--muted);
+  font-size: 12px;
+}
+.reportIdentity > small {
+  color: var(--dim);
+  font-size: 10px;
+}
+.timeline {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 65px 105px minmax(0, 1fr);
+  gap: 15px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.timeline time {
+  font: 10px var(--font-tech);
+  color: var(--dim);
+}
+.timeline b {
+  font-size: 11px;
+  color: var(--teal);
+  font-weight: 500;
+}
+.timeline p {
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.dossier {
+  display: grid;
+  gap: 18px;
+}
+.dossierHeader {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 20px;
+}
+.dossierHeader h2 {
+  font: 600 24px var(--font-tech);
+  margin: 8px 0;
+}
+.dossierHeader h2 > span {
+  font:
+    12px "IBM Plex Sans Thai",
+    sans-serif;
+  color: var(--muted);
+  margin-left: 15px;
+}
+.dossierHeader p {
+  font-size: 12px;
+}
+.dossierHeader p > span {
+  font-size: 10px;
+  color: var(--dim);
+}
+.dossierActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.dossierGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.dossierGrid .instrument .button {
+  width: 100%;
+}
+.workContext {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  margin-bottom: 18px;
+}
+.workContext label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+.workContext select {
+  padding: 7px 10px;
+  max-width: 100%;
+  font-size: 11px;
+}
+.agentLab {
+  --spatial-bg: var(--surface);
+  --spatial-text: var(--text);
+  --spatial-idle: var(--text-dim);
+  --spatial-line: var(--line);
+  --spatial-done: var(--data);
+  --spatial-active: var(--review);
+  --spatial-fail: var(--critical);
+  border: 0;
+  background: transparent;
+  min-width: 0;
+}
+:root[data-theme="light"] .agentLab {
+  --spatial-idle: var(--text-dim);
+  --spatial-line: var(--line);
+  --spatial-done: var(--data);
+  --spatial-active: var(--review);
+  --spatial-fail: var(--critical);
+}
+.labHead {
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.stageRail {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+.stageRail button {
+  text-align: left;
+  padding: 14px;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+  border-top: 2px solid transparent;
+  background: transparent;
+  transition: background 0.15s;
+}
+.stageRail button:last-child {
+  border-right: 0;
+}
+.stageRail button small {
+  display: block;
+  color: var(--dim);
+  font: 9px var(--font-tech);
+}
+.stageRail button b {
+  display: block;
+  font: 600 12px var(--font-tech);
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.stageRail button > span {
+  font-size: 9px;
+  color: var(--dim);
+}
+.stageRail button.done > span {
+  color: var(--teal);
+}
+.stageRail button.fail > span {
+  color: var(--red);
+}
+.stageRail button.active > span {
+  color: var(--amber);
+}
+.stageRail button[aria-pressed="true"] {
+  background: var(--teal-soft);
+  border-top-color: var(--teal);
+}
+.labBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  align-items: stretch;
+}
+.labViewport {
+  position: relative;
+  min-width: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+.labCanvas {
+  width: 100%;
+  height: 430px;
+  overflow: hidden;
+  position: relative;
+}
+.labCanvas canvas {
+  display: block;
+  max-width: 100%;
+}
+.canvasActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  position: absolute;
+  top: 13px;
+  left: 14px;
+}
+.canvasCaption {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  font-size: 8px;
+  color: var(--dim);
+  pointer-events: none;
+}
+.canvasStatus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+.stageDetail {
+  border-left: 1px solid var(--line);
+  padding: 20px;
+  min-width: 0;
+  align-self: stretch;
+}
+.stageDetail h2 {
+  margin: 10px 0;
+  font: 600 23px var(--font-tech);
+}
+.stageDetail > p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
+  margin: 16px 0;
+}
+.stageDetail .button {
+  width: 100%;
+  font-size: 10px;
+}
+.traceSnippets {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.traceSnippets > div {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 9px;
+  font: 11px var(--font-tech);
+  overflow-wrap: anywhere;
+}
+.traceSnippets small {
+  display: block;
+  color: var(--dim);
+  font: 9px var(--font-tech);
+  margin-top: 4px;
+}
+.follow {
+  margin-top: 17px;
+  font-size: 10px;
+}
+.playback {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding: 13px 16px 5px;
+}
+.playback label {
+  flex: 1;
+  min-width: 0;
+}
+.playback input {
+  width: 100%;
+}
+.playback > span {
+  font: 10px var(--font-tech);
+  white-space: nowrap;
+  color: var(--muted);
+}
+.labFootnote {
+  padding: 8px 16px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 10px;
+}
+.labFootnote small {
+  color: var(--dim);
+  font-size: 8px;
+}
+.labTabContent {
+  padding: 22px;
+}
+.toolRecord {
+  border: 1px solid var(--line);
+  padding: 15px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.toolRecord > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.toolRecord b {
+  font: 12px var(--font-tech);
+}
+.toolRecord time,
+.toolRecord > header > span:not(.tag) {
+  color: var(--dim);
+  font-size: 10px;
+}
+.confirmDialog {
+  width: min(500px, calc(100vw - 30px));
+  border: 1px solid var(--line-hi);
+  padding: 24px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+  max-height: 90dvh;
+  overflow: auto;
+}
+.confirmDialog::backdrop {
+  background: var(--surface-2);
+  backdrop-filter: none;
+}
+.confirmDialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--teal);
+  font: 9px var(--font-tech);
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+}
+.confirmDialog > h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.confirmBody {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.9;
+  padding: 20px 0;
+}
+.confirmBody .large {
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.confirmBody small {
+  display: block;
+  font-size: 10px;
+  margin-top: 14px;
+  color: var(--dim);
+}
+.confirmDialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: fixed;
+  z-index: 80;
+  bottom: 20px;
+  right: 25px;
+  max-width: min(450px, calc(100vw - 30px));
+  padding: 15px 18px;
+  border: 1px solid var(--line-hi);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 12px;
+}
+.toast.good > svg {
+  color: var(--teal);
+}
+.toast.bad > svg {
+  color: var(--red);
+}
+.toast > button {
+  margin-left: auto;
+}
+.toast details {
+  font-size: 10px;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.loadingState {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 70px 20px;
+  color: var(--muted);
+  justify-content: center;
+}
+.loadingState > i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-hi);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.loginPage {
+  min-height: 100dvh;
+  padding: 60px max(30px, 8vw);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  align-items: center;
+  gap: 8vw;
+  background-image: none;
+  background-size: 80px 80px;
+}
+.loginPage > .themeButton {
+  position: absolute;
+  top: 25px;
+  right: 30px;
+}
+.loginArt .brand {
+  margin-bottom: 50px;
+}
+.loginArt > .eyebrow {
+  display: block;
+  margin-bottom: 15px;
+}
+.loginArt h1 {
+  font: 400 clamp(32px, 4vw, 60px) / 1.1 var(--font-tech);
+  letter-spacing: -1px;
+}
+.loginArt h1 em {
+  font-style: normal;
+  color: var(--teal);
+}
+.loginArt > p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin-top: 20px;
+}
+.loginOrbit {
+  height: 230px;
+  position: relative;
+  max-width: 370px;
+  margin-top: 20px;
+  display: grid;
+  place-items: center;
+}
+.loginOrbit img {
+  width: 170px;
+  height: 200px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+.loginOrbit i {
+  position: absolute;
+  width: 270px;
+  height: 90px;
+  border: 1px solid var(--line-hi);
+  border-radius: 50%;
+  transform: rotate(-25deg);
+}
+.loginOrbit i:nth-child(2) {
+  transform: rotate(25deg);
+}
+.loginOrbit i:nth-child(3) {
+  width: 210px;
+  height: 210px;
+  transform: rotate(0);
+  border-style: dashed;
+  opacity: 0.5;
+}
+.loginForm {
+  display: grid;
+  gap: 19px;
+  background: var(--surface);
+  border: 1px solid var(--line-hi);
+  padding: 35px;
+  box-shadow: none;
+  max-width: 440px;
+  width: 100%;
+}
+.loginForm h2 {
+  font-size: 25px;
+}
+.loginForm > p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.loginForm > small {
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.8;
+}
+.loginForm .notice {
+  margin: 0;
+}
+.loginForm .button {
+  min-height: 42px;
+}
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pageContent {
+  min-width: 0;
+  animation: pageIn 0.23s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.confirmDialog[open] {
+  animation: pageIn 0.18s ease-out;
+}
+@media (min-width: 1650px) {
+  .observatoryGrid {
+    grid-template-columns: 255px minmax(0, 1fr) 300px;
+    gap: 22px;
+  }
+  .connectionMap > svg {
+    height: 420px;
+  }
+  .labCanvas {
+    height: 480px;
+  }
+}
+@media (max-width: 1200px) {
+  .headerLabel {
+    display: none;
+  }
+  .nHeader {
+    gap: 18px;
+  }
+  .observatoryGrid {
+    grid-template-columns: 185px minmax(0, 1fr) 225px;
+    gap: 12px;
+  }
+  .instrument {
+    padding: 13px;
+  }
+  .connectionMap > svg {
+    height: 390px;
+  }
+  .signalCard {
+    padding: 11px;
+  }
+  .labBody {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+  .stageRail button {
+    padding: 12px 9px;
+  }
+  .stageRail button b {
+    font-size: 11px;
+  }
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: 235px minmax(0, 1fr);
+  }
+  .rulesLayout {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+  .signalLine {
+    flex-wrap: wrap;
+  }
+  .signalLine .tag {
+    font-size: 7px;
+  }
+}
+@media (max-width: 1000px) {
+  .nHeader {
+    padding: 0 17px;
+    gap: 15px;
+  }
+  .brand {
+    flex-basis: 140px;
+  }
+  .brand img {
+    width: 140px;
+  }
+  .connection > summary > span {
+    display: none;
+  }
+  .operator > span {
+    display: none;
+  }
+  .operator {
+    padding-left: 12px;
+  }
+  #workspace {
+    padding: 24px 23px 105px;
+  }
+  .nRail {
+    padding-inline: 5px;
+  }
+  .nRail > a > small {
+    display: none;
+  }
+  .nRail > a > span {
+    font-size: 7px;
+  }
+  .observatoryGrid {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .signalColumn {
+    grid-column: 1/-1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .signalColumn > .instrument {
+    min-width: 0;
+  }
+  .connectionMap > svg {
+    height: 360px;
+  }
+  .metricStrip > div {
+    padding: 14px 13px;
+  }
+  .metricStrip small {
+    font-size: 8px;
+    gap: 7px;
+  }
+  .metricStrip strong {
+    font-size: 30px;
+  }
+  .metricStrip > div > i {
+    display: none;
+  }
+  .telemetryRow {
+    grid-template-columns: 1fr;
+  }
+  .labBody {
+    grid-template-columns: 1fr;
+  }
+  .stageDetail {
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 18px;
+  }
+  .stageRail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .stageRail button:nth-child(n + 4) {
+    border-top: 1px solid var(--line);
+  }
+  .stageRail button:nth-child(3) {
+    border-right: 0;
+  }
+  .stageRail button[aria-pressed="true"] {
+    box-shadow: none;
+  }
+  .labCanvas {
+    height: 380px;
+  }
+  .rulesLayout {
+    grid-template-columns: 1fr;
+  }
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .dossierGrid {
+    grid-template-columns: 1fr;
+  }
+  .targetStrip strong {
+    font-size: 21px;
+  }
+  .targetStrip {
+    flex-wrap: wrap;
+  }
+  .verdictHead h3 {
+    font-size: 16px;
+  }
+  .timeline li {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .timeline li > p {
+    grid-column: 2;
+  }
+  .pageActions time {
+    display: none;
+  }
+  .workContext label {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 700px) {
+  .nShell {
+    display: block;
+  }
+  .nHeader {
+    height: auto;
+    min-height: 62px;
+    padding: 13px 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .nHeader .brand {
+    flex: 1;
+  }
+  .nHeader .brand img {
+    width: 148px;
+  }
+  .commandSearch {
+    order: 5;
+    flex-basis: 100%;
+    max-width: none;
+    min-height: 32px;
+  }
+  .connection > summary {
+    padding: 6px;
+  }
+  .operator {
+    padding-left: 8px;
+  }
+  .operator small {
+    display: none;
+  }
+  .operator summary {
+    font-size: 10px;
+  }
+  .operator details button {
+    top: calc(100% + 20px);
+  }
+  .nRail {
+    position: fixed;
+    top: auto;
+    bottom: 10px;
+    left: 50%;
+    gap: 0;
+    padding: 4px;
+    border: 1px solid var(--line-hi);
+    height: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: calc(100vw - 16px);
+  }
+  .nRail > a {
+    width: 55px;
+    flex: 0 0 55px;
+    min-height: 50px;
+    padding: 7px 3px;
+    gap: 5px;
+    border: 0;
+    border-bottom: 1px solid transparent;
+  }
+  .nRail > a > span {
+    font-size: 7px;
+  }
+  .nRail > a > small {
+    display: none;
+  }
+  .nRail > a > svg {
+    width: 17px;
+    height: 17px;
+  }
+  .nRail > a[aria-current="page"] {
+    border-bottom-color: var(--teal);
+  }
+  .railFoot {
+    display: none;
+  }
+  #workspace {
+    padding: 22px 15px 95px;
+  }
+  .pageHeading {
+    margin-bottom: 18px;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .pageHeading h1 {
+    font-size: 27px;
+  }
+  .pageHeading p {
+    font-size: 10px;
+  }
+  .pageActions .button {
+    font-size: 0;
+    min-height: 32px;
+    padding: 7px;
+  }
+  .pageActions .button svg {
+    width: 16px;
+    height: 16px;
+  }
+  .metricStrip {
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 16px;
+  }
+  .metricStrip > div {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .metricStrip > div:first-child {
+    padding-left: 14px;
+  }
+  .metricStrip > div:nth-child(2) {
+    border-right: 0;
+  }
+  .metricStrip > div:nth-child(n + 3) {
+    border-bottom: 0;
+  }
+  .metricStrip strong {
+    font-size: 31px;
+  }
+  .metricStrip small {
+    font-size: 8px;
+  }
+  .metricStrip p {
+    font-size: 9px;
+  }
+  .observatoryGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .observatoryGrid > * {
+    width: 100%;
+  }
+  .insightColumn {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    order: 2;
+    gap: 10px;
+  }
+  .insightColumn > .instrument {
+    grid-row: 1/3;
+  }
+  .companionNote {
+    padding: 10px 0;
+    flex-direction: column;
+    text-align: center;
+  }
+  .companionNote img {
+    width: 60px;
+    height: 65px;
+  }
+  .companionNote p {
+    font-size: 10px;
+  }
+  .scopeCard {
+    padding: 10px 0;
+    gap: 7px;
+  }
+  .scopeCard > span {
+    font-size: 8px;
+  }
+  .scopeCard small {
+    font-size: 8px;
+  }
+  .topologyPanel {
+    order: 1;
+  }
+  .signalColumn {
+    order: 3;
+    grid-template-columns: 1fr;
+  }
+  .signalColumn .instrument:has(.signalCard) {
+    display: block;
+  }
+  .signalLine {
+    flex-wrap: nowrap;
+  }
+  .radar figcaption {
+    font-size: 7px;
+  }
+  .connectionMap > svg {
+    height: 295px;
+  }
+  .connectionMap text {
+    font-size: 11px;
+  }
+  .connectionMapFooter {
+    line-height: 1.6;
+  }
+  .mapLegend small {
+    width: 100%;
+    margin: 0;
+  }
+  .telemetryRow {
+    margin-top: 15px;
+    gap: 15px;
+  }
+  .trafficHeader {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .trafficHeader strong {
+    flex-basis: 100%;
+    font-size: 28px;
+  }
+  .traffic svg {
+    margin-top: 12px;
+  }
+  .instrument {
+    padding: 14px;
+  }
+  .instrument > header {
+    gap: 8px;
+  }
+  .instrument > header h2 {
+    font-size: 10px;
+  }
+  .segmented > button {
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+  .dataScroll table {
+    min-width: 520px;
+  }
+  .dataScroll td {
+    padding: 11px 8px;
+    font-size: 10px;
+  }
+  .dataScroll th {
+    padding-inline: 8px;
+    font-size: 8px;
+  }
+  .telemetryRow .dataScroll table {
+    min-width: 310px;
+  }
+  .filterBar {
+    gap: 10px;
+  }
+  .filterBar .search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .filterBar .segmented {
+    width: 100%;
+  }
+  .filterBar .segmented > button {
+    flex: 1;
+  }
+  .pagination {
+    flex-wrap: wrap;
+  }
+  .button {
+    min-height: 40px;
+  }
+  .button.compact {
+    min-height: 34px;
+  }
+  .tag {
+    font-size: 8px;
+  }
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .queue {
+    max-height: 250px;
+  }
+  .queueCard {
+    padding: 12px;
+    gap: 7px;
+  }
+  .decisionLayout > .instrument:last-of-type {
+    padding: 16px;
+  }
+  .decisionClear {
+    padding: 40px 15px;
+  }
+  .rulesLayout {
+    gap: 16px;
+  }
+  .targetStrip > span {
+    width: 100%;
+    margin-left: 35px;
+  }
+  .targetStrip strong {
+    font-size: 25px;
+  }
+  .decisionButtons {
+    flex-wrap: wrap;
+  }
+  .decisionButtons .button {
+    flex: 1;
+  }
+  .verdictHead > div {
+    flex-basis: 100%;
+  }
+  .confidence {
+    margin-left: auto;
+  }
+  .verdictHead h3 {
+    font-size: 20px;
+  }
+  .verdict > p {
+    font-size: 12px;
+  }
+  .recommendation {
+    flex-wrap: wrap;
+  }
+  .reportIdentity h2 {
+    font-size: 20px;
+  }
+  .dossierHeader {
+    gap: 12px;
+  }
+  .dossierHeader h2 > span {
+    display: block;
+    margin: 4px 0;
+  }
+  .dossierActions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .dossierActions .button {
+    flex: 1;
+  }
+  .facts > div {
+    grid-template-columns: 1fr 1.5fr;
+  }
+  .timeline li {
+    gap: 10px;
+  }
+  .labHead {
+    padding: 11px;
+    flex-wrap: wrap;
+  }
+  .labHead > .segmented {
+    flex: 1 1 100%;
+  }
+  .labHead > .segmented > button {
+    flex: 1;
+  }
+  .stageRail button {
+    padding: 11px 8px;
+  }
+  .stageRail button b {
+    font-size: 11px;
+  }
+  .stageRail button > span {
+    font-size: 8px;
+  }
+  .labCanvas {
+    height: 300px;
+  }
+  .canvasActions {
+    left: 10px;
+    top: 10px;
+    gap: 5px;
+  }
+  .canvasActions .button {
+    min-height: 34px;
+    font-size: 9px;
+  }
+  .canvasCaption {
+    font-size: 8px;
+    left: 10px;
+  }
+  .stageDetail {
+    padding: 18px;
+  }
+  .playback {
+    flex-wrap: wrap;
+    padding: 13px 12px 6px;
+    gap: 10px;
+  }
+  .playback label {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .playback > .button {
+    flex: 1;
+  }
+  .labFootnote {
+    padding: 8px 12px 14px;
+    font-size: 9px;
+  }
+  .labTabContent {
+    padding: 16px;
+  }
+  .workContext select {
+    width: 100%;
+  }
+  .nFooter {
+    font-size: 7px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+  }
+  .confirmDialog {
+    padding: 20px;
+  }
+  .confirmDialog > h2 {
+    font-size: 21px;
+  }
+  .confirmDialog footer {
+    flex-direction: column-reverse;
+  }
+  .confirmDialog footer .button {
+    width: 100%;
+  }
+  .toast {
+    right: 15px;
+    bottom: 15px;
+    font-size: 11px;
+  }
+  .loginPage {
+    padding: 50px 22px 25px;
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .loginArt .brand {
+    margin-bottom: 30px;
+  }
+  .loginArt h1 {
+    font-size: 35px;
+  }
+  .loginArt > p,
+  .loginOrbit {
+    display: none;
+  }
+  .loginForm {
+    padding: 25px;
+    max-width: none;
+  }
+  .loginForm h2 {
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .connectionPacket {
+    display: none;
+  }
+}
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  .nShell {
+    display: block;
+  }
+  .nHeader,
+  .nRail,
+  .pageHeading,
+  .noPrint,
+  .nFooter,
+  .toast {
+    display: none !important;
+  }
+  #workspace {
+    padding: 0;
+    max-width: none;
+  }
+  .archiveLayout {
+    display: block;
+  }
+  .instrument {
+    border: 0;
+    padding: 0;
+  }
+  .dataScroll {
+    max-height: none;
+    overflow: visible;
+  }
+  .pageContent {
+    animation: none;
+  }
+}
+
+.fixtureBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 18px;
+  background: var(--surface-2);
+  color: var(--review);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+}
+.fixtureBar b {
+  font: 600 10px var(--font-tech);
+  letter-spacing: 1px;
+  color: var(--review);
+}
+.fixtureBar select {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+.fixtureBar a {
+  margin-left: auto;
+  color: var(--data);
+}
+.fixtureBar button {
+  color: var(--review);
+  font-size: 9px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+}
+
+.overviewPage {
+  position: relative;
+  isolation: isolate;
+}
+.overviewPage::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 130px;
+  left: -30px;
+  right: -30px;
+  height: 630px;
+  background: var(--surface);
+  background-size:
+    auto,
+    60px 60px,
+    60px 60px;
+  mask-image: none;
+  pointer-events: none;
+}
+.topologyPanel {
+  padding-inline: 12px;
+}
+.insightColumn {
+  padding-right: 16px;
+}
+.signalColumn {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.telemetryRow {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  margin-top: 25px;
+}
+.metricStrip > div > i {
+  bottom: 17px;
+}
+.metricStrip > div:first-child {
+  padding-left: 0;
+}
+.labViewport {
+  background: var(--surface);
+}
+.agentLab .labCanvas {
+  background: transparent;
+}
+.instrument .queueCard.selected {
+  background: var(--surface);
+}
+:root[data-theme="light"] .overviewPage::before {
+  opacity: 0.65;
+}
+@media (max-width: 700px) {
+  .insightColumn {
+    padding-right: 0;
+  }
+  .signalColumn {
+    padding-left: 0;
+    border: 0;
+  }
+  .metricStrip > div:first-child {
+    padding-left: 14px;
+  }
+  .metricStrip > div {
+    border: 0;
+  }
+  .topologyPanel {
+    padding-inline: 0;
+  }
+  .companionNote img {
+    width: 90px;
+    height: 100px;
+  }
+  .nFooter {
+    padding-bottom: 12px;
+  }
+  .overviewPage::before {
+    left: -15px;
+    right: -15px;
+  }
+}
+
+/* A bounded network explorer: grouping is separate from the full source list. */
+.networkExplorer {
+  min-width: 0;
+}
+.mapTools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mapTools .search {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+}
+.mapBreadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mapBreadcrumb button {
+  color: var(--teal);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.mapBreadcrumb small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 10px;
+}
+.connectionMap .clusterCount {
+  font: 600 22px var(--font-tech);
+}
+.connectionMap .clusterLabel {
+  font:
+    600 13px "IBM Plex Sans Thai",
+    sans-serif;
+}
+.connectionSource.attention .connectionFocus {
+  stroke: var(--amber);
+}
+.connectionSource.blocked .connectionFocus {
+  stroke: var(--red);
+}
+.mapPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 14px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.mapPagination > div {
+  display: flex;
+  gap: 6px;
+}
+@media (max-width: 600px) {
+  .mapTools {
+    align-items: stretch;
+  }
+  .mapTools .search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .mapPagination {
+    justify-content: center;
+  }
+  .mapPagination > span {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+.mapMobileList {
+  display: none;
+}
+@media (max-width: 600px) {
+  .connectionMap .clusterCount {
+    font-size: 30px;
+  }
+  .connectionMap .clusterLabel {
+    font-size: 24px;
+  }
+  .connectionMap[data-clustered="true"] .connectionNodeState {
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+  .connectionMap[data-clustered="false"] > svg {
+    display: none;
+  }
+  .mapMobileList {
+    display: grid;
+    gap: 4px;
+    margin: 14px 0;
+  }
+  .mapMobileList button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 4px;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+  }
+  .mapMobileList button[aria-pressed="true"] {
+    background: var(--teal-soft);
+  }
+  .mapMobileList b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+  }
+  .mapMobileList .badge {
+    flex-shrink: 0;
+  }
+}
+
+/* Geographic map shares one bounded source window with network and list views. */
+.geoExplorer {
+  margin-top: 14px;
+  min-width: 0;
+}
+.networkExplorer {
+  container-type: inline-size;
+}
+.geoSummary,
+.geoListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.geoSummary b {
+  color: var(--teal);
+  font-weight: 600;
+}
+.geoContent {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.geoStage,
+.geoListSection {
+  min-width: 0;
+}
+.geoWorld {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.geoWorld:active {
+  cursor: grabbing;
+}
+.geoWorld:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.geoGrid {
+  fill: none;
+  stroke: var(--line-hi);
+  stroke-width: 0.5;
+  opacity: 0.5;
+}
+.geoLand {
+  fill: var(--teal-soft);
+  stroke: var(--teal);
+  stroke-width: 0.7;
+  stroke-opacity: 0.65;
+}
+.geoPin {
+  cursor: pointer;
+  outline: none;
+}
+.geoPinHalo {
+  fill: var(--teal);
+  fill-opacity: 0.2;
+  stroke: var(--teal);
+  stroke-width: 1.5;
+}
+.geoPin.selected .geoPinHalo,
+.geoPin:focus-visible .geoPinHalo {
+  fill: var(--amber);
+  stroke: var(--amber);
+}
+.geoPin.blocked .geoPinHalo {
+  stroke: var(--red);
+  fill: var(--red);
+}
+.geoPin.attention .geoPinHalo {
+  stroke: var(--amber);
+  fill: var(--amber);
+}
+.geoPin text {
+  font-family: var(--font-tech);
+  font-weight: 600;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+.geoControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+.geoControls > span {
+  margin-right: auto;
+  font-size: 10px;
+  color: var(--muted);
+}
+.geoIpList {
+  max-height: 280px;
+  overflow: auto;
+  scrollbar-width: thin;
+  margin-top: 8px;
+}
+.geoIpList > button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 5px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  background: transparent;
+}
+.geoIpList > button[aria-pressed="true"] {
+  background: var(--teal-soft);
+}
+.geoIpList b {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.geoIpList span {
+  font-size: 10px;
+}
+.geoIpList small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+}
+.geoNote {
+  margin: 10px 0;
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+@container (min-width:720px) {
+  .geoContent {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    align-items: start;
+  }
+  .geoIpList {
+    max-height: 300px;
+  }
+  .geoIpList > button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .geoIpList b {
+    grid-column: 1/-1;
+  }
+}
+@container (max-width:500px) {
+  .connectionMap[data-clustered="false"] > svg {
+    display: none;
+  }
+  .mapMobileList {
+    display: grid;
+    gap: 4px;
+    margin: 12px 0;
+  }
+  .mapMobileList button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 11px 4px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  .mapMobileList b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
+  .mapMobileList button[aria-pressed="true"] {
+    background: var(--teal-soft);
+  }
+}
+
+/* Match the traffic and record panels through useful chart space, not padding. */
+.telemetryRow {
+  align-items: stretch;
+  gap: 20px;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.telemetryRow > .instrument {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.telemetryRow > .instrument > header {
+  min-height: 49px;
+  align-items: center;
+}
+.traffic {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 14px;
+}
+.trafficHeader {
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.trafficPlot {
+  position: relative;
+  flex: 1;
+  min-height: 250px;
+}
+.trafficPlot svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  max-height: none;
+  margin: 0;
+  overflow: visible;
+}
+.trafficPlot text {
+  font: 10px var(--font-tech);
+  fill: var(--muted);
+}
+.plotDeniedArea {
+  fill: var(--amber-soft);
+}
+.trafficPlot .plotArea {
+  fill: var(--teal-soft);
+}
+.plotTotalLine {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 1.5;
+}
+.plotCursor {
+  stroke: var(--muted);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+}
+.trafficTooltip rect {
+  fill: var(--surface);
+  stroke: var(--line-hi);
+}
+.trafficTooltip text {
+  fill: var(--ink);
+  font-size: 11px;
+}
+.trafficInsights {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.trafficInsights small {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+}
+.trafficInsights b {
+  font: 600 19px var(--font-tech);
+  color: var(--ink);
+}
+.trafficInsights em {
+  font:
+    10px "IBM Plex Sans Thai",
+    sans-serif;
+  color: var(--muted);
+  font-style: normal;
+}
+.trafficInsights > span {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.legendLine {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  background: var(--teal);
+}
+.legendLine.amber {
+  background: var(--amber);
+}
+
+/* Keep detail workspaces compact when the data set is small. */
+.empty {
+  min-height: 104px;
+  padding: 22px 14px;
+}
+.decisionClear {
+  padding: 30px 20px;
+  gap: 12px;
+}
+.queueCard {
+  gap: 6px;
+  padding: 12px;
+}
+.queue {
+  max-height: 580px;
+}
+.reviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.reviewActions {
+  min-width: 0;
+}
+.reviewActions > .policy {
+  margin-top: 0;
+}
+.reviewEvidence {
+  min-width: 0;
+}
+.dossierGrid {
+  align-items: stretch;
+  gap: 16px;
+}
+.dossier > .instrument .dataScroll {
+  max-height: 330px;
+}
+.reportContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.reportContent > div {
+  min-width: 0;
+}
+.reportEvidence > .subhead {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.reportEvidence .dataScroll {
+  max-height: 350px;
+}
+.reportAnalysis > .subhead {
+  margin-block: 14px;
+  padding-top: 14px;
+}
+.archiveLayout > .instrument:last-child > .raw {
+  margin-top: 14px;
+}
+.rulesLayout.fewRules {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.ruleDetails {
+  min-width: 0;
+}
+.networkExplorer > .dataScroll {
+  max-height: 400px;
+}
+@media (min-width: 1300px) {
+  .reviewGrid {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+  .reviewActions {
+    border-left: 1px solid var(--line);
+    padding-left: 20px;
+  }
+  .reportContent {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (min-width: 850px) {
+  .fewRules .ruleDetails {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 10px 24px;
+  }
+  .fewRules .ruleDetails > h2 {
+    grid-column: 1/-1;
+    font-size: 17px;
+  }
+  .fewRules .ruleDetails > .facts {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin: 0;
+  }
+  .fewRules .ruleDetails > .countdown {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 0;
+  }
+  .fewRules .ruleDetails > .button {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+  }
+  .fewRules .ruleDetails > .proof {
+    grid-column: 3;
+    grid-row: 2 / span 2;
+    margin: 0;
+    align-self: start;
+  }
+  .fewRules .ruleInspector > .policy {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 1000px) {
+  .trafficPlot {
+    min-height: 260px;
+  }
+  .reportEvidence .dataScroll {
+    max-height: 300px;
+  }
+  .queue {
+    max-height: 420px;
+  }
+  .labCanvas {
+    height: 360px;
+  }
+}
+@media (max-width: 700px) {
+  .telemetryRow {
+    gap: 12px;
+  }
+  .trafficPlot {
+    min-height: 220px;
+  }
+  .trafficInsights {
+    gap: 10px 18px;
+  }
+  .trafficInsights > span {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+  .telemetryRow > .instrument > header {
+    min-height: 44px;
+  }
+  .queue {
+    max-height: 230px;
+  }
+  .reviewGrid,
+  .reportContent {
+    gap: 16px;
+  }
+  .reviewActions {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+  .geoIpList > button {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .geoIpList .tag {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .geoIpList b {
+    grid-row: span 2;
+  }
+  .labCanvas {
+    height: 300px;
+  }
+}
+@media print {
+  .reportContent {
+    display: block;
+  }
+  .reportEvidence .dataScroll {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (min-width: 701px) {
+  .radar svg {
+    max-width: 180px;
+    margin-inline: auto;
+  }
+  .companionNote {
+    flex-direction: row;
+    text-align: left;
+    padding: 10px 0;
+    gap: 8px;
+  }
+  .companionNote img {
+    width: 78px;
+    height: 88px;
+    flex-shrink: 0;
+  }
+  .companionNote small {
+    font-size: 7px;
+  }
+  .companionNote p {
+    font-size: 10px;
+    margin-top: 5px;
+  }
+}
+
+/* One readable enterprise font system across production and the local preview. */
+.pageHeading h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.8px;
+}
+.pageHeading p {
+  font-size: 12px;
+}
+.instrument > header h2 {
+  font-size: 12px;
+  letter-spacing: 0.55px;
+}
+.segmented > button {
+  font-size: 11px;
+}
+.dataScroll th {
+  font-size: 10px;
+}
+.dataScroll td {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.dataScroll td.mono {
+  font-size: 11px;
+}
+.tag {
+  font-size: 10px;
+}
+.field {
+  font-size: 12px;
+}
+.field input,
+.search input {
+  font-size: 12px;
+}
+.facts dt {
+  font-size: 11px;
+}
+.facts dd {
+  font-size: 12px;
+}
+.raw pre,
+.traceSnippets pre,
+.toolRecord code {
+  font-family: var(--font-mono);
+}
+.connectionSource:not(:has(.clusterCount))
+  .connectionEndpoint
+  text:not(.connectionNodeState),
+.connectionHub > text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+@media (max-width: 700px) {
+  .instrument > header h2 {
+    font-size: 11px;
+  }
+  .segmented > button {
+    font-size: 10px;
+  }
+  .pageHeading h1 {
+    font-size: 28px;
+  }
+}

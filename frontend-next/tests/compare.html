@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sentinel — A / B comparison</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#060c0e;color:#dcecef;font:12px system-ui,sans-serif}header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid #29414b}header>b{font-size:15px;letter-spacing:2px}nav{display:flex;gap:6px}button,a{font:inherit;color:inherit}button{cursor:pointer;border:1px solid #29414b;background:#101c21;padding:8px 13px}button[aria-pressed=true]{color:#61e1ce;border-color:#61e1ce;background:#103631}button:focus-visible,a:focus-visible{outline:2px solid #61e1ce;outline-offset:3px}a{color:#61e1ce;text-decoration:none}header>a:first-of-type{margin-left:auto}.note{margin:0;padding:10px 20px;color:#8ca5af;font-size:10px}main{display:grid;grid-template-columns:1fr 1fr;gap:1px;height:calc(100dvh - 108px);min-height:550px;background:#29414b}.pane{display:grid;grid-template-rows:32px 1fr;min-width:0;background:#060c0e}.pane>b{font-size:10px;font-weight:400;color:#8ca5af;padding:9px 14px;letter-spacing:.8px}.pane iframe{display:block;width:100%;height:100%;border:0;background:#060c0e}.pane[hidden]{display:none}main.single{grid-template-columns:1fr}@media(max-width:700px){header{padding:12px;gap:12px}header>a:first-of-type{margin-left:0}.note{padding:10px 12px}main{height:calc(100dvh - 165px)}}
+  </style>
+</head>
+<body>
+  <header><b>SENTINEL / A : B</b><nav aria-label="รูปแบบการเปรียบเทียบ"><button data-mode="a" aria-pressed="false">แบบ A เต็มจอ</button><button data-mode="b" aria-pressed="true">แบบ B เต็มจอ</button><button data-mode="split" aria-pressed="false">เทียบสองฝั่ง</button></nav><a href="http://127.0.0.1:5173/tests/agent-flow.html#/overview" target="_blank" rel="noopener">เปิด A ↗</a><a href="http://127.0.0.1:5188/tests/preview.html#/overview" target="_blank" rel="noopener">เปิด B ↗</a></header>
+  <p class="note">ข้อมูลจำลองทั้งสองแบบ · เลือกเต็มจอเพื่อตรวจเลย์เอาต์เดสก์ท็อป หรือเทียบสองฝั่งเพื่อดูความต่างเมื่อพื้นที่แคบลง · ไม่เชื่อมระบบจริง</p>
+  <main class="single"><section class="pane" data-pane="a" hidden><b>A / สถานะตัวหลักที่สำรองไว้</b><iframe title="Sentinel dashboard A" src="http://127.0.0.1:5173/tests/agent-flow.html#/overview"></iframe></section><section class="pane" data-pane="b"><b>B / สร้างใหม่แยกโฟลเดอร์</b><iframe title="Sentinel dashboard B" src="http://127.0.0.1:5188/tests/preview.html#/overview"></iframe></section></main>
+  <script>document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>{const mode=button.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelector('main').classList.toggle('single',mode!=='split');document.querySelectorAll('[data-pane]').forEach(p=>p.hidden=mode!=='split'&&p.dataset.pane!==mode)}))</script>
+</body></html>

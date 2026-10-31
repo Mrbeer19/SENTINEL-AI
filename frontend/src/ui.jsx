@@ -27,6 +27,7 @@ const paths = {
   external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   download: 'M12 4v11M7 10l5 5 5-5M4 20h16',
   play: 'M7 4l13 8-13 8z',
+  pause: 'M8 5v14M16 5v14',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
   logout: 'M9 4H4v16h5M14 8l5 4-5 4M8 12h11',
   plus: 'M12 5v14M5 12h14',
@@ -213,14 +214,32 @@ export function parseAnalysis(value) {
   } }
 }
 
-// True when a result must not be presented as model output (contract v0.2).
-export const isFallback = (incident) => incident?.analysis_mode === 'rule_fallback' || parseAnalysis(incident?.analysis)?.json?.confidence === null
+export const RULE_ONLY_KINDS = Object.freeze(['HTTP_FLOOD', 'WEB_SCAN', 'HONEYPOT'])
+export const isRuleOnly = (kind) => RULE_ONLY_KINDS.includes(kind)
+
+// Dedicated rule detections are intentional; fallback means a model could not supply the result.
+export const isFallback = (incident) => !isRuleOnly(incident?.kind) && (incident?.analysis_mode === 'rule_fallback' || parseAnalysis(incident?.analysis)?.json?.confidence === null)
+
+export function RuleOnlyNotice({ kind }) {
+  return isRuleOnly(kind) ? <Banner tone="info" icon="shield">ภัยเว็บตรวจด้วยกฎเฉพาะทาง · ยังต้องให้แอดมินอนุมัติ</Banner> : null
+}
+
+export function formatEventPaths(value) {
+  if (value == null || value === '') return '—'
+  let paths = value
+  if (typeof paths === 'string') {
+    try { paths = JSON.parse(paths) } catch { return paths }
+  }
+  if (Array.isArray(paths)) return paths.map(path => typeof path === 'string' ? path : JSON.stringify(path)).join('\n') || '—'
+  return typeof paths === 'string' ? paths : JSON.stringify(paths)
+}
 
 export const parseJson = (value) => { try { return JSON.parse(value) } catch { return value } }
 
 export const modeLabel = { ollama: 'Local model', ollama_retry: 'Local model · retried', ollama_no_tools: 'Local model · no tools', rule_fallback: 'Rule fallback (not AI)' }
 
-export function ModeBadge({ mode }) {
+export function ModeBadge({ mode, kind }) {
+  if (isRuleOnly(kind)) return <Badge tone="info">ตรวจด้วยกฎเฉพาะทาง</Badge>
   if (!mode) return <Badge tone="muted">Not analyzed</Badge>
   return <Badge tone={mode === 'rule_fallback' ? 'warn' : 'good'}>Analysis mode: {modeLabel[mode] || mode}</Badge>
 }

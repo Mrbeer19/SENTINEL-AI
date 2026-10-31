@@ -21,9 +21,9 @@ const NAV = [
 ]
 
 const PAGES = {
-  overview: ['Security overview', 'ภาพรวมสถานการณ์ความปลอดภัยไซเบอร์'],
+  overview: ['ภาพรวมความปลอดภัย', 'เฝ้าระวังการเชื่อมต่อ ตรวจเหตุการณ์ และตัดสินใจจากหลักฐาน'],
   incidents: ['เหตุการณ์ความปลอดภัย', 'ตรวจพบและติดตามเหตุการณ์ด้านความปลอดภัยของระบบ'],
-  incident: ['Incident Detail', 'ตรวจหลักฐาน ผลวิเคราะห์ และผลการทดสอบของเหตุการณ์นี้'],
+  incident: ['รายละเอียดเหตุการณ์', 'ตรวจหลักฐาน ผลวิเคราะห์ และผลการทดสอบของเหตุการณ์นี้'],
   trace: ['การวิเคราะห์ของ AI', 'ติดตามหลักฐาน ลำดับการวิเคราะห์ และแนวทางตอบสนอง'],
   approvals: ['ตรวจคำแนะนำและอนุมัติ', 'AI เสนอคำแนะนำ · คุณเป็นผู้ตัดสินใจ'],
   rules: ['กฎป้องกันเว็บไซต์', 'จัดการ IP ต้นทางที่ถูกบล็อก และตรวจสอบผลคำขอใหม่'],
@@ -79,27 +79,14 @@ export default function App({ adminUsername, onLogout, theme, onToggleTheme }) {
   const active = route.page === 'incident' ? 'incidents' : route.page
   const [title, subtitle] = PAGES[route.page]
 
-  return <div className={`shell route-${route.page}`}>
+  return <div className={`shell consoleShell route-${route.page}`}>
     <a className="skip" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus() }}>ข้ามไปยังเนื้อหา</a>
-    <aside className="sidebar">
-      <a className="brand sentinelBrand" href="#/overview" aria-label="SENTINEL AI overview"><img src={theme === 'light' ? '/assets/sentinel-orbit-logo-light.svg' : '/assets/sentinel-orbit-logo.svg'} alt="SENTINEL AI · Security Operations"/></a>
-      <div className="navLabel">WORKSPACE</div>
-      <nav aria-label="Main">
-        {NAV.map(item => <a key={item.key} href={`#/${item.key}`} className={active === item.key ? 'active' : ''} aria-current={active === item.key ? 'page' : undefined}>
-          <Icon name={item.icon} size={20} /><span>{item.label}</span>{item.key === 'approvals' && pending > 0 && <em className="count" aria-label={`${pending} pending`}>{pending}</em>}
-        </a>)}
-      </nav>
-      <div className="sideFoot">
-        {route.page !== 'overview' && <div className="sidebarArtwork" aria-hidden="true"><span className="artworkStripes"/><img src="/assets/sentinel-laptop.png" alt=""/><span className="sidebarCaption">SENTINEL / SECURITY OPERATIONS</span></div>}
-        <div className="sessionCard"><span className={`sessionSignal ${connected && !error ? 'online' : ''}`}><i className="dot" />{error ? 'Server unavailable' : connected ? 'System connected' : 'Reconnecting'}</span><small>rod-mai-rod · live monitoring</small></div>
-      </div>
-    </aside>
-
+    <header className="workspaceBar consoleHeader"><a className="brand sentinelBrand" href="#/overview" aria-label="SENTINEL AI overview"><img src={theme === 'light' ? '/assets/sentinel-orbit-logo-light.svg' : '/assets/sentinel-orbit-logo.svg'} alt="SENTINEL AI · Security Operations"/></a><form className="globalSearch" onSubmit={e => { e.preventDefault(); location.hash='/overview'; setTimeout(() => document.querySelector('.sourcePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),150) }}><Icon name="search" size={18} artwork={false}/><input aria-label="ค้นหา IP และเหตุการณ์" placeholder="ค้นหา IP ต้นทาง หรือเหตุการณ์..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/><button type="submit">ค้นหา <span>↵</span></button></form><div className="workspaceActions"><RuntimeStatus health={data.health} connected={connected} error={error}/><ThemeToggle theme={theme} onToggle={onToggleTheme}/><a className="notificationLink" href="#/approvals" aria-label={`ข้อเสนอรออนุมัติ ${pending} รายการ`}><Icon name="alert" size={20} artwork={false}/>{pending > 0 && <span>{pending}</span>}</a><div className="headerAccount"><button className="headerLogout" onClick={onLogout} title="ออกจากระบบ" aria-label="ออกจากระบบบัญชีแอดมิน"><Icon name="logout" size={19}/></button><span>{(adminUsername || 'AD').slice(0,2).toUpperCase()}</span><div><b>{adminUsername || 'admin'}</b><small>ผู้ดูแลระบบ</small></div></div></div></header>
+    <nav className="consoleNav" aria-label="Main">{NAV.map((item, index) => <a key={item.key} href={`#/${item.key}`} className={active === item.key ? 'active' : ''} aria-current={active === item.key ? 'page' : undefined}><small>{String(index + 1).padStart(2,'0')}</small><Icon name={item.icon} size={18} artwork={false}/><span>{item.label}</span>{item.key === 'approvals' && pending > 0 && <em className="count" aria-label={`${pending} pending`}>{pending}</em>}</a>)}<span className="consoleNavNote">SECURITY OPERATIONS / HUMAN APPROVED</span></nav>
     <main id="main" tabIndex={-1}>
-      <div className="workspaceBar"><form className="globalSearch" onSubmit={e => { e.preventDefault(); location.hash='/overview'; setTimeout(() => document.querySelector('.sourcePanel')?.scrollIntoView({behavior:'smooth',block:'start'}),150) }}><Icon name="search" size={18}/><input aria-label="ค้นหา IP และเหตุการณ์" placeholder="ค้นหา IP ต้นทาง หรือเหตุการณ์..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/><button type="submit">ค้นหา <span>↵</span></button></form><div className="workspaceActions"><RuntimeStatus health={data.health} connected={connected} error={error}/><ThemeToggle theme={theme} onToggle={onToggleTheme}/><a className="notificationLink" href="#/approvals" aria-label={`ข้อเสนอรออนุมัติ ${pending} รายการ`}><Icon name="alert" size={22}/>{pending > 0 && <span>{pending}</span>}</a><div className="headerAccount"><button className="headerLogout" onClick={onLogout} title="ออกจากระบบ" aria-label="ออกจากระบบบัญชีแอดมิน"><Icon name="logout" size={19}/></button><span>{(adminUsername || 'AD').slice(0,2).toUpperCase()}</span><div><b>{adminUsername || 'admin'}</b><small>ผู้ดูแลระบบ</small></div></div></div></div>
       <header className={`topbar ${route.page === 'overview' ? 'overviewTopbar' : ''}`}>
-        <div className="pageTitleGroup"><div><div className="eyebrow">SECURITY OPERATIONS / {String(NAV.findIndex(n=>n.key===active)+1).padStart(2,'0')}</div><h1><Icon name={NAV.find(item=>item.key===active)?.icon || 'shield'} size={34}/>{title}</h1><p>{subtitle}</p></div></div>
-        <div className="pageMeta"><span className={connected && !error ? 'mint' : 'amber'}><i className={`dot ${connected && !error ? 'mint' : 'amber'}`}/>{error ? 'การเชื่อมต่อขัดข้อง' : connected ? 'เชื่อมต่อระบบแล้ว' : 'กำลังเชื่อมต่อ'}</span><small>อัปเดต {updatedAt ? fmtTime(updatedAt) : '—'}</small><button className="btn ghost sm" onClick={()=>live.refresh()} disabled={refreshing} aria-label="รีเฟรชข้อมูล"><Icon name="refresh" size={16}/>{refreshing ? 'กำลังโหลด…' : 'รีเฟรช'}</button></div>
+        <div className="pageTitleGroup"><div><div className="eyebrow">SECURITY OPERATIONS / {String(NAV.findIndex(n=>n.key===active)+1).padStart(2,'0')}</div><h1>{title}</h1><p>{subtitle}</p></div></div>
+        <div className="pageMeta"><small>อัปเดต {updatedAt ? fmtTime(updatedAt) : '—'}</small><button className="btn ghost sm" onClick={()=>live.refresh()} disabled={refreshing} aria-label="รีเฟรชข้อมูล"><Icon name="refresh" size={16}/>{refreshing ? 'กำลังโหลด…' : 'รีเฟรช'}</button></div>
       </header>
 
       {error && <Banner tone="bad" icon="x" action={<button className="btn ghost sm" onClick={live.refresh} disabled={refreshing}>ลองเชื่อมต่อใหม่</button>}>เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ · กรุณาตรวจการเชื่อมต่อแล้วลองอีกครั้ง{updatedAt && ' ข้อมูลที่แสดงเป็นข้อมูลเดิม'}</Banner>}
@@ -107,7 +94,7 @@ export default function App({ adminUsername, onLogout, theme, onToggleTheme }) {
       {data.health && !data.health.model_ready && <Banner tone="warn" icon="brain">ไม่พบโมเดล {data.health.model} ใน Ollama — การวิเคราะห์จะเป็น <b>rule fallback</b> และจะไม่แสดงเป็นผล AI</Banner>}
 
 
-      {loading ? <Loading /> : !data.health ? <div className="empty">ยังโหลดข้อมูลไม่ได้ · เมื่อเชื่อมต่อเซิร์ฟเวอร์สำเร็จ ข้อมูลจะแสดงที่นี่</div> : <Page route={route} ctx={ctx} />}
+      {loading ? <Loading /> : !data.health ? <div className="empty">ยังโหลดข้อมูลไม่ได้ · เมื่อเชื่อมต่อเซิร์ฟเวอร์สำเร็จ ข้อมูลจะแสดงที่นี่</div> : <div className="consolePage" key={route.page}><Page route={route} ctx={ctx} /></div>}
       <WorkflowGuide />
       <footer className="workspaceFooter"><span><Icon name="shield" size={13} />SENTINEL AI <span className="footerDivider">/</span> Security operations</span><span>Human-approved response<span className="footerDot">·</span>App-level protection</span></footer>
       {(busy || flash) && <div className="feedbackToast">{busy ? <Banner icon="clock"><span className="spinner" aria-hidden="true" />{actionLabel}</Banner> : <Banner tone={flash.tone} icon={flash.tone === 'good' ? 'ok' : 'x'} action={<button className="btn ghost sm" onClick={() => setFlash(null)} aria-label="ปิดการแจ้งเตือน"><Icon name="x" size={16}/></button>}>{flash.text}{flash.detail && <details><summary>ดูรายละเอียดข้อผิดพลาด</summary><p className="mono small">{flash.detail}</p></details>}</Banner>}</div>}

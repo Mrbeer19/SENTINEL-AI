@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useReport } from '../api.js'
-import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, NoResults, Panel, Stat, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, kindEvidence, kindName, parseAnalysis, proposalTone, propId, targetIp, durationText, UNTIL_UNBLOCKED } from '../ui.jsx'
+import { Badge, Banner, Empty, FilterSummary, Icon, Loading, ModeBadge, RuleOnlyNotice, NoResults, Panel, Stat, actionLabel, fmtDateTime, fmtTime, go, incId, isFallback, isRuleOnly, kindEvidence, kindName, parseAnalysis, proposalTone, propId, targetIp, durationText, UNTIL_UNBLOCKED } from '../ui.jsx'
 
 export default function Approvals({ ctx, id }) {
   const { proposals, incidents } = ctx.data
@@ -35,15 +35,13 @@ export default function Approvals({ ctx, id }) {
         const inc = incident(p)
         return <li key={p.id}><button className={`queueItem ${p.status} ${selected?.id === p.id ? 'on' : ''}`} onClick={() => go('approvals', p.id)} aria-current={selected?.id === p.id}>
           <Icon name={p.status === 'pending' ? 'clock' : p.status === 'approved' ? 'ok' : 'x'} size={26} />
-          <span><b>{propId(p.id)} <Badge tone={proposalTone[p.status]}>{p.status}</Badge></b><strong>{inc ? kindName(inc.kind) : 'Incident'}</strong><small>{incId(p.incident_id)} · <span className="mono">{targetIp(p)}</span></small><small>{actionLabel[p.action] || 'Temporary app-level block'}{p.source === 'rule_fallback' && ' · rule fallback'}</small></span>
+          <span><b>{propId(p.id)} <Badge tone={proposalTone[p.status]}>{p.status}</Badge></b><strong>{inc ? kindName(inc.kind) : 'Incident'}</strong><small>{incId(p.incident_id)} · <span className="mono">{targetIp(p)}</span></small><small>{actionLabel[p.action] || 'Temporary app-level block'}{isRuleOnly(inc?.kind) ? ' · ตรวจด้วยกฎเฉพาะทาง' : p.source === 'rule_fallback' ? ' · rule fallback' : ''}</small></span>
           <time>{fmtTime(p.created_at)}</time>
         </button></li>
-      })}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <Empty>{tab === 'pending' ? <>ไม่มีข้อเสนอรออนุมัติ · <a href="#/incidents">ดูเหตุการณ์ที่ต้องวิเคราะห์</a></> : 'ยังไม่มีประวัติการตัดสินใจ'}</Empty>}
+      })}</ul> : query ? <NoResults onClear={() => setQuery('')} /> : <ApprovalPlaceholder hasQuery={false} tab={tab}/>}
     </Panel>
 
-    <Panel className="approvalReview">
-      {selected ? <Review key={selected.id} ctx={ctx} proposal={selected} /> : <ApprovalPlaceholder hasQuery={!!query} tab={tab}/>}
-    </Panel>
+    {selected && <Panel className="approvalReview"><Review key={selected.id} ctx={ctx} proposal={selected} /></Panel>}
   </div>
 }
 
@@ -67,7 +65,7 @@ function Review({ ctx, proposal: p }) {
   const analysis = parseAnalysis(report?.analysis)
 
   return <div className="review">
-    <div className="reviewHead"><h2><Icon name="clock" size={24} />Review {propId(p.id)}</h2><Badge tone={proposalTone[p.status]}>{p.status}</Badge></div>
+    <div className="reviewHead"><h2><Icon name="clock" size={24} />ตรวจข้อเสนอ {propId(p.id)}</h2><Badge tone={proposalTone[p.status]}>{p.status}</Badge></div>
     <div className="facts slim">
       <div><span>Target IP</span><b className="mono">{targetIp(p)}</b></div>
       <div><span>TTL</span><b>{durationText(p.duration_seconds)}</b></div>
@@ -81,18 +79,19 @@ function Review({ ctx, proposal: p }) {
         {error && <Banner tone="bad">โหลดหลักฐานไม่สำเร็จ · กดรีเฟรชก่อนตัดสินใจ</Banner>}
         {loading && !report ? <Loading label="กำลังโหลดหลักฐาน…" /> : report ? <>
           <p><b>{kindEvidence(report)} in 60 seconds</b>{report.attack_technique && <span className="muted small"> · ATT&amp;CK {report.attack_technique}</span>}</p>
-          <ModeBadge mode={report.analysis_mode} />
-          {(isFallback(report) || p.source === 'rule_fallback') && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล · ตรวจหลักฐานเองก่อนตัดสินใจ</Banner>}
+          <ModeBadge mode={report.analysis_mode} kind={report.kind} />
+          <RuleOnlyNotice kind={report.kind} />
+          {!isRuleOnly(report.kind) && (isFallback(report) || p.source === 'rule_fallback') && <Banner tone="warn" icon="info">ข้อเสนอนี้มาจาก rule fallback ไม่ใช่ผลวิเคราะห์ของโมเดล · ตรวจหลักฐานเองก่อนตัดสินใจ</Banner>}
           {analysis?.json ? <p className="muted">{analysis.json.explanation_th}</p> : analysis?.text && <p className="muted">{analysis.text}</p>}
-          {p.reason && <p className="small"><b>Reason:</b> {p.reason}</p>}
-          <h4>Tools used</h4>
+          {p.reason && p.reason !== analysis?.json?.explanation_th && <p className="small"><b>Reason:</b> {p.reason}</p>}
+          <h4>เครื่องมือที่ใช้</h4>
           {report.trace.some(t => (t.operation || 'execute_tool') === 'execute_tool') ? <ul className="tools">{[...new Set(report.trace.filter(t => (t.operation || 'execute_tool') === 'execute_tool').map(t => t.tool))].map(name => <li key={name}><Icon name="ok" size={16} /><code>{name}</code></li>)}</ul> : <p className="muted small">ไม่มี tool call</p>}
         </> : <p className="muted">โหลดหลักฐานไม่ได้</p>}
       </section>
       <section className="box">
         <h3><Icon name="trace" />Execution Scope</h3>
         <div className="scope"><Icon name="server" size={28} /><div><b>กฎนี้ครอบคลุมเฉพาะ rod-mai-rod</b><span>เพิ่มกฎชั่วคราวสำหรับ <span className="mono">{targetIp(p)}</span> ในระบบป้องกันเว็บนี้เท่านั้น{p.d3fend && <> · MITRE D3FEND <span className="mono">{p.d3fend}</span> (Inbound Traffic Filtering)</>}</span></div></div>
-        <h4>Server-side policy</h4>
+        <details className="consolePolicy"><summary>ขอบเขตและนโยบายการบล็อก</summary>
         <ul className="policy">
           <li>Target must be the incident source IP; loopback and protected addresses are refused (HTTP 400)</li>
           <li>BLOCK_IP (1 hour) only for CRITICAL incidents; otherwise reduced to a 10-minute temporary block</li>
@@ -100,7 +99,7 @@ function Review({ ctx, proposal: p }) {
           <li>{p.duration_seconds ? `กฎหมดอายุอัตโนมัติหลัง ${durationText(p.duration_seconds)}` : 'กฎทำงานจนกว่าแอดมินจะปลดบล็อกในหน้ากฎบล็อก'}</li>
           <li>A decision can only be made once (HTTP 409)</li>
         </ul>
-        <p className="note"><Icon name="info" size={14} />Verification stays pending until a new request is denied.</p>
+        </details><p className="note"><Icon name="info" size={14} />ต้องมีคำขอใหม่ถูกปฏิเสธ จึงถือว่ายืนยันผลการบล็อก</p>
       </section>
     </div>
 
