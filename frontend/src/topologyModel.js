@@ -1,4 +1,4 @@
-import { isOpenIncident, sourcesOf } from "./lib.js";
+import { CHANNELS, isOpenIncident, sourcesOf } from "./lib.js";
 export const MAX_VISIBLE_SOURCES = 10;
 export const CLUSTER_THRESHOLD = 12;
 export const GROUPS = [
@@ -23,6 +23,10 @@ export function topologyOf(data, rules) {
   for (const s of sources) counts[s.status]++;
   return {
     sources,
+    channels: CHANNELS.map((c) => ({
+      ...c,
+      count: sources.filter((s) => s.channels.includes(c.key)).length,
+    })),
     groups: GROUPS.map((g) => ({ ...g, count: counts[g.key] })).filter(
       (g) => g.count > 0,
     ),
@@ -30,12 +34,13 @@ export function topologyOf(data, rules) {
 }
 export function topologyWindow(
   model,
-  { group = null, query = "", page = 0 } = {},
+  { group = null, query = "", page = 0, channel = null } = {},
 ) {
   const q = query.trim().toLowerCase(),
     filtered = model.sources.filter(
       (s) =>
         (!group || s.status === group) &&
+        (!channel || s.channels.includes(channel)) &&
         (!q || s.ip.toLowerCase().includes(q)),
     );
   const pages = Math.max(1, Math.ceil(filtered.length / MAX_VISIBLE_SOURCES)),
@@ -47,7 +52,7 @@ export function topologyWindow(
     filtered,
     pages,
     page: current,
-    clustered: !group && !q && filtered.length > CLUSTER_THRESHOLD,
+    clustered: !group && !q && !channel && filtered.length > CLUSTER_THRESHOLD,
     visible: filtered.slice(
       current * MAX_VISIBLE_SOURCES,
       (current + 1) * MAX_VISIBLE_SOURCES,

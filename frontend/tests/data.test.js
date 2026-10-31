@@ -111,3 +111,22 @@ test("attention queue puts unanalyzed critical incidents before a high approval"
   assert.equal(q[1].type, "approval");
   assert.deepEqual(attentionQueue([], []), []);
 });
+test("sources are split by where they were seen", () => {
+  const data = {
+    events: [
+      { source_ip: "192.0.2.5", event_type: "HTTP_REQUEST", timestamp: "2026-10-31T00:02:00Z" },
+      { source_ip: "192.0.2.5", event_type: "CONNECTION", timestamp: "2026-10-31T00:01:00Z" },
+      { source_ip: "192.0.2.7", event_type: "CONNECTION", timestamp: "2026-10-31T00:03:00Z" },
+      { source_ip: "192.0.2.8", event_type: "SSH_AUTH", timestamp: "2026-10-31T00:04:00Z" },
+    ],
+    traffic: [{ source_ip: "192.0.2.9", created_at: "2026-10-31T00:05:00Z" }],
+    incidents: [{ source_ip: "192.0.2.7", kind: "PORT_SCAN", created_at: "2026-10-31T00:06:00Z" }],
+  };
+  const byIp = Object.fromEntries(sourcesOf(data).map((s) => [s.ip, s.channels]));
+  assert.deepEqual(byIp, {
+    "192.0.2.5": ["web", "port"],
+    "192.0.2.7": ["port"],
+    "192.0.2.8": ["ssh"],
+    "192.0.2.9": ["web"],
+  });
+});

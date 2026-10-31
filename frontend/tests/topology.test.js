@@ -77,3 +77,18 @@ test("a small source set remains individually visible without grouping", () => {
   assert.equal(topologyWindow(small).clustered, false);
   assert.equal(topologyWindow(small).visible.length, 5);
 });
+test("channel filter keeps only sources seen on that channel", () => {
+  const m = topologyOf(
+    {
+      events: [
+        { source_ip: "192.0.2.1", event_type: "HTTP_REQUEST", timestamp: "2026-10-31T00:00:00Z" },
+        { source_ip: "192.0.2.2", event_type: "CONNECTION", timestamp: "2026-10-31T00:00:00Z" },
+      ],
+      traffic: [],
+      incidents: [],
+    },
+    [],
+  );
+  assert.deepEqual(topologyWindow(m, { channel: "web" }).filtered.map((s) => s.ip), ["192.0.2.1"]);
+  assert.deepEqual(m.channels.map((c) => [c.key, c.count]), [["web", 1], ["ssh", 0], ["port", 1]]);
+});

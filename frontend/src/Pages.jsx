@@ -14,6 +14,7 @@ import {
   number,
   proofFor,
   sourcesOf,
+  CHANNELS,
   sortIncidents,
   ruleLifetime,
   statusLabels,
@@ -105,7 +106,13 @@ export function Overview({ ctx }) {
     <div className="overviewPage">
       <div className="metricStrip">
         {[
-          ["OBSERVED SOURCES", sources.length, "IP ต้นทางที่บันทึก"],
+          [
+            "OBSERVED SOURCES",
+            sources.length,
+            CHANNELS.map(
+              (c) => `${c.short} ${sources.filter((s) => s.channels.includes(c.key)).length}`,
+            ).join(" · "),
+          ],
           [
             "OPEN INCIDENTS",
             data.incidents.filter(isOpenIncident).length,
@@ -150,6 +157,14 @@ export function Overview({ ctx }) {
             <span>
               <i className="dot red" />
               บล็อกอยู่
+            </span>
+            <span>
+              <i className="legendLine" />
+              เข้าเว็บ
+            </span>
+            <span>
+              <i className="legendLine dashed" />
+              ไม่ได้เข้าเว็บ (เคาะพอร์ต/SSH)
             </span>
           </div>
         </Panel>

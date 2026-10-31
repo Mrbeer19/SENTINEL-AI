@@ -111,19 +111,37 @@ export const action = (v) =>
   })[v] ||
   v ||
   "—";
+// Where a source was seen. The network sensor records SYNs to any port of the whole VPS, so most of its
+// sources are internet-wide scanners that never open the protected website.
+export const CHANNELS = [
+  { key: "web", label: "คนเข้าเว็บ", short: "เว็บ", note: "คำขอถึงเว็บที่ป้องกัน" },
+  { key: "ssh", label: "ล็อกอิน SSH", short: "SSH", note: "การล็อกอินเข้าเซิร์ฟเวอร์" },
+  { key: "port", label: "เคาะพอร์ต VPS", short: "เคาะพอร์ต", note: "การเชื่อมต่อพอร์ตใดก็ได้ของ VPS ทั้งเครื่อง ส่วนใหญ่เป็นบอทสแกน" },
+];
+const EVENT_CHANNEL = { HTTP_REQUEST: "web", HTTP_AUTH: "web", SSH_AUTH: "ssh", CONNECTION: "port" };
+const KIND_CHANNEL = {
+  HTTP_AUTH_BRUTE_FORCE: "web", SUSPICIOUS_LOGIN: "web", HTTP_FLOOD: "web", WEB_SCAN: "web", HONEYPOT: "web",
+  SSH_BRUTE_FORCE: "ssh", PORT_SCAN: "port", TRAFFIC_ANOMALY: "port",
+};
+export const channelOfEvent = (type) => EVENT_CHANNEL[type] || null;
+export const channelOfKind = (k) => KIND_CHANNEL[k] || null;
+export const channelLabel = (key) => CHANNELS.find((c) => c.key === key)?.label || key;
 export function sourcesOf(data) {
   const m = new Map();
   for (const item of [
-    ...data.events.map((e) => ({ ip: e.source_ip, at: e.timestamp })),
-    ...data.traffic.map((t) => ({ ip: t.source_ip, at: t.created_at })),
-    ...data.incidents.map((i) => ({ ip: i.source_ip, at: i.created_at })),
+    ...data.events.map((e) => ({ ip: e.source_ip, at: e.timestamp, channel: channelOfEvent(e.event_type) })),
+    // Requests the protected app reported to /api/enforce.
+    ...data.traffic.map((t) => ({ ip: t.source_ip, at: t.created_at, channel: "web" })),
+    ...data.incidents.map((i) => ({ ip: i.source_ip, at: i.created_at, channel: channelOfKind(i.kind) })),
   ]) {
-    if (
-      item.ip &&
-      (!m.has(item.ip) || Date.parse(item.at) > Date.parse(m.get(item.ip).at))
-    )
-      m.set(item.ip, item);
+    if (!item.ip) continue;
+    const seen = m.get(item.ip) || { ip: item.ip, at: item.at, channels: [] };
+    if (Date.parse(item.at) > Date.parse(seen.at)) seen.at = item.at;
+    if (item.channel && !seen.channels.includes(item.channel)) seen.channels.push(item.channel);
+    m.set(item.ip, seen);
   }
+  for (const s of m.values())
+    s.channels.sort((a, b) => CHANNELS.findIndex((c) => c.key === a) - CHANNELS.findIndex((c) => c.key === b));
   return [...m.values()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
 export const isPublic = (ip) =>

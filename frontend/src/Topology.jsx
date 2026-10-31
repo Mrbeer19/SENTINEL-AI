@@ -14,7 +14,7 @@ import {
   MAX_VISIBLE_SOURCES,
 } from "./topologyModel.js";
 import { Badge, Empty, Search, Table, Toggle, typeKey } from "./ui.jsx";
-import { time, kind as kindLabel } from "./lib.js";
+import { CHANNELS, channelLabel, time, kind as kindLabel } from "./lib.js";
 const GeoMap = lazy(() => import("./GeoMap.jsx"));
 
 export default function Topology({
@@ -36,6 +36,7 @@ export default function Topology({
     return latest;
   }, [data.incidents]);
   const [group, setGroup] = useState(null),
+    [channel, setChannel] = useState(null),
     [query, setQuery] = useState(""),
     [page, setPage] = useState(0),
     [view, setView] = useState("map"),
@@ -53,7 +54,7 @@ export default function Topology({
   }, []);
   const centerX = canvasSize.width / 2,
     centerY = canvasSize.height / 2;
-  const slice = topologyWindow(model, { group, query, page }),
+  const slice = topologyWindow(model, { group, query, page, channel }),
     label = GROUPS.find((g) => g.key === group)?.label;
   const selectedIndex = slice.filtered.findIndex((s) => s.ip === selectedIp);
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function Topology({
   }, [view, selectedIp, selectedIndex]);
   const reset = () => {
     setGroup(null);
+    setChannel(null);
     setPage(0);
     setQuery("");
     onSelectIp(null);
@@ -116,6 +118,28 @@ export default function Topology({
           />
         )}
       </div>
+      <div className="channelFilter" role="group" aria-label="แยกตามช่องทางที่พบ">
+        {[{ key: null, label: "ทุกช่องทาง", count: model.sources.length }, ...model.channels].map((c) => (
+          <button
+            key={c.key || "all"}
+            type="button"
+            aria-pressed={channel === c.key}
+            title={c.note}
+            disabled={c.key !== null && !c.count}
+            onClick={() => {
+              setChannel(c.key);
+              setGroup(null);
+              setPage(0);
+              onSelectIp(null);
+            }}
+          >
+            {c.label} <b className="mono">{c.count.toLocaleString()}</b>
+          </button>
+        ))}
+      </div>
+      {channel && (
+        <p className="channelNote">{CHANNELS.find((c) => c.key === channel)?.note}</p>
+      )}
       {(slice.clustered || group || query) && (
         <div className="mapBreadcrumb">
           <button type="button" onClick={reset}>
@@ -155,6 +179,22 @@ export default function Topology({
               key: "ip",
               label: "SOURCE IP",
               render: (s) => <b className="mono">{s.ip}</b>,
+            },
+            {
+              key: "channels",
+              label: "ช่องทาง",
+              render: (s) =>
+                s.channels.length ? (
+                  <span className="channelTags">
+                    {s.channels.map((c) => (
+                      <Badge key={c} color={c === "web" ? "good" : "quiet"}>
+                        {channelLabel(c)}
+                      </Badge>
+                    ))}
+                  </span>
+                ) : (
+                  "—"
+                ),
             },
             { key: "at", label: "LAST SEEN", render: (s) => time(s.at) },
             {
@@ -233,7 +273,8 @@ export default function Topology({
                     <path
                       id={`${uid}route${i}`}
                       d={path}
-                      className="connectionRoute"
+                      // Sources never seen on the website (port knocks, SSH) did not reach the app: dashed line.
+                      className={`connectionRoute ${!node.cluster && !node.channels.includes("web") ? "offSite" : ""}`}
                     />
                     {connected && (
                       <circle r="2.5" className="connectionPacket">
@@ -318,6 +359,8 @@ export default function Topology({
                             className="connectionNodeState"
                           >
                             {GROUPS.find((g) => g.key === node.status)?.short}
+                            {node.channels.length > 0 &&
+                              ` · ${node.channels.map((c) => CHANNELS.find((x) => x.key === c)?.short).join(" + ")}`}
                           </text>
                           {node.incidentKind && <text x={x} y={y + 44} textAnchor="middle" className="connectionTypeLabel">{kindLabel(node.incidentKind)}</text>}
                         </>
