@@ -57,10 +57,17 @@ export const kindLabel = {
   PORT_SCAN: 'Port Scan',
   SUSPICIOUS_LOGIN: 'Login after repeated failures',
   TRAFFIC_ANOMALY: 'Traffic Anomaly',
+  HTTP_FLOOD: 'HTTP Flood (Layer 7)',
+  WEB_SCAN: 'Web Vulnerability Scan',
+  HONEYPOT: 'Honeypot Path Hit',
 }
 export const kindName = (kind) => kindLabel[kind] || kind
 
-export const kindEvidence = (incident) => incident.kind === 'PORT_SCAN' ? `${incident.event_count} distinct ports` : incident.kind === 'SUSPICIOUS_LOGIN' ? `success after ${incident.event_count} failures` : incident.kind === 'TRAFFIC_ANOMALY' ? `${incident.event_count} connections` : `${incident.event_count} failed ${incident.kind === 'SSH_BRUTE_FORCE' ? 'replayed logins' : 'logins'}`
+const evidenceUnit = {
+  PORT_SCAN: 'distinct ports', TRAFFIC_ANOMALY: 'connections', SSH_BRUTE_FORCE: 'failed replayed logins', HTTP_AUTH_BRUTE_FORCE: 'failed logins',
+  HTTP_FLOOD: 'page/API requests', WEB_SCAN: 'scan requests', HONEYPOT: 'decoy hits',
+}
+export const kindEvidence = (incident) => incident.kind === 'SUSPICIOUS_LOGIN' ? `success after ${incident.event_count} failures` : `${incident.event_count} ${evidenceUnit[incident.kind] || 'events'}`
 
 // Incident status (contract v0.2): detected → analyzing → awaiting_approval → blocked → verified,
 // or analyzing → needs_review | monitoring | closed; awaiting_approval → rejected; blocked → closed.
