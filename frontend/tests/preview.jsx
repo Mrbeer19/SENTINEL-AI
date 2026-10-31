@@ -40,13 +40,6 @@ function Preview() {
             <option key={s}>{s}</option>
           ))}
         </select>
-        <a
-          href="http://127.0.0.1:5173/tests/agent-flow.html#/overview"
-          target="_blank"
-          rel="noopener"
-        >
-          เปิดแบบ A ↗
-        </a>
         <button
           onClick={() =>
             document
