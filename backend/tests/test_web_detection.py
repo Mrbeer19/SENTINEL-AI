@@ -131,3 +131,25 @@ def test_event_sum_only_accepts_known_columns(tmp_path):
     (tmp_path / "bad.yml").write_text(yaml.safe_dump(doc), encoding="utf-8")
     with pytest.raises(ValueError, match="event_sum only supports"):
         RuleSet(tmp_path)
+
+
+@pytest.mark.parametrize("count,fires", [(299, False), (300, True)])
+def test_http_flood_threshold(client, count, fires):
+    incident = send(client, count=count)["incident"]
+    assert (incident is not None and incident["kind"] == "HTTP_FLOOD") is fires
+
+
+def test_http_flood_sums_windows_and_escalates(client):
+    assert send(client, count=200)["incident"] is None
+    incident = send(client, count=100)["incident"]
+    assert incident["kind"] == "HTTP_FLOOD" and incident["severity"] == "MEDIUM" and incident["attack_technique"] == "T1499.002"
+    assert send(client, count=600)["incident"]["severity"] == "CRITICAL"
+
+
+def test_http_flood_is_analysed_by_the_rule(make_app, script_model):
+    bodies = script_model(finals=[analysis()])
+    client = connect(make_app())
+    incident = send(client, count=500)["incident"]
+    result = client.post(f"/api/incidents/{incident['id']}/analyze").json()
+    assert bodies == [] and result["analysis"]["threat_type"] == "HTTP_FLOOD"
+    assert result["proposal"]["status"] == "pending"

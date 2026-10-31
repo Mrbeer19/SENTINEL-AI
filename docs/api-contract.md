@@ -87,9 +87,10 @@ bridge ส่ง **ยอดรวมต่อ IP ต่อช่วง 10 ว�
 | `sentinel-web-honeypot` | `HONEYPOT` | `HTTP_REQUEST` ที่ `honeypot: true` ≥1 ช่วง / 60 วิ / IP | T1595.003 | HIGH |
 | `sentinel-web-scan-not-found` | `WEB_SCAN` | ผลรวม `not_found` ≥10 / 60 วิ / IP | T1595.003 | MEDIUM |
 | `sentinel-web-scan-paths` | `WEB_SCAN` | ผลรวม `scan_paths` ≥3 / 60 วิ / IP | T1595.003 | MEDIUM |
+| `sentinel-http-flood` | `HTTP_FLOOD` | ผลรวม `request_count` ≥300 / 60 วิ / IP (bridge ไม่นับไฟล์ static) | T1499.002 | MEDIUM |
 
 - correlation `event_sum` (ใช้กับ `HTTP_REQUEST`) = ผลรวมของคอลัมน์ `request_count`, `not_found` หรือ `scan_paths` เท่านั้น · กฎ 2 ไฟล์ของ `WEB_SCAN` เปิด incident เดียวกันต่อ IP
-- **`HONEYPOT`, `WEB_SCAN` วิเคราะห์ด้วยกฎ ไม่ส่งเข้าโมเดล** (prompt ของ r3 รับ threat_type ได้แค่ 5 ชนิดเดิม และไม่เคยถูกวัดผลกับการโจมตีเว็บ) → `analysis_mode: rule_fallback`, `confidence: null`, `threat_type` = kind · ข้อเสนอบล็อกผ่าน policy + คนอนุมัติเหมือนเดิม
+- **`HONEYPOT`, `WEB_SCAN`, `HTTP_FLOOD` วิเคราะห์ด้วยกฎ ไม่ส่งเข้าโมเดล** (prompt ของ r3 รับ threat_type ได้แค่ 5 ชนิดเดิม และไม่เคยถูกวัดผลกับการโจมตีเว็บ) → `analysis_mode: rule_fallback`, `confidence: null`, `threat_type` = kind · ข้อเสนอบล็อกผ่าน policy + คนอนุมัติเหมือนเดิม
 
 - หน้าต่างเวลานับย้อนจาก **เวลาของ event** (UTC)
 - ≥3 เท่าของเกณฑ์ → `CRITICAL`
@@ -130,7 +131,7 @@ blocked → closed (ปลดกฎก่อน verify)
 
 | field | ค่า |
 |---|---|
-| `threat_type` | `HTTP_AUTH_BRUTE_FORCE \| SSH_BRUTE_FORCE \| PORT_SCAN \| SUSPICIOUS_LOGIN \| TRAFFIC_ANOMALY \| BENIGN \| UNKNOWN` · ผลจากกฎของ kind เว็บ: `WEB_SCAN \| HONEYPOT` |
+| `threat_type` | `HTTP_AUTH_BRUTE_FORCE \| SSH_BRUTE_FORCE \| PORT_SCAN \| SUSPICIOUS_LOGIN \| TRAFFIC_ANOMALY \| BENIGN \| UNKNOWN` · ผลจากกฎของ kind เว็บ: `WEB_SCAN \| HONEYPOT \| HTTP_FLOOD` |
 | `severity` | `LOW \| MEDIUM \| HIGH \| CRITICAL` |
 | `confidence` | 0–1 จากโมเดล · **`null` เมื่อ `rule_fallback`** · ใช้แสดงผลเท่านั้น ไม่ใช้แทนการอนุมัติ |
 | `evidence` | string 1–10 รายการ |
