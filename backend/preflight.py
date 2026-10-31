@@ -13,6 +13,7 @@ import sys
 
 import httpx
 
+from backend.admin_auth import is_password_hash
 from backend.app import DEFAULT_DB
 from backend.config import ALWAYS_PROTECTED, load_settings, same_model
 from backend.detection import RuleSet
@@ -59,8 +60,8 @@ def main() -> int:
         results.append(check(True, f"database writable at {DEFAULT_DB}"))
     except sqlite3.Error as exc:
         results.append(check(False, "database writable", str(exc)))
-    results.append(check(bool(os.getenv("SENTINEL_ADMIN_PASSWORD_HASH")), "admin password configured",
-                         "python -m backend.admin_auth, then put SENTINEL_ADMIN_PASSWORD_HASH in backend/.env"))
+    results.append(check(is_password_hash(os.getenv("SENTINEL_ADMIN_PASSWORD_HASH")), "admin password hash configured",
+                         "python -m backend.admin_auth, then paste the printed line into backend/.env as is (keep the single quotes)"))
     if args.host:
         addr = ipaddress.ip_address(args.host)
         results.append(check(addr.is_private and not addr.is_unspecified, f"bind host {addr} is a private LAN address",

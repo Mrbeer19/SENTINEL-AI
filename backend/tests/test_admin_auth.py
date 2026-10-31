@@ -73,3 +73,20 @@ def test_expiry_and_secure_default(monkeypatch,tmp_path):
     c = TestClient(create_app(tmp_path/'secure.db'))
     r = c.post('/api/auth/login',json={'username':'admin','password':'test-only-password-482'})
     assert 'Secure' in r.headers['set-cookie']
+
+
+def test_printed_env_line_survives_shell_sourcing(tmp_path):
+    import subprocess
+    from backend.admin_auth import env_line
+    encoded = password_hash('test-only-password-482')
+    env = tmp_path / '.env'
+    env.write_text(env_line(encoded) + '\n')
+    out = subprocess.run(['sh', '-c', f'set -a; . {env}; set +a; printf %s "$SENTINEL_ADMIN_PASSWORD_HASH"'], capture_output=True, text=True).stdout
+    assert out == encoded
+
+
+def test_hash_format_check():
+    from backend.admin_auth import is_password_hash
+    assert is_password_hash(password_hash('test-only-password-482'))
+    for bad in (None, '', 'scrypt', 'scrypt$$', 'scrypt$zz$11', 'bcrypt$ab$cd', 'scrypt$ab$cd$ef'):
+        assert not is_password_hash(bad)
