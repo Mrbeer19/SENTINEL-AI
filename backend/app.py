@@ -12,7 +12,7 @@ import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 import httpx
@@ -21,13 +21,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError
+from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError, model_validator
 
 from backend import logparse, policy, soc
 from backend.admin_auth import AdminAuth, COOKIE
 from backend.agent import Agent
 from backend.config import ROOT, load_settings, same_model
-from backend.detection import Match, RuleSet
+from backend.detection import Match, RuleSet, scanner_path_count
 from backend.store import Store, audit, utcnow, verify_audit
 
 DEFAULT_DB = Path(os.getenv("SENTINEL_DB_PATH", str(ROOT / "data" / "sentinel.db")))
@@ -47,19 +47,37 @@ ACTION_STATUS = {"INVESTIGATE": "needs_review", "MONITOR": "monitoring", "NO_ACT
 PUBLIC_PATHS = {"/api/health", "/api/demo/login", "/api/demo/traffic"}
 RATE_LIMITED = {"/api/demo/login", "/api/demo/traffic"}
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-OCSF_CLASS = {"HTTP_AUTH": 3002, "SSH_AUTH": 3002, "CONNECTION": 4001}  # Authentication / Network Activity
+OCSF_CLASS = {"HTTP_AUTH": 3002, "SSH_AUTH": 3002, "CONNECTION": 4001, "HTTP_REQUEST": 4002}  # Authentication / Network / HTTP Activity
 USERNAME_MAX = 80  # stored length
 USERNAME_INPUT_MAX = 1024  # longer than this is refused (422); between the two it is cut and flagged
+PATH_MAX = 100  # stored length of each HTTP_REQUEST path (attacker-controlled text)
 
 
 class EventIn(BaseModel):
     source_ip: IPvAnyAddress
-    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION"]
-    outcome: Literal["failed", "success", "attempt"]
+    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION", "HTTP_REQUEST"]
+    outcome: Literal["failed", "success", "attempt"] | None = None
     destination_port: int | None = Field(default=None, ge=1, le=65535)
     timestamp: datetime | None = None
     label: Literal["normal", "attack", "unknown"] = "unknown"
     username: str | None = Field(default=None, max_length=USERNAME_INPUT_MAX)
+    # HTTP_REQUEST only: one source IP's totals for a short window, sent by the web log bridge.
+    count: int = Field(default=0, ge=0, le=1_000_000)
+    not_found: int = Field(default=0, ge=0, le=1_000_000)
+    paths: list[Annotated[str, Field(max_length=USERNAME_INPUT_MAX)]] = Field(default_factory=list, max_length=5)
+    honeypot: bool = False
+    window_s: int | None = Field(default=None, ge=1, le=300)
+
+    @model_validator(mode="after")
+    def fields_match_event_type(self):
+        if self.event_type == "HTTP_REQUEST":
+            if self.outcome is not None:
+                raise ValueError("HTTP_REQUEST has no outcome; a decoy path hit is honeypot=true")
+        elif self.outcome is None:
+            raise ValueError("outcome is required")
+        elif self.count or self.not_found or self.paths or self.honeypot:
+            raise ValueError("count, not_found, paths and honeypot are only for HTTP_REQUEST")
+        return self
 
 
 class DecisionIn(BaseModel):
@@ -240,7 +258,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     async def admin_login(body: AdminLogin, request: Request):
         if not auth.password:
             raise HTTPException(503, 'Admin credentials have not been configured')
-        status, token = await asyncio.to_thread(auth.login, body.username, body.password)
+        peer = request.client.host if request.client else ''
+        status, token = await asyncio.to_thread(auth.login, body.username, body.password, peer)
         if status == 'limited': raise HTTPException(429, 'Too many attempts. Try again in 5 minutes')
         if status != 'ok': raise HTTPException(401, 'Invalid username or password')
         auth.revoke(request.cookies.get(COOKIE))
@@ -320,6 +339,10 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         record = {"timestamp": stamp.isoformat(timespec="seconds"), "source_ip": str(event.source_ip), "event_type": event.event_type,
                   "outcome": event.outcome, "destination_port": event.destination_port, "label": event.label,
                   "username": username, "username_truncated": int(truncated), "ocsf_class_uid": OCSF_CLASS[event.event_type]}
+        if event.event_type == "HTTP_REQUEST":
+            paths = ["".join(ch for ch in path if ch.isprintable())[:PATH_MAX] for path in event.paths]
+            record |= {"outcome": "honeypot" if event.honeypot else "attempt", "request_count": event.count,
+                       "not_found": event.not_found, "scan_paths": scanner_path_count(paths), "paths": json.dumps(paths, ensure_ascii=False)}
         incident = None
         with store.tx() as con:
             cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
@@ -403,7 +426,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
 
     @api.get("/api/events")
     def list_events(limit: int = 100, before_id: int | None = None,
-                    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION"] | None = None):
+                    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION", "HTTP_REQUEST"] | None = None):
         conditions, params = [], []
         if before_id is not None:
             conditions.append("id < ?")
@@ -459,11 +482,13 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             if action in policy.BLOCK_ACTIONS:
                 decision = policy.evaluate(action, incident["source_ip"], incident, settings.protected_ips)
                 if decision.allowed:
+                    if settings.manual_unblock:
+                        decision.duration_seconds = 0  # 0 = until an admin unblocks it
                     con.execute(
                         "INSERT INTO proposals(incident_id,source_ip,target_ip,action,duration_seconds,status,created_at,source,d3fend,reason,policy_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                         (incident_id, decision.target_ip, decision.target_ip, decision.action, decision.duration_seconds, "pending", utcnow(),
                          source, policy.D3FEND_TECHNIQUE, (reason or analysis.evidence[0])[:500], json.dumps(decision.notes)))
-                    log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} for {decision.duration_seconds} seconds ({source}); pending human approval")
+                    log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} {policy.duration_text(decision.duration_seconds)} ({source}); pending human approval")
                     audit(con, "policy", "proposal_created", incident_id, {"action": decision.action, "target_ip": decision.target_ip, "source": source, "notes": decision.notes})
                     transition(con, incident_id, "awaiting_approval", "policy", "block proposal passed policy")
                 else:
@@ -500,7 +525,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             changed = con.execute("UPDATE proposals SET status='approved',reviewer=? WHERE id=? AND status='pending'", (decision.reviewer, proposal_id))
             if changed.rowcount != 1:
                 raise HTTPException(409, "proposal already decided")
-            expires = (datetime.now(timezone.utc) + timedelta(seconds=proposal["duration_seconds"])).isoformat(timespec="seconds")
+            expires = policy.expires_at(proposal["duration_seconds"])
             con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal_id, proposal["target_ip"], expires, utcnow()))
             transition(con, proposal["incident_id"], "blocked", decision.reviewer, "proposal approved")
             log(con, proposal["incident_id"], "approved", f"{decision.reviewer} approved {proposal['action']}")

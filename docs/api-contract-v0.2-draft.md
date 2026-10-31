@@ -1,6 +1,6 @@
-# API contract v0.2 — ร่างให้ Obeto ตรวจ (ยังไม่ใช้แทน v0.1)
+# API contract v0.2 — ร่างให้ พิชชากร ตรวจ (ยังไม่ใช้แทน v0.1)
 
-ร่างโดยฝั่ง Beer (frontend/model) เพื่อรวม 3 แหล่งที่ขัดกันตอนนี้: `SENTINEL AI.txt` (สเปก), `docs/api-contract.md` + `backend/app.py` (ของจริง v0.1) และ `model-brief.md` (ข้อเสนอ backend 17 ต.ค.) เจ้าของ contract คือ Obeto — ทุกข้อเปลี่ยนได้ ใช้จริงเมื่อทั้งสองคนยืนยันและแก้ backend/frontend/tests พร้อมกัน
+ร่างโดยฝั่ง ประภากรณ์ (frontend/model) เพื่อรวม 3 แหล่งที่ขัดกันตอนนี้: `SENTINEL AI.txt` (สเปก), `docs/api-contract.md` + `backend/app.py` (ของจริง v0.1) และ `model-brief.md` (ข้อเสนอ backend 17 ต.ค.) เจ้าของ contract คือ พิชชากร — ทุกข้อเปลี่ยนได้ ใช้จริงเมื่อทั้งสองคนยืนยันและแก้ backend/frontend/tests พร้อมกัน
 
 ## 0. หลักที่เสนอ
 
@@ -44,9 +44,9 @@
 
 | recommended_action | backend ทำ |
 |---|---|
-| `TEMP_BLOCK_IP` / `BLOCK_IP` | สร้าง proposal `pending` (`BLOCK_IP` ใน MVP ยังเป็นกฎหมดอายุ แต่ยาวกว่า เช่น 60 นาที — ให้ Obeto กำหนด) |
+| `TEMP_BLOCK_IP` / `BLOCK_IP` | สร้าง proposal `pending` (`BLOCK_IP` ใน MVP ยังเป็นกฎหมดอายุ แต่ยาวกว่า เช่น 60 นาที — ให้ พิชชากร กำหนด) |
 | `INVESTIGATE` / `MONITOR` / `NO_ACTION` | **ไม่สร้าง proposal**; incident = `needs_review` / `monitoring` / `closed` |
-| `rule_fallback` | สร้าง proposal ได้แต่ต้องติดป้าย fallback ให้คนเห็น (ให้ Obeto ตัดสิน) |
+| `rule_fallback` | สร้าง proposal ได้แต่ต้องติดป้าย fallback ให้คนเห็น (ให้ พิชชากร ตัดสิน) |
 
 Proposal fields: `id, incident_id, action, target_ip, duration_seconds, status, reviewer, created_at, reason` — เปลี่ยน `source_ip` → `target_ip` (ตรงสเปก) หรือคงเดิมก็ได้ ขอให้เลือกชื่อเดียว
 
@@ -71,14 +71,14 @@ Proposal fields: `id, incident_id, action, target_ip, duration_seconds, status, 
 
 ตาม brief 5 ตัว: `get_incident_logs(incident_id)`, `get_ip_activity(ip_address)`, `get_related_incidents(ip_address)`, `get_firewall_status(ip_address)`, `propose_block_ip(ip_address, minutes, reason)` — ทั้งหมด scope ฝั่ง server, ไม่มี shell `datasets/` + `model/eval/agent_bench.py` ใช้ชุดนี้แล้ว ถ้า backend เลือกชุดอื่นให้บอก จะปรับ benchmark ตาม
 
-## 8. สิ่งที่ UI จะใช้ (Beer)
+## 8. สิ่งที่ UI จะใช้ (ประภากรณ์)
 
 Incident list/detail, analysis ตามข้อ 1, trace แยก model/fallback, proposal ตามข้อ 3, `GET /api/traffic` สำหรับ before/after, WS stage เดิม + `analysis_step` (tool ที่กำลังเรียก) ถ้าทำได้ หน้า demo target สำหรับ Neo เรียก `/api/demo/login` และ `/api/demo/traffic` ด้วย IP จริง
 
-## คำถามถึง Obeto
+## คำถามถึง พิชชากร
 
 1. รับ path v0.1 + analysis/proposal ตามร่างนี้ได้ไหม
 2. `BLOCK_IP` ใน MVP ให้ต่างจาก `TEMP_BLOCK_IP` อย่างไร
 3. fallback ควรสร้าง proposal หรือไม่
 4. ชื่อ `source_ip` หรือ `target_ip` ใน proposal
-5. งานบน branch ของ Obeto ตอนนี้แก้ส่วนไหนแล้ว (remote ยังมีแค่ `main` @ `c4bd895`)
+5. งานบน branch ของ พิชชากร ตอนนี้แก้ส่วนไหนแล้ว (remote ยังมีแค่ `main` @ `c4bd895`)

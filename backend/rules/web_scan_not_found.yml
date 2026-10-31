@@ -1,0 +1,28 @@
+# Sigma-inspired rule: base selection + event_sum correlation (HTTP_REQUEST events are per-window totals).
+title: Web scan (many not-found pages)
+id: sentinel-web-scan-not-found
+status: experimental
+description: One source IP gets many 404 responses in a short window, the pattern of a wordlist scanner guessing paths.
+references:
+  - https://attack.mitre.org/techniques/T1595/003/
+tags:
+  - attack.reconnaissance
+  - attack.t1595.003
+level: medium
+logsource:
+  product: sentinel
+  category: web
+detection:
+  selection:
+    event_type: HTTP_REQUEST
+  condition: selection
+correlation:
+  type: event_sum
+  field: not_found
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 10
+sentinel:
+  kind: WEB_SCAN

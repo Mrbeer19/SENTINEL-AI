@@ -1,0 +1,28 @@
+# Sigma-inspired rule: base selection + event_sum correlation (HTTP_REQUEST events are per-window totals).
+title: HTTP request flood
+id: sentinel-http-flood
+status: experimental
+description: One source IP sends a very high number of page and API requests in a short window (static files are not counted by the bridge). Layer 7 flood.
+references:
+  - https://attack.mitre.org/techniques/T1499/002/
+tags:
+  - attack.impact
+  - attack.t1499.002
+level: medium
+logsource:
+  product: sentinel
+  category: web
+detection:
+  selection:
+    event_type: HTTP_REQUEST
+  condition: selection
+correlation:
+  type: event_sum
+  field: request_count
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 300
+sentinel:
+  kind: HTTP_FLOOD
