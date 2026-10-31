@@ -1,0 +1,197 @@
+:root {
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --dur-press: 100ms;
+  --dur-hover: 150ms;
+  --dur-state: 220ms;
+  --dur-page-in: 180ms;
+  --dur-page-out: 120ms;
+  --dur-panel: 80ms;
+  --panel-step: 40ms;
+  --dur-count: 400ms;
+  --dur-signal: 600ms;
+  --dur-check: 300ms;
+  --dur-breathe: 2s;
+  --dur-mascot: 2400ms;
+}
+.pageContent { animation: none; }
+.agentLab { --spatial-light: var(--text); }
+:root[data-theme="light"] .agentLab { --spatial-light: var(--surface); }
+.nHeader { view-transition-name: header; }
+.nRail { view-transition-name: rail; }
+::view-transition-group(root),
+::view-transition-group(header),
+::view-transition-group(rail) { animation: none; }
+::view-transition-old(root) { animation: pageOut var(--dur-page-out) var(--ease-in) both; }
+::view-transition-new(root) { animation: pageEnter var(--dur-page-in) var(--ease-out) both; }
+::view-transition-old(header),
+::view-transition-old(rail) { display: none; }
+::view-transition-new(header),
+::view-transition-new(rail) { animation: none; mix-blend-mode: normal; }
+@keyframes pageOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pageEnter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.pageContent > .instrument,
+.pageContent > div > .instrument,
+.pageContent .metricStrip > div,
+.pageContent .observatoryGrid > .instrument,
+.pageContent .telemetryRow > .instrument,
+.pageContent .signalColumn > .instrument,
+.pageContent .queue {
+  --panel-index: 0;
+  animation: panelEnter var(--dur-panel) var(--ease-out) both;
+  animation-delay: calc(var(--panel-index) * var(--panel-step));
+}
+.pageContent :is(.instrument, .queue, .metricStrip > div):nth-child(2) { --panel-index: 1; }
+.pageContent :is(.instrument, .queue, .metricStrip > div):nth-child(3) { --panel-index: 2; }
+.pageContent :is(.instrument, .queue, .metricStrip > div):nth-child(4) { --panel-index: 3; }
+.pageContent :is(.instrument, .queue, .metricStrip > div):nth-child(5) { --panel-index: 4; }
+.pageContent :is(.instrument, .queue, .metricStrip > div):nth-child(n+6) { --panel-index: 5; }
+@keyframes panelEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.nRail > a,
+.nRail > a[aria-current="page"] { border-left: 0; }
+.navIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: var(--nav-height, 44px);
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transform: translate3d(var(--nav-x, 0px), var(--nav-y, 0px), 0);
+  transition: transform var(--dur-state) var(--ease-out), opacity var(--dur-hover) var(--ease-out);
+}
+.nRail[data-indicator-ready="true"] .navIndicator { opacity: 1; }
+.nRail > a > svg {
+  transition: transform var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out);
+}
+.nRail > a:hover { color: var(--text); }
+.nRail > a:hover > svg { transform: translateX(2px); color: var(--accent); }
+
+.metricStrip > div,
+.signalCard { position: relative; transition: border-color var(--dur-hover) var(--ease-out); }
+.metricStrip > div::before,
+.metricStrip > div::after,
+.signalCard::before,
+.signalCard::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--dur-hover) var(--ease-out), opacity var(--dur-hover) var(--ease-out);
+}
+.metricStrip > div::before,
+.signalCard::before {
+  top: 4px;
+  left: 4px;
+  border-top: 1px solid var(--accent);
+  border-left: 1px solid var(--accent);
+  transform: translate(-4px, -4px);
+}
+.metricStrip > div::after,
+.signalCard::after {
+  right: 4px;
+  bottom: 4px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  transform: translate(4px, 4px);
+}
+.metricStrip > div:hover,
+.signalCard:hover,
+.signalCard:focus-visible { border-color: var(--text-dim); }
+.metricStrip > div:hover::before,
+.metricStrip > div:hover::after,
+.signalCard:hover::before,
+.signalCard:hover::after,
+.signalCard:focus-visible::before,
+.signalCard:focus-visible::after { transform: translate(0, 0); opacity: 1; }
+.dataScroll tbody tr,
+.queueCard { transition: opacity var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out), border-color var(--dur-hover) var(--ease-out); }
+.dataScroll tbody tr:hover,
+.queueCard:hover { background: var(--surface-2); }
+.queueCard > svg:last-child,
+.signalLine > svg:last-child,
+.dataScroll tr svg:last-child { transition: transform var(--dur-hover) var(--ease-out); }
+.queueCard:hover > svg:last-child,
+.signalLine:hover > svg:last-child,
+.dataScroll tr:hover svg:last-child { transform: translateX(3px); }
+.connectionSource,
+.connectionRoute { transition: opacity var(--dur-hover) var(--ease-out); }
+.connectionMap:has(.connectionEndpoint:hover) .connectionSource:not(:has(.connectionEndpoint:hover)) { opacity: 0.3; }
+.connectionSource:has(.connectionEndpoint:hover) .connectionRoute { opacity: 1; stroke-width: 1.5; }
+.connectionSource.attention .connectionFocus { animation: reviewBreathe var(--dur-breathe) var(--ease-out) infinite; }
+@keyframes reviewBreathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+:is(button, a.button) {
+  transition: transform var(--dur-press) var(--ease-out), opacity var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out), border-color var(--dur-hover) var(--ease-out);
+}
+:is(button, a.button):active:not(:disabled),
+.nShell .button:active:not(:disabled),
+.segmented > button:active { transform: scale(0.97); }
+.refreshMotion,
+.refreshIdle { display: inline-flex; align-items: center; justify-content: center; }
+.refreshMotion { animation: refreshTurn var(--dur-count) var(--ease-out) both; }
+@keyframes refreshTurn { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.approvalConfirmed { display: inline-flex; align-items: center; gap: 8px; }
+.approvalConfirmed > svg { color: var(--ok); animation: checkAppear var(--dur-check) var(--ease-out) both; }
+@keyframes checkAppear { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+.motionNumber { position: relative; }
+.motionActual { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; user-select: none; }
+.numberFlash { position: absolute; inset: 0; color: var(--accent); pointer-events: none; user-select: none; animation: numberSignal var(--dur-signal) var(--ease-out) both; }
+@keyframes numberSignal { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+.dataScroll tr[data-arriving="true"] { animation: recordIn var(--dur-state) var(--ease-out) both; }
+@keyframes recordIn { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.dataScroll tr[data-arriving="true"][data-result="denied"] td:first-child { position: relative; }
+.dataScroll tr[data-arriving="true"][data-result="denied"] td:first-child::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--critical);
+  pointer-events: none;
+  animation: deniedSignal var(--dur-state) var(--ease-out) both;
+}
+@keyframes deniedSignal { from { opacity: 1; } to { opacity: 0; } }
+.connection > summary[data-connected="true"] > .dot { animation: connectedBreathe var(--dur-breathe) var(--ease-out) infinite; }
+@keyframes connectedBreathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.toast { animation: toastEnter var(--dur-state) var(--ease-out) both; }
+@keyframes toastEnter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 851px) {
+  .nRail > a { padding-left: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nShell *,
+  .nShell *::before,
+  .nShell *::after,
+  .mascot,
+  .mascot::before,
+  .mascot::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .nRail > a:hover > svg,
+  .queueCard:hover > svg:last-child,
+  .signalLine:hover > svg:last-child,
+  .dataScroll tr:hover svg:last-child,
+  :is(button, a.button):active:not(:disabled),
+  .nShell .button:active:not(:disabled),
+  .segmented > button:active,
+  .refreshMotion { transform: none; }
+  .metricStrip > div::before,
+  .metricStrip > div::after,
+  .signalCard::before,
+  .signalCard::after { transform: none; }
+  .numberFlash { display: none; }
+  .connectionPacket { display: none; }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}

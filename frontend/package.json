@@ -1,18 +1,22 @@
 {
-  "name": "sentinel-ai-dashboard",
-  "private": true,
+  "name": "sentinel-dashboard",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
-    "@fontsource/chakra-petch": "^5.3.0",
-    "@fontsource/noto-sans-thai": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-sans-thai": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "3d-force-graph": "1.80.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "three": "0.187.0",
+    "three-spritetext": "1.10.0"
   },
   "devDependencies": {
     "vite": "^8.0.0"
