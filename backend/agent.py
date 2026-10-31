@@ -94,7 +94,7 @@ TOOL_DOCS = {
     "get_related_incidents": "List other incidents from the same IP address",
     "get_firewall_status": "Check whether an IP is blocked and whether it is protected",
 }
-# The investigator only reads. Choosing a block is the defense planner's job (agreed with Beer, PR #7).
+# The investigator only reads. Choosing a block is the defense planner's job (agreed with Prapakorn, PR #7).
 TOOLS = [
     {"type": "function", "function": {"name": name, "description": TOOL_DOCS[name], "parameters": {
         "type": "object", "required": list(args), "properties": {key: {"type": kind} for key, kind in args.items()}}}}
