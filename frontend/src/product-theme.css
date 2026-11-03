@@ -1,0 +1,1073 @@
+/* Sentinel product direction inspired by the Behance 233939529 case study.
+   Own components and assets; the case study supplies visual principles only. */
+.nShell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: 67px minmax(0, 1fr);
+  background: var(--bg);
+}
+.nHeader {
+  grid-column: 1/-1;
+  grid-row: 1;
+  background: var(--surface);
+  padding-inline: 24px;
+  gap: 18px;
+}
+.brand {
+  flex: 0 0 178px;
+}
+.brand img {
+  width: 155px;
+}
+.headerLabel {
+  display: none;
+}
+.commandSearch {
+  margin: 0;
+  max-width: 560px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding-inline: 12px;
+}
+.commandSearch:focus-within {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.commandSearch kbd {
+  color: var(--dim);
+}
+.connection {
+  margin-left: auto;
+}
+.connection > summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 10px;
+}
+.connection > div,
+.operator details > button {
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.themeButton {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.operator > span {
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--line);
+}
+.nRail {
+  grid-column: 1;
+  grid-row: 2;
+  position: sticky;
+  top: 67px;
+  align-self: start;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  height: calc(100dvh - 67px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 23px 14px;
+  margin: 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+  overflow-y: auto;
+  z-index: 20;
+}
+.navSectionLabel {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  padding: 0 12px 10px;
+}
+.nRail > a {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+.nRail > a > small {
+  display: none;
+}
+.nRail > a > span {
+  font-size: 12px;
+  font-weight: 500;
+}
+.nRail > a > svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.nRail > a:hover {
+  background: var(--raised);
+  color: var(--ink);
+}
+.nRail > a[aria-current="page"] {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line-hi);
+}
+.nRail > a[aria-current="page"] > svg {
+  color: var(--accent);
+}
+.navCount {
+  margin-left: auto;
+  font: 600 10px var(--font-ui);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.railFoot {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 6px;
+  margin-top: auto;
+  padding: 18px 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+.railFoot > svg {
+  color: var(--accent);
+  grid-row: span 2;
+}
+.railFoot b {
+  font-size: 10px;
+  font-weight: 500;
+}
+.railFoot small {
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.7;
+}
+#workspace {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 25px 24px 34px;
+}
+.pageHeading {
+  margin-bottom: 22px;
+  gap: 16px;
+}
+.pageHeading h1 {
+  font: 600 clamp(27px, 2.4vw, 32px) / 1.25 var(--font-ui);
+  letter-spacing: -0.9px;
+  margin: 7px 0 8px;
+}
+.pageHeading p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.pageBreadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  letter-spacing: 0;
+  font-size: 10px;
+}
+.pageBreadcrumb > span {
+  color: var(--dim);
+}
+.pageActions {
+  gap: 12px;
+}
+.pageActions time {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.pageContent {
+  animation: productPageIn 0.18s ease-out;
+}
+@keyframes productPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.instrument,
+.agentLab {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+  padding: 18px;
+  min-width: 0;
+}
+.instrument > header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-color: var(--line);
+}
+.instrument > header h2 {
+  font-size: 12px;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.instrument > header h2 small {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 9px;
+  margin-right: 7px;
+  color: var(--dim);
+}
+.instrument > header > .segmented {
+  margin-left: auto;
+}
+.button {
+  border-radius: var(--radius);
+  background: var(--raised);
+  border-color: var(--line-hi);
+  font-size: 11px;
+}
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  box-shadow: none;
+}
+:root[data-theme="light"] .button.primary {
+  color: var(--text);
+}
+.button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 85%, var(--ink));
+}
+.button.danger {
+  color: var(--red);
+}
+.textButton,
+a {
+  color: var(--accent);
+}
+.textButton:hover {
+  color: var(--ink);
+}
+.segmented {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 3px;
+  gap: 2px;
+}
+.segmented > button {
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 10px;
+  padding: 6px 10px;
+  min-height: 29px;
+}
+.segmented > button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+.search,
+input,
+select,
+.field input {
+  border-radius: var(--radius);
+}
+.search {
+  background: var(--bg);
+  border-color: var(--line);
+}
+.search:focus-within,
+.field input:focus {
+  border-color: var(--accent);
+  outline-color: var(--accent);
+}
+.search input {
+  background: transparent;
+  font-size: 12px;
+}
+.tag {
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  font-size: 10px;
+}
+.filterBar {
+  padding-bottom: 2px;
+  gap: 12px;
+}
+.dataScroll {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.dataScroll th {
+  background: var(--raised);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.dataScroll td {
+  padding: 12px;
+}
+.dataScroll td.mono {
+  font-size: 11px;
+}
+.dataScroll tr.selected {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+.pagination {
+  font-size: 11px;
+}
+.notice {
+  border-radius: var(--radius);
+}
+.empty {
+  color: var(--muted);
+  border-radius: var(--radius);
+  padding: 22px 14px;
+}
+.empty > svg {
+  color: var(--accent);
+  opacity: 0.7;
+}
+.metricStrip {
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.metricStrip > div,
+.metricStrip > div:first-child,
+.metricStrip > div:last-child {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 17px;
+  background: var(--surface);
+  box-shadow: none;
+}
+.metricTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+}
+.metricIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  color: var(--accent);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+.metricStrip small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+}
+.metricStrip strong {
+  font: 500 31px/1.2 var(--font-ui);
+  margin: 12px 0 7px;
+  letter-spacing: -0.8px;
+}
+.metricStrip p {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+}
+.overviewPage::before {
+  display: none;
+}
+.observatoryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 285px;
+  gap: 16px;
+  align-items: start;
+}
+.topologyPanel {
+  padding: 18px;
+}
+.signalColumn {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 0;
+  border: 0;
+  gap: 14px;
+  grid-column: auto;
+}
+.signalColumn > .instrument {
+  min-width: 0;
+}
+.signalColumn .instrument > header > .segmented {
+  padding: 2px;
+}
+.signalColumn .segmented > button {
+  padding: 5px 7px;
+  font-size: 9px;
+}
+.signalCard {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  padding: 12px;
+  margin-bottom: 0;
+  background: var(--bg);
+}
+.signalCard.attention {
+  border: 1px solid color-mix(in srgb, var(--amber) 25%, var(--line));
+  background: var(--surface);
+}
+.signalCard small {
+  color: var(--muted);
+}
+.signalCard.attention small {
+  color: var(--amber);
+}
+.signalLine {
+  padding: 12px 0;
+}
+.signalLine:last-child {
+  border-bottom: 0;
+}
+.operatorHint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.operatorHint img {
+  width: 55px;
+  height: 61px;
+  object-fit: contain;
+}
+.operatorHint b {
+  font-size: 11px;
+  font-weight: 500;
+}
+.operatorHint p {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-top: 5px;
+}
+.signalColumn .radar svg {
+  max-width: 190px;
+  margin-inline: auto;
+}
+.signalColumn .radar figcaption {
+  font-size: 9px;
+}
+.networkExplorer > .dataScroll {
+  max-height: 380px;
+}
+.connectionMap > svg {
+  height: 390px;
+}
+.mapTools .search {
+  max-width: 235px;
+}
+.mapBreadcrumb button {
+  color: var(--accent);
+}
+.connectionMapFooter {
+  font-size: 10px;
+}
+.connectionMapFooter small {
+  font-size: 9px;
+}
+.mapLegend {
+  font-size: 9px;
+}
+.geoWorld {
+  border-radius: var(--radius);
+}
+.geoLand {
+  fill: var(--raised);
+  stroke: var(--muted);
+  stroke-opacity: 0.6;
+}
+.geoControls .button {
+  padding-inline: 9px;
+}
+.geoSummary b {
+  color: var(--accent);
+}
+.geoIpList > button {
+  border-radius: var(--radius);
+}
+.geoIpList > button[aria-pressed="true"] {
+  background: var(--accent-soft);
+}
+.geoNote {
+  font-size: 10px;
+}
+.telemetryRow {
+  margin-top: 18px;
+  padding-top: 0;
+  border-top: 0;
+  gap: 16px;
+}
+.telemetryRow > .instrument > header {
+  min-height: 46px;
+}
+.trafficPlot {
+  min-height: 245px;
+}
+.trafficPlot .plotDeniedArea {
+  fill: var(--accent-soft);
+}
+.plotTotalLine {
+  stroke: var(--accent);
+}
+.legendLine.total {
+  background: var(--accent);
+}
+.trafficTooltip rect {
+  rx: 6px;
+}
+.trafficInsights {
+  gap: 12px 20px;
+}
+.trafficInsights b {
+  font-size: 20px;
+}
+.facts {
+  gap: 10px;
+}
+.facts > div {
+  padding-bottom: 9px;
+}
+.recommendation,
+.proof {
+  border-radius: var(--radius);
+}
+.recommendation b {
+  color: var(--accent);
+}
+.queueCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.queueCard.selected,
+.queueCard:hover,
+.instrument .queueCard.selected {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  background: var(--accent-soft);
+}
+.decisionLayout,
+.archiveLayout {
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 16px;
+}
+.decisionLayout > .instrument:last-of-type {
+  padding: 18px;
+}
+.targetStrip {
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+.targetStrip strong {
+  font-size: 22px;
+}
+.targetStrip > svg {
+  color: var(--accent);
+}
+.decisionClear {
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 28px;
+}
+.reviewGrid {
+  gap: 18px;
+}
+.reviewActions .field {
+  margin-top: 14px;
+}
+.countdown strong {
+  color: var(--accent);
+  font-size: 30px;
+}
+.dossierHeader {
+  border-bottom: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.dossierHeader h2 {
+  font-family: var(--font-ui);
+  font-size: 22px;
+}
+.reportIdentity {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+.reportIdentity h2 {
+  font-size: 20px;
+}
+.agentLab {
+  padding: 0;
+  overflow: hidden;
+  --spatial-bg: var(--surface);
+  --spatial-idle: var(--text-dim);
+  --spatial-line: var(--line);
+}
+.labHead {
+  padding: 14px 16px;
+}
+.stageRail button {
+  padding: 12px 10px;
+}
+.stageRail button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-top-color: var(--accent);
+}
+.labViewport,
+.agentLab .labCanvas {
+  background: var(--surface);
+}
+.canvasActions .button {
+  background: var(--surface);
+}
+.stageDetail h2 {
+  font-size: 21px;
+}
+.labTabContent {
+  padding: 20px;
+}
+.toolRecord {
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+.workContext {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+.raw pre {
+  border-radius: var(--radius);
+}
+.confirmDialog {
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+.confirmDialog::backdrop {
+  background: var(--surface-2);
+  backdrop-filter: none;
+}
+.toast {
+  border-radius: var(--radius);
+}
+.nFooter {
+  margin-top: 22px;
+  padding-top: 15px;
+  font-family: var(--font-ui);
+}
+.loginShell {
+  background: var(--bg);
+}
+.loginCard,
+.loginForm {
+  border-radius: var(--radius);
+}
+@media (min-width: 1300px) {
+  .reviewGrid {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+}
+@media (max-width: 1250px) {
+  .nShell {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .brand {
+    flex-basis: 150px;
+  }
+  .nRail {
+    padding-inline: 10px;
+  }
+  #workspace {
+    padding-inline: 20px;
+  }
+  .observatoryGrid {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+  .metricStrip > div,
+  .metricStrip > div:first-child,
+  .metricStrip > div:last-child {
+    padding: 14px;
+  }
+  .metricTop {
+    gap: 8px;
+  }
+  .metricIcon {
+    width: 31px;
+    height: 31px;
+  }
+}
+@media (max-width: 1100px) {
+  .observatoryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .signalColumn {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .operatorHint {
+    grid-column: 1/-1;
+  }
+  .signalColumn .instrument:has(.signalCard) {
+    display: block;
+  }
+  .telemetryRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .metricStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .connection > summary > span {
+    display: none;
+  }
+}
+@media (max-width: 850px) {
+  .nShell {
+    display: block;
+  }
+  .nHeader {
+    padding-inline: 16px;
+  }
+  .brand {
+    flex-basis: 140px;
+  }
+  .brand img {
+    width: 140px;
+  }
+  #workspace {
+    padding: 22px 20px 110px;
+  }
+  .nRail {
+    position: fixed;
+    top: auto;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 550px;
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 2px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--line-hi);
+    border-radius: var(--radius);
+    box-shadow: none;
+    overflow: visible;
+    z-index: 40;
+  }
+  .navSectionLabel,
+  .railFoot {
+    display: none;
+  }
+  .nRail > a {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px 3px;
+    border-radius: var(--radius);
+  }
+  .nRail > a > span {
+    font-size: 8px;
+  }
+  .nRail > a > svg {
+    width: 18px;
+    height: 18px;
+  }
+  .navCount {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+  .nRail > a[aria-current="page"] {
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent);
+  }
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .queue {
+    max-height: 260px;
+  }
+}
+@media (max-width: 700px) {
+  .nHeader {
+    min-height: 62px;
+    height: auto;
+    gap: 10px;
+    padding: 12px 15px;
+  }
+  .brand {
+    flex-basis: 135px;
+  }
+  .brand img {
+    width: 135px;
+  }
+  .connection {
+    margin-left: auto;
+  }
+  .connection > summary {
+    padding: 6px;
+    border: 0;
+  }
+  .themeButton {
+    width: 31px;
+    height: 31px;
+  }
+  .commandSearch {
+    max-width: none;
+    flex-basis: 100%;
+    order: 10;
+    min-width: 0;
+  }
+  .operator {
+    padding-left: 8px;
+  }
+  #workspace {
+    padding: 20px 15px 105px;
+  }
+  .pageHeading {
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+  .pageHeading h1 {
+    font-size: 26px;
+    letter-spacing: -0.6px;
+  }
+  .pageHeading p {
+    font-size: 11px;
+  }
+  .pageActions time {
+    display: none;
+  }
+  .pageActions {
+    margin-top: 20px;
+  }
+  .metricStrip {
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+  .metricStrip > div,
+  .metricStrip > div:first-child,
+  .metricStrip > div:last-child {
+    padding: 12px;
+  }
+  .metricTop {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .metricIcon {
+    width: 29px;
+    height: 29px;
+    border-radius: var(--radius);
+  }
+  .metricStrip small {
+    font-size: 9px;
+  }
+  .metricStrip strong {
+    font-size: 29px;
+    margin-block: 10px 5px;
+  }
+  .metricStrip p {
+    font-size: 10px;
+  }
+  .observatoryGrid {
+    display: grid;
+    gap: 12px;
+  }
+  .topologyPanel {
+    order: 0;
+  }
+  .signalColumn {
+    order: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .operatorHint {
+    grid-column: auto;
+  }
+  .instrument {
+    padding: 14px;
+    border-radius: var(--radius);
+  }
+  .instrument > header h2 {
+    font-size: 11px;
+  }
+  .instrument > header {
+    gap: 8px;
+    margin-bottom: 13px;
+    padding-bottom: 12px;
+  }
+  .instrument > header h2 small {
+    width: 18px;
+    height: 18px;
+  }
+  .connectionMap > svg {
+    height: 295px;
+  }
+  .mapTools {
+    gap: 10px;
+  }
+  .mapTools .search {
+    max-width: none;
+  }
+  .connectionMapFooter small {
+    font-size: 9px;
+  }
+  .telemetryRow {
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .trafficPlot {
+    min-height: 220px;
+  }
+  .decisionLayout,
+  .archiveLayout {
+    gap: 12px;
+  }
+  .decisionLayout > .instrument:last-of-type {
+    padding: 14px;
+  }
+  .dossierHeader {
+    padding: 14px;
+  }
+  .dossierHeader h2 {
+    font-size: 20px;
+  }
+  .labHead {
+    padding: 12px;
+  }
+  .stageRail button {
+    padding: 10px 8px;
+  }
+  .stageRail button b {
+    font-size: 11px;
+  }
+  .labTabContent {
+    padding: 14px;
+  }
+  .nFooter {
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pageContent {
+    animation: none;
+  }
+}
+@media print {
+  .nShell {
+    display: block;
+  }
+  .nHeader,
+  .nRail {
+    display: none;
+  }
+  #workspace {
+    padding: 0;
+  }
+  .instrument {
+    box-shadow: none;
+  }
+}
+
+/* Extend the sidebar surface through the scrollable document. */
+.nShell {
+  --rail-width: 220px;
+  background: var(--surface);
+}
+.instrument > header h2 small {
+  display: none;
+}
+@media (max-width: 1350px) {
+  .observatoryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .signalColumn {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .operatorHint {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 1250px) {
+  .nShell {
+    --rail-width: 190px;
+  }
+}
+@media (max-width: 850px) {
+  .nShell {
+    background: var(--bg);
+  }
+}
+@media (max-width: 700px) {
+  .signalColumn {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .operatorHint {
+    grid-column: auto;
+  }
+}
