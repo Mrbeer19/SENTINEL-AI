@@ -1,0 +1,1731 @@
+/* Glass workspace theme (loaded last).
+   Layout: collapsible smoked-glass rail + translucent bento cards floating over a
+   fixed cyber backdrop. Lavender marks brand/action; status colours stay semantic. */
+:root {
+  --page: #07060c;
+  --bg: #0d0c14;
+  --surface: #1b1a22;
+  --surface-2: #262431;
+  --line: #2e2c37;
+  --text: #f2f0f7;
+  --text-dim: #a3a0b0;
+  --accent: #b39cff;
+  --accent-ink: #141318;
+  --accent-soft: color-mix(in srgb, #b39cff 18%, transparent);
+  --lavender: #b7a4f4;
+  --lavender-ink: #141318;
+  --rail-glass: color-mix(in srgb, #0b0a10 72%, transparent);
+  --rail-text: #f2f0f7;
+  --rail-ink: #8e8b9c;
+  --data: #cfc6f5;
+  --data-soft: color-mix(in srgb, #cfc6f5 12%, transparent);
+  /* Threat types stay distinct, but within the purple-white family. */
+  --type-http-brute: #c4b5fd;
+  --type-http-brute-bg: #2a2440;
+  --type-http-brute-line: #4a3f73;
+  --type-ssh-brute: #9a7cf2;
+  --type-ssh-brute-bg: #251e3d;
+  --type-ssh-brute-line: #443570;
+  --type-port-scan: #ece8ff;
+  --type-port-scan-bg: #2b2935;
+  --type-port-scan-line: #4d4a5e;
+  --type-anomaly: #e0b3ff;
+  --type-anomaly-bg: #33243f;
+  --type-anomaly-line: #5d4373;
+  --type-login: #a6a1ba;
+  --type-login-bg: #26252e;
+  --type-login-line: #45434f;
+  --glass: color-mix(in srgb, #1c1a26 52%, transparent);
+  --glass-strong: color-mix(in srgb, #17161f 86%, transparent);
+  --glass-soft: color-mix(in srgb, #ffffff 5%, transparent);
+  --glass-line: color-mix(in srgb, #ffffff 11%, transparent);
+  --glass-shine: color-mix(in srgb, #ffffff 7%, transparent);
+  --glass-shadow: 0 10px 30px color-mix(in srgb, #000000 35%, transparent);
+  --cyber-base-1: #0a0913;
+  --cyber-base-2: #120f22;
+  --cyber-grid: color-mix(in srgb, #8f7cff 9%, transparent);
+  --cyber-trace: #8f7cff;
+  --cyber-trace-opacity: 0.2;
+  --cyber-glow-a: color-mix(in srgb, #7c5cff 34%, transparent);
+  --cyber-glow-b: color-mix(in srgb, #6b4fd8 24%, transparent);
+  --cyber-glow-c: color-mix(in srgb, #c4b5fd 8%, transparent);
+  --radius: 12px;
+  --radius-card: 22px;
+  --rail-w: 76px;
+  --scrim: color-mix(in srgb, var(--page) 70%, transparent);
+  --dur-panel: 560ms;
+  --panel-step: 60ms;
+}
+:root[data-theme="light"] {
+  --page: #e9e7f1;
+  --bg: #eceaf3;
+  --surface: #ffffff;
+  --surface-2: #f1eff7;
+  --line: #dedbe8;
+  --text: #141318;
+  --text-dim: #5f5b6c;
+  --accent: #6d4fd8;
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, #6d4fd8 12%, transparent);
+  --lavender: #c9bbf6;
+  --lavender-ink: #141318;
+  --rail-glass: color-mix(in srgb, #141318 78%, transparent);
+  --data: #5b4a9e;
+  --data-soft: color-mix(in srgb, #5b4a9e 10%, transparent);
+  --type-http-brute: #6d4fd8;
+  --type-http-brute-bg: #ede8fd;
+  --type-http-brute-line: #c7bbf3;
+  --type-ssh-brute: #4c2fa8;
+  --type-ssh-brute-bg: #e6e0f8;
+  --type-ssh-brute-line: #b5a6e6;
+  --type-port-scan: #2b2640;
+  --type-port-scan-bg: #ecebf2;
+  --type-port-scan-line: #c3c0d2;
+  --type-anomaly: #9333c9;
+  --type-anomaly-bg: #f5e8fd;
+  --type-anomaly-line: #dbb6f2;
+  --type-login: #6b6680;
+  --type-login-bg: #efeef4;
+  --type-login-line: #cfcddb;
+  --glass: color-mix(in srgb, #ffffff 58%, transparent);
+  --glass-strong: color-mix(in srgb, #ffffff 90%, transparent);
+  --glass-soft: color-mix(in srgb, #ffffff 45%, transparent);
+  --glass-line: color-mix(in srgb, #ffffff 80%, transparent);
+  --glass-shine: color-mix(in srgb, #ffffff 60%, transparent);
+  --glass-shadow: 0 10px 30px color-mix(in srgb, #3b2f7a 10%, transparent);
+  --cyber-base-1: #ebe8f5;
+  --cyber-base-2: #dcd6f0;
+  --cyber-grid: color-mix(in srgb, #6d4fd8 8%, transparent);
+  --cyber-trace: #6d4fd8;
+  --cyber-trace-opacity: 0.14;
+  --cyber-glow-a: color-mix(in srgb, #9b7bff 32%, transparent);
+  --cyber-glow-b: color-mix(in srgb, #b7a4f4 30%, transparent);
+  --cyber-glow-c: color-mix(in srgb, #ffffff 30%, transparent);
+  --critical-bg: #fbe4e2;
+  --critical-text: #a3302a;
+  --critical-line: #efb7b2;
+  --review-bg: #fbf1d4;
+  --review-line: #e8d08a;
+  --ok-bg: #e2f1e8;
+  --ok-text: #2f6b4a;
+  --ok-line: #a9d3b9;
+}
+
+/* Fixed cyber backdrop: glows, fading grid and circuit traces. */
+html {
+  background: var(--page);
+}
+/* Transparent so the fixed backdrop layers below are not painted over. */
+body,
+html body {
+  background: transparent;
+}
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+body::before {
+  z-index: -2;
+  background:
+    radial-gradient(50% 45% at 82% 8%, var(--cyber-glow-a), transparent 70%),
+    radial-gradient(40% 40% at 8% 92%, var(--cyber-glow-b), transparent 70%),
+    radial-gradient(30% 30% at 50% 55%, var(--cyber-glow-c), transparent 70%),
+    linear-gradient(160deg, var(--cyber-base-1), var(--cyber-base-2));
+}
+body::after {
+  z-index: -1;
+  background:
+    linear-gradient(var(--cyber-grid) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px) 0 0 / 40px 40px;
+  -webkit-mask-image: radial-gradient(90% 80% at 50% 30%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(90% 80% at 50% 30%, #000 30%, transparent 100%);
+}
+#root {
+  position: relative;
+  isolation: isolate;
+}
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--cyber-trace);
+  opacity: var(--cyber-trace-opacity);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' fill='none' stroke='%23000' stroke-width='1.3'%3E%3Cpath d='M0 60h70l20 20h70M160 80v50l25 25h75M260 155h60M30 0v30l30 30M220 0v40l-20 20v20M0 220h50l30-30h50l20 20v50M150 260v60M235 210l25 25v85M290 250h30M80 320v-30l20-20h30'/%3E%3Cpath d='M190 245l15-9 15 9v18l-15 9-15-9z'/%3E%3Cpath d='M58 128h22v16H58zM62 128v-6a7 7 0 0 1 14 0v6'/%3E%3Cg fill='%23000' stroke='none'%3E%3Ccircle cx='160' cy='80' r='3.5'/%3E%3Ccircle cx='260' cy='155' r='3.5'/%3E%3Ccircle cx='60' cy='60' r='3'/%3E%3Ccircle cx='130' cy='190' r='3.5'/%3E%3Ccircle cx='150' cy='260' r='3'/%3E%3Ccircle cx='235' cy='210' r='3.5'/%3E%3Ccircle cx='200' cy='80' r='3'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 320px 320px repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' fill='none' stroke='%23000' stroke-width='1.3'%3E%3Cpath d='M0 60h70l20 20h70M160 80v50l25 25h75M260 155h60M30 0v30l30 30M220 0v40l-20 20v20M0 220h50l30-30h50l20 20v50M150 260v60M235 210l25 25v85M290 250h30M80 320v-30l20-20h30'/%3E%3Cpath d='M190 245l15-9 15 9v18l-15 9-15-9z'/%3E%3Cpath d='M58 128h22v16H58zM62 128v-6a7 7 0 0 1 14 0v6'/%3E%3Cg fill='%23000' stroke='none'%3E%3Ccircle cx='160' cy='80' r='3.5'/%3E%3Ccircle cx='260' cy='155' r='3.5'/%3E%3Ccircle cx='60' cy='60' r='3'/%3E%3Ccircle cx='130' cy='190' r='3.5'/%3E%3Ccircle cx='150' cy='260' r='3'/%3E%3Ccircle cx='235' cy='210' r='3.5'/%3E%3Ccircle cx='200' cy='80' r='3'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 320px 320px repeat;
+}
+
+/* Shell: no solid panel, cards float directly on the backdrop. */
+.nShell,
+.nShell:is(*) {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 20px;
+  margin: 0;
+  padding: 16px 20px 16px 16px;
+  min-height: 100dvh;
+  background: transparent;
+  border-radius: 0;
+  transition: grid-template-columns var(--dur-state, 220ms) var(--ease-out, ease);
+}
+.nShell:has(.nRail[data-open]) {
+  --rail-w: 240px;
+}
+.nHeader {
+  grid-column: 2;
+  grid-row: 1;
+  position: static;
+  height: auto;
+  min-height: 0;
+  padding: 2px 0 14px;
+  background: transparent;
+  border: 0;
+}
+.nHeader .brand {
+  display: none;
+}
+#workspace {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 6px 0 8px;
+  background: transparent;
+}
+.operator > span {
+  border-radius: 50%;
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  border: 0;
+  font-weight: 600;
+}
+
+/* Glass surfaces */
+.instrument,
+.agentLab,
+.metricStrip > div,
+.metricStrip > div:first-child,
+.metricStrip > div:last-child,
+.operatorHint,
+.dossierHeader,
+.workContext,
+.commandSearch,
+.commandSearch:focus-within,
+.connection > summary,
+.themeButton,
+.button,
+.button.compact {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+.instrument,
+.agentLab,
+.metricStrip > div,
+.metricStrip > div:first-child,
+.metricStrip > div:last-child,
+.operatorHint,
+.dossierHeader,
+.workContext {
+  border-radius: var(--radius-card);
+}
+.confirmDialog,
+.connection > div,
+.operator details > button,
+.toast {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+.signalCard,
+.queueCard,
+.signalCard.attention,
+.dataScroll,
+.segmented,
+.channelFilter > button,
+.search,
+.field input,
+select,
+textarea {
+  background: var(--glass-soft);
+  border-color: var(--glass-line);
+}
+.agentLab .labCanvas,
+.labViewport,
+.dataScroll th {
+  background: transparent;
+}
+.commandSearch,
+.commandSearch:focus-within {
+  border-radius: 999px;
+  padding-inline: 16px;
+  min-height: 42px;
+}
+.commandSearch:focus-within {
+  border-color: var(--accent);
+}
+.connection > summary,
+.themeButton {
+  border-radius: 999px;
+}
+.themeButton {
+  width: 40px;
+  height: 40px;
+}
+
+/* Rail (collapsible, smoked glass) */
+.nRail,
+.nRail:is(*) {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  width: var(--rail-w);
+  height: auto;
+  min-height: 0;
+  max-height: calc(100dvh - 32px);
+  margin: 0;
+  padding: 18px 0 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--rail-glass);
+  border: 1px solid color-mix(in srgb, #ffffff 12%, transparent);
+  border-radius: 30px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 10%, transparent), 0 18px 40px color-mix(in srgb, #000000 35%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  overflow: visible;
+  color: var(--rail-text);
+  transition: width var(--dur-state, 220ms) var(--ease-out, ease);
+}
+.railBrand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0 14px 14px;
+  margin-bottom: 6px;
+  border: 0;
+}
+/* Dividers stop short of the rail's rounded edges. */
+.railBrand::after,
+.railFoot::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: color-mix(in srgb, #ffffff 12%, transparent);
+}
+.railBrand::after {
+  bottom: 0;
+}
+.railFoot::before {
+  top: 0;
+}
+.railMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+.railMark .sentinelMark {
+  width: 28px;
+  height: 28px;
+}
+.railBrandText {
+  display: none;
+  min-width: 0;
+  line-height: 1.3;
+}
+.railBrandText b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rail-text);
+}
+.railBrandText small {
+  display: block;
+  font-size: 11px;
+  color: var(--rail-ink);
+  white-space: nowrap;
+}
+.railToggle {
+  position: absolute;
+  top: 12px;
+  right: -14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #141318;
+  box-shadow: 0 4px 14px color-mix(in srgb, #000000 30%, transparent);
+  cursor: pointer;
+  z-index: 3;
+  transition: transform var(--dur-hover, 150ms);
+}
+.railToggle:hover {
+  transform: scale(1.08);
+}
+.railToggle:focus-visible {
+  outline: 2px solid var(--lavender);
+  outline-offset: 2px;
+}
+.railToggle svg {
+  transition: rotate var(--dur-state, 220ms);
+}
+.nRail[data-open] .railToggle svg {
+  rotate: 180deg;
+}
+.nRail > small,
+.nRail > a > small {
+  display: none;
+}
+.navSectionLabel {
+  display: none;
+}
+.nRail > a,
+.nRail > a:is(*) {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  min-height: 0;
+  padding: 0;
+  gap: 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--rail-ink);
+  background: transparent;
+  text-decoration: none;
+}
+.nRail > a:hover {
+  color: #ffffff;
+  background: color-mix(in srgb, #ffffff 8%, transparent);
+}
+.nRail > a:hover > svg {
+  transform: none;
+  color: inherit;
+}
+.nRail > a[aria-current="page"],
+.nRail > a[aria-current="page"]:hover {
+  color: #ffffff;
+  background: transparent;
+  border: 0;
+}
+.nRail > a[aria-current="page"] > svg {
+  color: #ffffff;
+}
+.navIndicator,
+.navIndicator:is(*) {
+  left: 0;
+  width: 48px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lavender) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lavender) 60%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent), 0 6px 20px color-mix(in srgb, var(--lavender) 28%, transparent);
+  z-index: 0;
+  transition: transform var(--dur-state, 220ms) var(--ease-out, ease), width var(--dur-state, 220ms) var(--ease-out, ease), opacity var(--dur-hover, 150ms);
+}
+.navCount,
+.nRail > a .navCount {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 5px;
+  border: 2px solid #141318;
+  border-radius: 999px;
+  background: var(--review);
+  color: #141318;
+  font: 700 10px var(--font-ui);
+}
+.railFoot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px;
+  justify-content: center;
+  place-items: center;
+  margin-top: 8px;
+  padding: 12px 0 0;
+  width: 100%;
+  min-height: 60px;
+  border: 0;
+  border-radius: 0;
+  color: var(--rail-ink);
+}
+.railFoot > svg {
+  grid-row: auto;
+  color: var(--rail-ink);
+}
+.railFoot > b,
+.railFoot > small {
+  display: none;
+}
+/* Collapsed: labels become tooltips. */
+.nRail:not([data-open]) > a > span {
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  translate: 0 -50%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #141318;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-hover, 150ms), translate var(--dur-hover, 150ms);
+  z-index: 30;
+}
+.nRail:not([data-open]) > a:hover > span,
+.nRail:not([data-open]) > a:focus-visible > span {
+  opacity: 1;
+  translate: 4px -50%;
+}
+/* Expanded */
+.nRail[data-open] {
+  align-items: stretch;
+}
+.nRail[data-open] .railBrandText {
+  display: block;
+}
+.nRail[data-open] .navSectionLabel {
+  display: block;
+  padding: 8px 26px 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--rail-ink);
+}
+.nRail[data-open] > a,
+.nRail[data-open] > a:is(*) {
+  width: auto;
+  height: 44px;
+  margin: 0 12px;
+  padding: 0 14px;
+  justify-content: flex-start;
+}
+.nRail[data-open] > a > span {
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: inherit;
+}
+.nRail[data-open] .navIndicator {
+  width: calc(100% - 24px);
+}
+.nRail[data-open] > a .navCount {
+  position: static;
+  margin-left: auto;
+  border: 0;
+}
+.nRail[data-open] .railFoot {
+  grid-template-columns: 22px minmax(0, 1fr);
+  justify-content: stretch;
+  place-items: center start;
+  column-gap: 10px;
+  padding: 12px 26px 0;
+}
+.nRail[data-open] .railBrand::after,
+.nRail[data-open] .railFoot::before {
+  left: 24px;
+  right: 24px;
+}
+.nRail[data-open] .railFoot > b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--rail-text);
+}
+
+/* Rail mascot: sits in the empty space below the menu pill (outside it),
+   follows the sticky rail, looks toward the pointer, hops on hover, spins on click.
+   Its speech bubble opens to the right so it never covers the menu. */
+.railBuddy {
+  --look: 0deg;
+  --look-x: 0px;
+  --look-y: 0px;
+  /* Fill the gap between the rail's bottom and the viewport's bottom (the
+     rail is sticky at 16px, so that gap is 100dvh - 32px - rail height;
+     `100%` here is the rail's own height) and centre the mascot in it. */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: calc(100dvh - 32px - 100%);
+  display: grid;
+  place-items: center;
+  z-index: 25;
+  pointer-events: none;
+}
+.buddyCore {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+.buddyButton {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.buddyButton:focus-visible {
+  outline: 2px solid var(--lavender);
+  outline-offset: 6px;
+  border-radius: 24px;
+}
+.buddyLook {
+  display: block;
+  transform: translate(var(--look-x), var(--look-y)) rotate(var(--look));
+  transition: transform 300ms var(--ease-out, ease), scale 200ms var(--ease-out, ease), translate 200ms var(--ease-out, ease);
+}
+.buddyBob {
+  display: block;
+  animation: buddyBob 3.4s ease-in-out infinite;
+}
+.buddySpin {
+  display: block;
+  animation: buddySpin 800ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.railBuddy .mascot {
+  --mascot-size: 176px !important;
+  --mascot-ring: transparent;
+}
+.railBuddy .mascot img {
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, #000000 45%, transparent));
+  transition: filter 200ms;
+}
+.buddyShadow {
+  width: 120px;
+  height: 10px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--lavender) 45%, transparent), transparent);
+  animation: buddyShadow 3.4s ease-in-out infinite;
+}
+.buddyButton:hover .buddyLook,
+.buddyButton:focus-visible .buddyLook {
+  scale: 1.06;
+  translate: 0 -6px;
+}
+.buddyButton:hover .mascot img {
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--lavender) 70%, transparent));
+}
+.buddyButton:active .buddyLook {
+  scale: 0.94;
+}
+/* Bubble sits above the mascot's head *in flow*: its space is reserved, and the
+   bubble + mascot are centred together in the gap, so it can never ride up over
+   the menu. It only fades in and out. */
+.buddyCore {
+  gap: 8px;
+}
+.buddyBubble {
+  position: relative;
+  width: min(208px, calc(100% - 16px));
+  translate: 0 6px;
+  text-align: center;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-line);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--glass-shadow);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms, translate 220ms var(--ease-out, ease);
+}
+.buddyBubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  translate: -50% -5px;
+  rotate: 45deg;
+  background: inherit;
+  border-right: 1px solid var(--glass-line);
+  border-bottom: 1px solid var(--glass-line);
+}
+.buddyBubble a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.railBuddy:hover .buddyBubble,
+.railBuddy:focus-within .buddyBubble,
+.railBuddy[data-talking] .buddyBubble {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+/* Collapsed rail (76px) has no room for text: no bubble; an alert shows as a
+   pulsing dot on the mascot instead, and clicking goes straight to it. */
+.railBuddy .buddyCore {
+  width: 100%;
+  justify-items: center;
+}
+.nRail:not([data-open]) .buddyBubble {
+  display: none;
+}
+.nRail:not([data-open]) .railBuddy .mascot {
+  --mascot-size: 88px !important;
+}
+.nRail:not([data-open]) .buddyShadow {
+  width: 64px;
+}
+.buddyBadge {
+  position: absolute;
+  top: 8%;
+  right: 12%;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--page);
+  background: var(--buddy-tone, var(--review));
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--buddy-tone, var(--review)) 60%, transparent);
+  animation: buddyPing 1.4s ease-out infinite;
+}
+@keyframes buddyPing {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--buddy-tone, var(--review)) 60%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}/* Proactive alerts: tone colours the bubble edge and a pulse under the mascot. */
+.buddyTag {
+  justify-self: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 10.5px var(--font-ui);
+  letter-spacing: 0.06em;
+}
+.railBuddy[data-alert] .buddyBubble {
+  border-color: var(--buddy-tone);
+  box-shadow: 0 0 0 1px var(--buddy-tone), 0 0 24px color-mix(in srgb, var(--buddy-tone) 35%, transparent), var(--glass-shadow);
+}
+.railBuddy[data-alert] .buddyTag {
+  background: color-mix(in srgb, var(--buddy-tone) 18%, transparent);
+  color: var(--buddy-tone);
+}
+.railBuddy[data-alert] .buddyShadow {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--buddy-tone) 60%, transparent), transparent);
+  animation: buddyAlarm 1.1s ease-in-out infinite;
+}
+.railBuddy[data-alert="approval"] { --buddy-tone: var(--review); }
+.railBuddy[data-alert="high"] { --buddy-tone: var(--review); }
+.railBuddy[data-alert="critical"] { --buddy-tone: var(--critical); }
+.railBuddy[data-alert="ok"] { --buddy-tone: var(--ok); }
+@keyframes buddyAlarm {
+  0%, 100% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+@keyframes buddyBob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-5px) rotate(1.5deg); }
+}
+@keyframes buddyShadow {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(0.82); opacity: 0.6; }
+}
+@keyframes buddySpin {
+  0% { transform: translateY(0) rotate(0); }
+  35% { transform: translateY(-22px) rotate(0); }
+  70% { transform: translateY(-22px) rotate(360deg); }
+  100% { transform: translateY(0) rotate(360deg); }
+}
+/* Not enough room below the menu: leave the space empty. */
+@media (max-height: 780px), (max-width: 850px) {
+  .railBuddy {
+    display: none;
+  }
+}
+@media (max-height: 900px) {
+  .nRail[data-open] .railBuddy .mascot {
+    --mascot-size: 140px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buddyBob,
+  .buddySpin,
+  .buddyShadow,
+  .railBuddy[data-alert] .buddyShadow,
+  .buddyBadge {
+    animation: none;
+  }
+  .buddyLook,
+  .buddyBubble {
+    transition: none;
+  }
+}
+/* Page heading */
+.pageHeading h1 {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.pageHeading .pageBreadcrumb {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Buttons and controls */
+.button,
+.button.compact {
+  border-radius: 999px;
+}
+.button:hover:not(:disabled),
+.button.ghost:hover {
+  background: var(--accent-soft);
+  border-color: var(--glass-line);
+}
+.button.primary,
+.button.primary:hover:not(:disabled) {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  border-color: var(--lavender);
+  outline: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.button.danger {
+  border-radius: 999px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.segmented {
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  padding: 3px;
+}
+.segmented > button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.segmented > button[aria-pressed="true"],
+.channelFilter > button[aria-pressed="true"] {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+  border-bottom: 0;
+}
+.channelFilter > button {
+  border-radius: 999px;
+  padding: 7px 12px;
+}
+.channelFilter > button[aria-pressed="true"] b {
+  color: var(--lavender-ink);
+}
+.tag,
+.typeChip {
+  border-radius: 999px;
+}
+.search,
+.field input,
+select,
+textarea {
+  border-radius: 12px;
+}
+.dataScroll {
+  border-radius: 16px;
+}
+.nFooter {
+  border-top: 0;
+}
+
+/* Cards */
+.instrument {
+  padding: 20px;
+}
+.instrument > header {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 14px;
+}
+.instrument > header h2 {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.signalCard,
+.queueCard,
+.signalCard.attention {
+  border-radius: 16px;
+}
+.signalCard.attention {
+  border-left: 4px solid var(--review);
+}
+.signalCard.attention.needsAnalysis {
+  border-left-color: var(--critical);
+}
+.signalLine[data-type] {
+  border-radius: 12px;
+}
+
+/* Network map grows with the side column instead of leaving a gap under it. */
+.observatoryGrid {
+  align-items: stretch;
+}
+.topologyPanel,
+.topologyPanel:is(*) {
+  height: auto;
+  min-height: 640px;
+  align-self: stretch;
+}
+@media (max-width: 700px) {
+  .topologyPanel,
+  .topologyPanel:is(*) {
+    min-height: 600px;
+  }
+}
+
+/* Queue / library side panels (Approvals, Reports): wider column and roomier
+   controls so the Thai toggle labels and search placeholder are not cramped. */
+.decisionLayout,
+.archiveLayout {
+  grid-template-columns: clamp(280px, 24vw, 330px) minmax(0, 1fr);
+  gap: 18px;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child > header {
+  margin-bottom: 2px;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child .segmented {
+  display: flex;
+  width: 100%;
+  padding: 4px;
+  gap: 4px;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child .segmented > button {
+  flex: 1;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child .search {
+  min-height: 44px;
+  padding-inline: 14px;
+  gap: 10px;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child .search input {
+  min-width: 0;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+}
+/* Side panel always matches the detail panel's height; its list scrolls inside.
+   `contain: size` keeps a long list from making the row taller. */
+.decisionLayout,
+.archiveLayout {
+  align-items: stretch;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child {
+  min-height: 0;
+}
+:is(.decisionLayout, .archiveLayout) .queue {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: none;
+  margin: 2px -6px 0 0;
+  padding-right: 6px;
+  overflow: auto;
+  contain: size;
+  scrollbar-width: thin;
+}
+:is(.decisionLayout, .archiveLayout) > .instrument:first-child > .hint {
+  margin: 4px 0 0;
+}
+:is(.decisionLayout, .archiveLayout) .queueCard {
+  padding: 14px 16px;
+}
+@media (max-width: 1100px) {
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+}
+@media (max-width: 850px) {
+  .decisionLayout,
+  .archiveLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :is(.decisionLayout, .archiveLayout) .queue {
+    contain: none;
+    min-height: 0;
+    max-height: 320px;
+  }
+}
+
+/* Traffic chart: allowed requests in the brand purple, denied stays red. */
+.trafficPlot .plotArea {
+  fill: var(--accent);
+  fill-opacity: 0.16;
+}
+.trafficPlot .plotLine,
+.trafficPlot .plotLine:is(*) {
+  stroke: var(--accent);
+}
+.legendLine:not(.total):not(.dashed) {
+  border-top-color: var(--accent);
+  background: var(--accent);
+}
+
+/* KPI tiles */
+.metricStrip {
+  gap: 18px;
+}
+.metricStrip > div {
+  padding: 18px 20px;
+}
+.metricStrip strong {
+  font-family: var(--font-ui);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.metricStrip small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.metricIcon {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.metricStrip > div.metricAction {
+  background: color-mix(in srgb, var(--lavender) 88%, transparent);
+  border-color: color-mix(in srgb, #ffffff 40%, transparent);
+  color: var(--lavender-ink);
+}
+.metricStrip > div.metricAction strong,
+.metricStrip > div.metricAction strong.actionableKpi,
+.metricStrip > div.metricAction small,
+.metricStrip > div.metricAction p {
+  color: var(--lavender-ink);
+}
+.metricStrip > div.metricAction .metricIcon {
+  background: #141318;
+  color: var(--lavender);
+}
+.metricStrip > div.metricAction > a {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+.metricStrip > div.metricAction > a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Overview banner with mascot */
+.overviewHero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 26px 230px 26px 28px;
+  min-height: 170px;
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, #ffffff 30%, transparent);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--lavender) 70%, transparent), color-mix(in srgb, var(--lavender) 22%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 35%, transparent), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  color: var(--text);
+  animation: panelEnter var(--dur-panel) var(--ease-out, ease) both;
+}
+.overviewHero h2 {
+  position: relative;
+  max-width: 24ch;
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.overviewHero p {
+  position: relative;
+  max-width: 52ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text) 80%, transparent);
+}
+.overviewHero > a {
+  position: relative;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--page);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dur-hover, 150ms);
+}
+.overviewHero > a:hover {
+  color: var(--page);
+  transform: translateY(-2px);
+}
+.heroArt {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  translate: 0 -50%;
+  width: 210px;
+  height: 210px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.heroArt > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: heroSpin 60s linear infinite;
+}
+.heroArt .petal {
+  fill: color-mix(in srgb, #ffffff 35%, var(--accent));
+  fill-opacity: 0.35;
+  stroke: #ffffff;
+  stroke-opacity: 0.35;
+}
+.heroArt .mascot {
+  position: relative;
+  --mascot-ring: color-mix(in srgb, #ffffff 60%, transparent);
+}
+@keyframes heroSpin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* Loading skeleton */
+.pageSkeleton {
+  display: grid;
+  gap: 18px;
+}
+.skeletonStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.skeleton {
+  display: block;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--glass-line);
+  background:
+    linear-gradient(100deg, transparent 30%, color-mix(in srgb, #ffffff 10%, transparent) 50%, transparent 70%) 0 0 / 220% 100%,
+    var(--glass);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  animation: skeletonShimmer 1.4s linear infinite;
+}
+.skeletonHero {
+  height: 170px;
+}
+.skeletonKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+.skeletonKpis > .skeleton {
+  height: 118px;
+}
+.skeletonMain {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.skeletonMain > .skeleton {
+  height: 380px;
+}
+.skeletonMain > div {
+  display: grid;
+  gap: 18px;
+}
+@keyframes skeletonShimmer {
+  from {
+    background-position: 120% 0, 0 0;
+  }
+  to {
+    background-position: -120% 0, 0 0;
+  }
+}
+
+/* Page-load entrance: cards rise in from a soft blur, one after another. */
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+/* Login: one chamfered glass card over the site's cyber backdrop plus a live
+   node network. The card tilts toward the pointer and ripples when pressed. */
+.loginPage {
+  --silk-edge: #8f7cff;
+  --net-node: #b7a4f4;
+  --net-line: #8f7cff;
+  --net-hot: #f2eeff;
+  --login-accent: #c4b5fd;
+  --login-accent-2: #ffffff;
+  --login-btn-a: #b7a4f4;
+  --login-btn-b: #8f7cff;
+  --login-ink: #120f22;
+  --login-card: color-mix(in srgb, #14111f 58%, transparent);
+  --login-line: color-mix(in srgb, #d9ceff 18%, transparent);
+  --login-field: color-mix(in srgb, #ffffff 5%, transparent);
+  --chamfer: 64px;
+}
+:root[data-theme="light"] .loginPage {
+  --silk-edge: #6d4fd8;
+  --net-node: #6d4fd8;
+  --net-line: #9b87f0;
+  --net-hot: #3b2a8f;
+  --login-accent: #6d4fd8;
+  --login-accent-2: #2a1f63;
+  --login-btn-a: #7c5cff;
+  --login-btn-b: #4c35b8;
+  --login-ink: #ffffff;
+  --login-card: color-mix(in srgb, #ffffff 58%, transparent);
+  --login-line: color-mix(in srgb, #ffffff 85%, transparent);
+  --login-field: color-mix(in srgb, #ffffff 60%, transparent);
+}
+.loginPage,
+.loginPage:is(*) {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  max-width: none;
+  margin: 0;
+  padding: 48px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  gap: 0;
+  overflow: hidden;
+  background: transparent;
+}
+.loginPage > .themeButton {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 2;
+}
+.loginNetwork {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Tilt uses `transform`; the entrance uses `translate`, so the two never fight. */
+.loginStage {
+  --rx: 0deg;
+  --ry: 0deg;
+  --px: 0;
+  --py: 0;
+  --mx: 50%;
+  --my: 20%;
+  --press: 1;
+  position: relative;
+  width: min(460px, 100%);
+  transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--press));
+  transition: transform 260ms var(--ease-out, ease);
+  animation: loginEnter 620ms var(--ease-out, ease) both;
+  touch-action: manipulation;
+}
+.loginStage[data-pressed] {
+  --press: 0.985;
+  transition-duration: 120ms;
+}
+@keyframes loginEnter {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    translate: 0 0;
+  }
+}
+/* Glare and a cursor-following edge light, clipped to the card's shape. */
+.loginFx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 26px;
+  clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+  background: radial-gradient(360px circle at var(--mx) var(--my), color-mix(in srgb, #ffffff 10%, transparent), transparent 65%);
+  pointer-events: none;
+}
+.loginFx::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at var(--mx) var(--my), var(--login-accent), color-mix(in srgb, var(--login-accent-2) 60%, transparent) 40%, transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.loginRipple {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--login-accent) 55%, transparent), transparent 70%);
+  border: 1px solid color-mix(in srgb, var(--login-accent-2) 60%, transparent);
+  animation: loginRipple 650ms var(--ease-out, ease) forwards;
+}
+@keyframes loginRipple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(32);
+    opacity: 0;
+  }
+}
+.loginForm,
+.loginForm:is(*) {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 44px 40px 32px;
+  border: 1px solid var(--login-line);
+  border-radius: 26px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, #ffffff 9%, transparent), transparent 40%),
+    var(--login-card);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 16%, transparent), 0 30px 60px color-mix(in srgb, #000000 40%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+}
+/* Hairlines along the two cut edges (the border itself is clipped there). */
+.loginForm::before,
+.loginForm::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--chamfer) * 1.4142);
+  height: 1px;
+  background: var(--login-line);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.loginForm::before {
+  left: 0;
+  top: var(--chamfer);
+  transform: rotate(-45deg);
+}
+.loginForm::after {
+  right: calc(var(--chamfer) * -0.4142);
+  bottom: calc(var(--chamfer) * 0.7071);
+  left: auto;
+  top: auto;
+  width: calc(var(--chamfer) * 1.4142);
+  transform-origin: 100% 100%;
+  transform: translate(calc(var(--chamfer) * -0.5858), calc(var(--chamfer) * 0.7071)) rotate(-45deg);
+}
+.loginCorner {
+  position: absolute;
+  z-index: 1;
+  width: calc(var(--chamfer) - 18px);
+  height: calc(var(--chamfer) - 18px);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #ffffff 24%, transparent), color-mix(in srgb, var(--silk-edge) 10%, transparent) 70%),
+    var(--login-card);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  pointer-events: none;
+  transition: translate 260ms var(--ease-out, ease);
+}
+/* Corner shards drift against the tilt so the card reads as layered glass. */
+.loginCorner.topLeft {
+  translate: calc(var(--px) * -7px) calc(var(--py) * -7px);
+}
+.loginCorner.bottomRight {
+  translate: calc(var(--px) * 7px) calc(var(--py) * 7px);
+}
+.loginCorner.topLeft {
+  top: 0;
+  left: 0;
+  border-top-left-radius: 14px;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  box-shadow: inset 1px 1px 0 var(--login-line);
+}
+.loginCorner.bottomRight {
+  right: 0;
+  bottom: 0;
+  border-bottom-right-radius: 14px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  box-shadow: inset -1px -1px 0 var(--login-line);
+}
+.loginForm .brand {
+  flex: none;
+  justify-self: start;
+  margin: 0 0 6px calc(var(--chamfer) - 40px);
+}
+.loginForm .brand .sentinelLogo {
+  width: 150px;
+}
+.loginForm h2 {
+  margin: 0;
+  font: 600 clamp(28px, 3.2vw, 34px) / 1.2 var(--font-ui);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.loginForm h2 span {
+  background: linear-gradient(90deg, var(--login-accent), var(--login-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.loginForm > p {
+  margin: -8px 0 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.loginForm .field {
+  display: grid;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.inputWrap {
+  position: relative;
+  display: block;
+}
+.inputWrap > svg {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.loginForm .inputWrap input,
+.loginForm .field .inputWrap input {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 46px 0 44px;
+  border-radius: 12px;
+  border: 1px solid var(--login-line);
+  background: var(--login-field);
+  color: var(--text);
+  font-size: 15px;
+}
+.loginForm .inputWrap input:focus {
+  outline: 0;
+  border-color: var(--login-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-accent) 22%, transparent);
+}
+.loginForm .inputWrap:focus-within > svg {
+  color: var(--login-accent);
+}
+.revealButton {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.revealButton:hover,
+.revealButton[aria-pressed="true"] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--login-accent) 16%, transparent);
+}
+.revealButton:focus-visible {
+  outline: 2px solid var(--login-accent);
+}
+.loginForm .button.primary,
+.loginForm .button.primary:hover:not(:disabled) {
+  min-height: 50px;
+  margin-top: 4px;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(110deg, var(--login-btn-a), var(--login-btn-b));
+  color: var(--login-ink);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 45%, transparent), 0 10px 28px color-mix(in srgb, var(--login-btn-a) 45%, transparent);
+  transition: transform var(--dur-hover, 150ms), box-shadow var(--dur-hover, 150ms);
+}
+.loginForm .button.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 45%, transparent), 0 14px 34px color-mix(in srgb, var(--login-btn-a) 60%, transparent);
+}
+.loginForm .button.primary:disabled {
+  opacity: 0.55;
+}
+.loginForm .notice {
+  margin: 0;
+  border-radius: 12px;
+}
+.loginForm .textButton {
+  justify-self: center;
+  color: var(--login-accent);
+}
+.loginDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font: 600 10.5px var(--font-ui);
+  letter-spacing: 0.12em;
+}
+.loginDivider::before,
+.loginDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--login-line);
+}
+.loginForm > small {
+  margin-right: calc(var(--chamfer) - 30px);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+@media (max-width: 520px) {
+  .loginPage {
+    --chamfer: 44px;
+  }
+  .loginPage,
+  .loginPage:is(*) {
+    padding-block: 72px 32px;
+  }
+  .loginForm,
+  .loginForm:is(*) {
+    padding: 36px 22px 26px;
+  }
+  .loginForm .brand {
+    margin-left: calc(var(--chamfer) - 22px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loginStage,
+  .loginRipple {
+    animation: none;
+  }
+  .loginStage,
+  .loginCorner {
+    transition: none;
+  }
+}
+/* Tablet and phone: rail becomes a floating bottom pill. */
+@media (max-width: 1100px) {
+  .skeletonKpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .skeletonMain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 850px) {
+  .nShell,
+  .nShell:is(*) {
+    display: block;
+    padding: 12px 12px 100px;
+  }
+  .nHeader .brand {
+    display: block;
+  }
+  .nRail,
+  .nRail:is(*),
+  .nRail[data-open] {
+    position: fixed;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    translate: -50% 0;
+    transform: none;
+    width: auto;
+    max-width: calc(100% - 24px);
+    height: auto;
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 4px;
+    border-radius: 999px;
+    z-index: 40;
+  }
+  .railBrand,
+  .railFoot,
+  .navSectionLabel,
+  .nRail[data-open] .navSectionLabel,
+  .navIndicator,
+  .nRail > a > span,
+  .nRail[data-open] > a > span {
+    display: none;
+  }
+  .nRail > a,
+  .nRail > a:is(*),
+  .nRail[data-open] > a,
+  .nRail[data-open] > a:is(*) {
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+  }
+  .nRail > a[aria-current="page"],
+  .nRail > a[aria-current="page"]:hover {
+    background: var(--lavender);
+    color: var(--lavender-ink);
+  }
+  .nRail > a[aria-current="page"] > svg {
+    color: var(--lavender-ink);
+  }
+  .nRail[data-open] > a .navCount {
+    position: absolute;
+    border: 2px solid #141318;
+  }
+  .overviewHero {
+    padding: 20px 20px 150px;
+  }
+  .heroArt {
+    top: auto;
+    bottom: -20px;
+    right: 50%;
+    translate: 50% 0;
+    width: 170px;
+    height: 170px;
+  }
+  .heroArt .mascot {
+    --mascot-size: 110px !important;
+  }
+}
+@media (max-width: 700px) {
+  .metricStrip strong {
+    font-size: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroArt > svg,
+  .loginOrbit > svg,
+  .loginArt,
+  .loginForm,
+  .skeleton,
+  .overviewHero {
+    animation: none;
+  }
+  .nRail > a > span,
+  .navIndicator,
+  .nShell,
+  .nRail {
+    transition: none;
+  }
+}
+@media print {
+  body::before,
+  body::after,
+  #root::before,
+  .overviewHero {
+    display: none;
+  }
+  .nShell,
+  .nShell:is(*) {
+    padding: 0;
+    background: none;
+  }
+}

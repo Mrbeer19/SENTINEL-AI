@@ -1,5 +1,18 @@
 import React from "react";
 
+export function SentinelMark() {
+  return (
+    <svg className="sentinelMark" viewBox="0 0 64 66" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="3">
+        <circle cx="32" cy="33" r="17" />
+        <ellipse cx="32" cy="33" rx="28" ry="10" transform="rotate(-32 32 33)" />
+      </g>
+      <path d="m29 20 10 1-12 14 9 1-13 13 5-13-7-1z" fill="currentColor" />
+      <circle cx="54" cy="20" r="3.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function SentinelLogo() {
   return (
     <svg

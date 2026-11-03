@@ -42,7 +42,7 @@ import Analysis from "./Analysis.jsx";
 import AgentLab from "./AgentLab.jsx";
 import { thresholdEvent, ruleCriterion } from "./detectionRules.js";
 import { MotionNumber } from "./motion.jsx";
-import { MascotEmpty } from "./Mascot.jsx";
+import Mascot, { MascotEmpty } from "./Mascot.jsx";
 
 export const titles = {
   overview: ["Security overview", "เฝ้าระวังการเชื่อมต่อและเหตุการณ์ของระบบ"],
@@ -102,8 +102,58 @@ export function Overview({ ctx }) {
       : data.events
           .filter((e) => ["HTTP_AUTH", "SSH_AUTH"].includes(e.event_type))
           .map((e) => ({ ...e, at: e.timestamp, result: e.outcome }));
+  const openCount = data.incidents.filter(isOpenIncident).length,
+    [heroTitle, heroText, heroLink, heroAction] = pending.length
+      ? [
+          `มี ${pending.length} ข้อเสนอรอคุณตัดสินใจ`,
+          "ระบบตรวจหลักฐานแล้ว แต่จะยังไม่บล็อก IP ใดจนกว่าผู้ดูแลจะอนุมัติ",
+          "#/approvals",
+          "ไปที่ Approvals",
+        ]
+      : openCount
+        ? [
+            `เหตุการณ์ที่ยังเปิดอยู่ ${openCount} รายการ`,
+            "ไม่มีข้อเสนอค้าง ตรวจหลักฐานของเหตุการณ์ที่ยังเปิดอยู่ต่อได้",
+            "#/incidents",
+            "เปิด Incidents",
+          ]
+        : [
+            "ไม่มีงานค้าง ทุกอย่างอยู่ในการควบคุม",
+            "ระบบยังเฝ้าระวังต้นทางเว็บ SSH และการเคาะพอร์ตต่อเนื่อง",
+            "#/trace",
+            "ดู AI investigation",
+          ];
   return (
     <div className="overviewPage">
+      <section className="overviewHero" aria-label="งานถัดไป">
+        <div className="heroArt" aria-hidden="true">
+          <svg viewBox="-100 -100 200 200">
+            {Array.from({ length: 12 }, (_, i) => (
+              <ellipse
+                key={i}
+                className="petal"
+                cx="45"
+                cy="0"
+                rx="48"
+                ry="15"
+                transform={`rotate(${i * 30})`}
+              />
+            ))}
+          </svg>
+          <Mascot
+            size={150}
+            loading="eager"
+            mood={pending.length ? "idle" : "happy"}
+            className="mascotFloat"
+          />
+        </div>
+        <h2>{heroTitle}</h2>
+        <p>{heroText}</p>
+        <a href={heroLink}>
+          {heroAction}
+          <Icon name="arrow" size={15} />
+        </a>
+      </section>
       <div className="metricStrip">
         {[
           [
@@ -121,7 +171,10 @@ export function Overview({ ctx }) {
           ["AWAITING DECISION", pending.length, "ข้อเสนอที่ต้องตรวจ"],
           ["ACTIVE PROTECTION", rules.length, "กฎบล็อกที่ทำงาน"],
         ].map(([label, n, th], i) => (
-          <div key={label}>
+          <div key={label} className={i === 2 && n ? "metricAction" : undefined}>
+            {i === 2 && n > 0 && (
+              <a href="#/approvals" aria-label={`เปิด Approvals · ${n} ข้อเสนอรอตัดสินใจ`} />
+            )}
             <div className="metricTop">
               <span className="metricIcon">
                 <Icon

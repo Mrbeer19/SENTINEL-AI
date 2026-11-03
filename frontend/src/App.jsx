@@ -3,8 +3,9 @@ import { flushSync } from "react-dom";
 import { request, useLiveData } from "./api.js";
 import { Icon } from "./ui.jsx";
 import { date, time } from "./lib.js";
-import SentinelLogo from "./SentinelLogo.jsx";
-import Mascot, { ConnectionLoader } from "./Mascot.jsx";
+import SentinelLogo, { SentinelMark } from "./SentinelLogo.jsx";
+import Mascot, { ConnectionLoader, PageSkeleton, RailBuddy } from "./Mascot.jsx";
+import { NetworkBackdrop, TiltStage } from "./LoginScene.jsx";
 import { RefreshMotion, useNavIndicator } from "./motion.jsx";
 import {
   Approvals,
@@ -41,7 +42,8 @@ export default function App() {
     [password, setPassword] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [offline, setOffline] = useState(false);
+    [offline, setOffline] = useState(false),
+    [showPassword, setShowPassword] = useState(false);
   const check = useCallback(async () => {
     setBusy(true);
     try {
@@ -113,80 +115,87 @@ export default function App() {
     );
   return (
     <div className="loginPage">
+      <NetworkBackdrop />
       <button className="themeButton" onClick={toggle} aria-label="สลับธีม">
         <Icon name={theme === "dark" ? "sun" : "moon"} />
       </button>
-      <section className="loginArt">
-        <a href="/" className="brand">
-          <SentinelLogo />
-        </a>
-        <span className="eyebrow">SECURITY OBSERVATORY / 02</span>
-        <h1>
-          See the signal.
-          <br />
-          <em>Own the response.</em>
-        </h1>
-        <p>
-          เฝ้าระวัง วิเคราะห์ และควบคุมการป้องกัน
-          <br />
-          จากหลักฐานในพื้นที่เดียว
-        </p>
-        <div className="loginOrbit">
-          <Mascot size={200} />
-        </div>
-      </section>
-      <form onSubmit={login} className="loginForm">
-        <span className="eyebrow">AUTHORIZED PERSONNEL ONLY</span>
-        <h2>เข้าสู่ศูนย์ควบคุม</h2>
-        <p>ใช้บัญชีแอดมินเดิมของ Sentinel</p>
-        <label className="field">
-          ชื่อผู้ใช้
-          <input
-            value={user}
-            maxLength="100"
-            autoComplete="username"
-            required
-            onChange={(e) => setUser(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          รหัสผ่าน
-          <input
-            type="password"
-            value={password}
-            maxLength="1024"
-            autoComplete="current-password"
-            required
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {error && (
-          <p role="alert" className="notice bad">
-            {error}
-          </p>
-        )}
-        {session?.configured === false && (
-          <p className="notice">ยังไม่ได้ตั้งค่ารหัสแอดมินบนเซิร์ฟเวอร์</p>
-        )}
-        <button
-          className="button primary"
-          disabled={busy || session?.configured === false}
-        >
-          {busy ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
-          <Icon name="arrow" size={17} />
-        </button>
-        {offline && (
+      <TiltStage>
+        <form onSubmit={login} className="loginForm">
+          <a href="/" className="brand">
+            <SentinelLogo />
+          </a>
+          <h2>
+            เข้าสู่<span>ศูนย์ควบคุม</span>
+          </h2>
+          <p>ใช้บัญชีแอดมินเดิมของ Sentinel เพื่อเข้าพื้นที่ทำงานความปลอดภัย</p>
+          <label className="field">
+            ชื่อผู้ใช้
+            <span className="inputWrap">
+              <Icon name="user" size={16} />
+              <input
+                value={user}
+                maxLength="100"
+                autoComplete="username"
+                required
+                onChange={(e) => setUser(e.target.value)}
+              />
+            </span>
+          </label>
+          <label className="field">
+            รหัสผ่าน
+            <span className="inputWrap">
+              <Icon name="lock" size={16} />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                maxLength="1024"
+                autoComplete="current-password"
+                required
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="revealButton"
+                aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+              </button>
+            </span>
+          </label>
+          {error && (
+            <p role="alert" className="notice bad">
+              {error}
+            </p>
+          )}
+          {session?.configured === false && (
+            <p className="notice">ยังไม่ได้ตั้งค่ารหัสแอดมินบนเซิร์ฟเวอร์</p>
+          )}
           <button
-            type="button"
-            className="textButton"
-            disabled={busy}
-            onClick={check}
+            className="button primary"
+            disabled={busy || session?.configured === false}
           >
-            ลองเชื่อมต่อเซิร์ฟเวอร์ใหม่
+            {busy ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
+            <Icon name="arrow" size={17} />
           </button>
-        )}
-        <small>การยืนยันตัวตนตรวจที่ Backend ไม่ได้บันทึกรหัสในหน้าเว็บ</small>
-      </form>
+          {offline && (
+            <button
+              type="button"
+              className="textButton"
+              disabled={busy}
+              onClick={check}
+            >
+              ลองเชื่อมต่อเซิร์ฟเวอร์ใหม่
+            </button>
+          )}
+          <span className="loginDivider">
+            <Icon name="lock" size={12} />
+            AUTHORIZED PERSONNEL ONLY
+          </span>
+          <small>การยืนยันตัวตนตรวจที่ Backend ไม่ได้บันทึกรหัสในหน้าเว็บ</small>
+        </form>
+      </TiltStage>
     </div>
   );
 }
@@ -224,6 +233,13 @@ export function Workspace({
     [submittedSearch, setSubmittedSearch] = useState(""),
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(null),
+    [railOpen, setRailOpen] = useState(() => {
+      try {
+        return localStorage.getItem("sentinel-rail") !== "collapsed";
+      } catch {
+        return true;
+      }
+    }),
     lock = useRef(false),
     toastTimer = useRef(null),
     routeTransition = useRef(null),
@@ -252,6 +268,11 @@ export function Workspace({
       clearTimeout(toastTimer.current);
     };
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("sentinel-rail", railOpen ? "open" : "collapsed");
+    } catch {}
+  }, [railOpen]);
   useEffect(() => {
     document.querySelector("#workspace")?.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -389,7 +410,30 @@ export function Workspace({
           </details>
         </div>
       </header>
-      <nav className="nRail" aria-label="เมนูหลัก" ref={navRail}>
+      <nav
+        className="nRail"
+        aria-label="เมนูหลัก"
+        ref={navRail}
+        data-open={railOpen || undefined}
+      >
+        <div className="railBrand">
+          <span className="railMark">
+            <SentinelMark />
+          </span>
+          <span className="railBrandText">
+            <b>Sentinel AI</b>
+            <small>Security workspace</small>
+          </span>
+          <button
+            type="button"
+            className="railToggle"
+            aria-expanded={railOpen}
+            aria-label={railOpen ? "ย่อเมนู" : "ขยายเมนู"}
+            onClick={() => setRailOpen((v) => !v)}
+          >
+            <Icon name="arrow" size={14} />
+          </button>
+        </div>
         <span className="navIndicator" aria-hidden="true" />
         <span className="navSectionLabel">WORKSPACE</span>
         {nav.map(([key, label, icon], i) => (
@@ -419,6 +463,11 @@ export function Workspace({
           <b>Human approved</b>
           <small>ผู้ดูแลยืนยันก่อนตอบสนอง</small>
         </span>
+        <RailBuddy
+          incidents={live.data.incidents}
+          proposals={live.data.proposals}
+          offline={Boolean(live.error)}
+        />
       </nav>
       <main id="workspace" tabIndex="-1">
         <div className="pageHeading">
@@ -465,7 +514,7 @@ export function Workspace({
         )}
         <div key={route.page} className="pageContent">
           {live.loading ? (
-            <ConnectionLoader />
+            <PageSkeleton />
           ) : !live.data.health ? (
             <div className="empty">
               ยังไม่มีข้อมูลที่แสดงได้ กรุณาตรวจการเชื่อมต่อ
