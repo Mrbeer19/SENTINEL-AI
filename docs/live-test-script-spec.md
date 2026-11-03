@@ -25,7 +25,7 @@
 หมายเหตุ
 - พอร์ต 80/443 ไม่นับเป็นการเคาะพอร์ต (เป็นคนเข้าเว็บ ดูจาก log ของ Caddy) อย่าใช้สองพอร์ตนี้ในข้อ 5 และ 6
 - ไฟล์ static (`.css` `.js` รูป ฟอนต์) ไม่นับในข้อ 3 ให้ยิง `/` เท่านั้น
-- ข้อ 4 ใช้ **ชื่อผู้ใช้ที่ไม่มีจริง** สุ่มทุกครั้ง เช่น `sentinel-test-ab12` กับรหัสสุ่ม ห้ามใช้ `root` หรือบัญชีจริง ใช้ `paramiko` ถ้ามี (ติดตั้งใน venv) ถ้าไม่มีให้บอกวิธีติดตั้งแล้วข้ามข้อนี้ ห้ามขอรหัสจริงจากผู้ใช้
+- ข้อ 4 ใช้ **ชื่อผู้ใช้ที่ไม่มีจริง** สุ่มทุกครั้ง เช่น `sentinel-test-ab12` กับรหัสสุ่ม ห้ามใช้ `root` หรือบัญชีจริง ห้ามขอรหัสจริงจากผู้ใช้ ใช้ `paramiko` (ดูหัวข้อ "ติดตั้ง paramiko")
 - ข้อ 1–3 เป็นภัยเว็บที่ตรวจด้วยกฎ ไม่ผ่าน AI ถ้าอยากโชว์ภาพ 3D ของ AI ให้ใช้ข้อ 4–6
 
 ## ลำดับการทำงานของสคริปต์
@@ -50,6 +50,18 @@
 - ไม่มี payload โจมตีจริง (ไม่มี SQLi/RCE) แค่ path ที่ไม่มีอยู่
 - ไม่แก้อะไรบน VPS ไม่ SSH เข้าไปเป็น admin ไม่เรียก API ของ dashboard (ให้คนกดเอง จะได้เห็นขั้นอนุมัติของ admin)
 - เวลาเดโมจริง ควรให้ admin ล้างประวัติก่อนเริ่ม (ข้อมูลที่ยิงตอนซ้อมจะค้างใน dashboard)
+
+## ติดตั้ง paramiko (ข้อ 4 ต้องใช้)
+
+- เพิ่มไฟล์ `scripts/requirements-live-test.txt` มีบรรทัดเดียว `paramiko>=3.4,<5`
+- เพิ่ม `scripts/setup-live-test.sh` สำหรับ Mac: สร้าง `scripts/.venv-live-test` (`python3 -m venv`) แล้ว `pip install -r scripts/requirements-live-test.txt`
+  ทำซ้ำได้ (มีอยู่แล้วก็ข้าม) จบด้วยบอกคำสั่งรัน `scripts/.venv-live-test/bin/python scripts/vps_live_test.py`
+  ใช้ venv เพราะ Python ของ macOS / Homebrew ไม่ให้ pip ลงระบบ (PEP 668 externally-managed)
+- **ตอนพัฒนาเสร็จให้รัน `setup-live-test.sh` บนเครื่องนี้เลย** ให้ paramiko พร้อมใช้ก่อนส่งงาน แล้วยืนยันด้วย `.venv-live-test/bin/python -c "import paramiko; print(paramiko.__version__)"`
+- ในสคริปต์: ถ้า `import paramiko` ไม่ได้ ตอนเลือกข้อ 4 ให้ถาม "ติดตั้ง paramiko ตอนนี้ไหม (y/n)"
+  ถ้า y และกำลังรันใน venv (`sys.prefix != sys.base_prefix`) ให้รัน `sys.executable -m pip install -r requirements-live-test.txt` แล้ว import ใหม่
+  ถ้าไม่ได้อยู่ใน venv ให้บอกให้รัน `scripts/setup-live-test.sh` แทน (ห้าม pip ลง Python ของระบบ และห้ามใช้ `--break-system-packages`)
+- เพิ่ม `scripts/.venv-live-test/` ใน `.gitignore`
 
 ## งานโค้ด
 
