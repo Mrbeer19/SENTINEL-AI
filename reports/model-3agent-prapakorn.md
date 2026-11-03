@@ -1,4 +1,4 @@
-# Model — 3 agents (Investigation → Threat Analysis → Defense Planning) — Beer · 20 ต.ค. 2569
+# Model — 3 agents (Investigation → Threat Analysis → Defense Planning) — Prapakorn · 20 ต.ค. 2569
 
 **สถานะ:** ใช้งานได้ · prompt v1 เป็นค่าเริ่มต้นของ backend (#7, #8) · ผลบน M5 ดีกว่า agent ตัวเดียวทั้งคะแนนและเวลา
 
@@ -6,7 +6,7 @@
 
 | เครื่อง | split | ผ่าน | injection | บล็อกคนปกติ (FP) | median |
 |---|---|---|---|---|---|
-| **MacBook Pro M5 16GB** (Obeto) | **test 28** | **26/28** | 0/3 | 2 | **29.2 วิ** |
+| **MacBook Pro M5 16GB** (Pitchakorn) | **test 28** | **26/28** | 0/3 | 2 | **29.2 วิ** |
 | MacBook Pro M5 16GB | dev 19 | 16/19 | 0/3 | 1 | 27.7 วิ |
 | Windows RTX 4060 8GB | dev 19 | 17/19 | 0/3 | 2 | 7.7 วิ |
 | agent ตัวเดียว (เดิม) บน M5 | test 28 | 25/28 | 0/3 | 0 | 34.2 วิ |

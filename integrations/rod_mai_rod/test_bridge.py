@@ -152,3 +152,33 @@ class OwnTrafficTest(unittest.TestCase):
     def test_wildcard_watches_sites_added_later(self):
         self.assertEqual(vps_logs.request(access_line("/", ip="198.51.100.4", host="new-site.example.test"))[0], "198.51.100.4")
         self.assertEqual(event(access_line("/", status=403, ip="198.51.100.4", host="another.example.test"), 1)["kind"], "denied")
+
+    def test_site_snippet_import_is_validated_with_the_candidate_block_list(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        import vps_rules
+        tmp = Path(tempfile.mkdtemp())
+        caddyfile = tmp / "Caddyfile"
+        caddyfile.write_text("new.test {\n    import /config/sentinel-site.caddy\n}\n")  # no direct block import
+        (tmp / "sentinel-site.caddy").write_text("import /config/sentinel-block.caddy\nlog\n")
+        (tmp / "rules.json").write_text(json.dumps([{"source_ip": "192.0.2.10", "expires_at": "9999-12-31T00:00:00+00:00"}]))
+        seen = {}
+
+        def run(cmd, **_):
+            if "validate" in cmd:
+                seen["config"] = (tmp / cmd[cmd.index("--config") + 1].removeprefix("/config/")).read_text()
+                seen["site"] = (tmp / "sentinel-site.caddy.candidate").read_text()
+            return mock.Mock()
+        with mock.patch.multiple(vps_rules, CADDYFILE=caddyfile, ACTIVE_CONFIG=None, RULES=tmp / "rules.json",
+                                 SNIPPET=tmp / "sentinel-block.caddy", CADDY_DIR=tmp, CADDY_CONTAINER="caddy",
+                                 IMPORT="import /config/sentinel-block.caddy", BLOCK_SNIPPET="sentinel-block.caddy",
+                                 SITE_SNIPPET=tmp / "sentinel-site.caddy", SITE_IMPORT="import /config/sentinel-site.caddy",
+                                 SITE_NAME="sentinel-site.caddy", RELOAD_CONFIG="/etc/caddy/Caddyfile"), \
+                mock.patch.object(vps_rules.subprocess, "run", side_effect=run):
+            self.assertTrue(vps_rules.apply())
+        self.assertIn("import /config/sentinel-site.caddy.candidate", seen["config"])
+        self.assertIn("import /config/sentinel-block.caddy.candidate", seen["site"])
+        self.assertIn("remote_ip 192.0.2.10", (tmp / "sentinel-block.caddy").read_text())
+        self.assertFalse((tmp / "sentinel-site.caddy.candidate").exists())
+        self.assertEqual((tmp / "sentinel-site.caddy").read_text(), "import /config/sentinel-block.caddy\nlog\n")

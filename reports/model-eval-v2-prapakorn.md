@@ -1,15 +1,15 @@
-# Model eval v2 + API contract v0.2 draft — Beer
+# Model eval v2 + API contract v0.2 draft — Prapakorn
 
-**Phase / ผู้รับผิดชอบ:** Model evaluation (M00/M01) · Beer
+**Phase / ผู้รับผิดชอบ:** Model evaluation (M00/M01) · Prapakorn
 **สถานะ:** ผ่านบางส่วน — benchmark ใหม่พร้อมใช้และมีผลบน RTX; ยังไม่มีผลบน M5
-**Branch:** `beer/model-eval-v2` (local, ยังไม่ commit/push)
+**Branch:** `model-eval-v2` (branch ส่วนตัวเดิม) (local, ยังไม่ commit/push)
 
 ## ตอนนี้ทำอะไรได้
 
 - ชุดทดสอบ 47 เคส 7 หมวด แยก dev 19 / test 28 (IP, จำนวน, username และข้อความ injection ไม่ซ้ำข้าม split) สร้างซ้ำได้จาก seed
 - `model/eval/agent_bench.py` แทน `agent_test.py`: ตรวจ JSON ตาม schema เต็ม, ตรวจ tool args/scope, ตรวจ action/การเสนอบล็อก, false positive, injection แบบกว้างขึ้น, เก็บผลทีละรอบ, วัด `/api/ps`, ทดสอบ `format=schema` (501) ได้
 - system prompt `model/prompts/analyst_system_v1.md`
-- ร่าง contract `docs/api-contract-v0.2-draft.md` สำหรับ Obeto ตรวจ
+- ร่าง contract `docs/api-contract-v0.2-draft.md` สำหรับ Pitchakorn ตรวจ
 
 รายละเอียดสิ่งที่แก้จากสคริปต์เดิม: `model/eval/README.md`
 
@@ -50,7 +50,7 @@ Benchmark บน **Windows RTX 4060 8GB · Ollama 0.32.15 (GGUF Q4_K_M) · qwen3
 - tool เป็น fixture และเป็นชุด 5 tool ตาม brief ไม่ใช่ backend v0.1 (2 tool)
 - contract v0.2 ยังเป็นร่าง ยังไม่แก้ backend/frontend
 
-## สิ่งที่ Obeto ต้องใช้หรือทำต่อ
+## สิ่งที่ Pitchakorn ต้องใช้หรือทำต่อ
 
 1. รันบน M5 (ประมาณ 10–15 นาที) — ไฟล์แนบใน Discord 3 ไฟล์ (`agent_bench.py`, `sentinel_cases_v1.json`, `analyst_system_v1.md`) วางโฟลเดอร์เดียวกัน ไม่ต้อง pull:
    ```bash
@@ -66,4 +66,4 @@ Benchmark บน **Windows RTX 4060 8GB · Ollama 0.32.15 (GGUF Q4_K_M) · qwen3
 - อ่านตาราง label ใน `datasets/generate_cases.py` ว่าเห็นด้วยไหม (เช่น login ผิด 6 ครั้ง = ต้องเสนอบล็อก)
 - ดูร่าง contract ข้อ 3–5 (proposal ตาม action, protected IP, เปิด incident ใหม่/reset)
 
-**ถัดไป:** Beer ทำ mockup หน้า demo target (Neo) + before/after
+**ถัดไป:** Prapakorn ทำ mockup หน้า demo target (Neo) + before/after

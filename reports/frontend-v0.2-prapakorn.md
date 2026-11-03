@@ -1,7 +1,7 @@
-# Frontend v0.2 — Beer (20 ต.ค. 2569)
+# Frontend v0.2 — Prapakorn (20 ต.ค. 2569)
 
 **สถานะ:** ใช้กับ backend v0.2 (PR #4) ได้ · ทดสอบกับ backend จริงด้วย rule fallback · ยังไม่ได้ลองกับโมเดลจริงและ M5 + Neo
-**Branch:** `beer/dashboard-v1` (PR #2 → `dev`) · contract: `docs/api-contract.md` v0.2
+**Branch:** `dashboard-v1` (branch ส่วนตัวเดิม) (PR #2 → `dev`) · contract: `docs/api-contract.md` v0.2
 
 ## เปลี่ยนอะไร
 

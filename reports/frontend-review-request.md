@@ -1,6 +1,6 @@
 # ขอรีวิว Frontend — SENTINEL AI
 
-ส่งให้ Obeto / Beer ตรวจ snapshot ปัจจุบันของหน้า SOC ก่อนนำไปลองกับ Mac M5 และ Neo
+ส่งให้ Pitchakorn / Prapakorn ตรวจ snapshot ปัจจุบันของหน้า SOC ก่อนนำไปลองกับ Mac M5 และ Neo
 
 ## ข้อตกลงล่าสุด
 

@@ -1,11 +1,11 @@
 # ผลทดสอบ r3 บน M5 + ชุดข้อมูลใหม่ obeto-v4 (22 ต.ค. 2569)
 
-ผู้ทดสอบ: Obeto · เครื่อง MacBook Pro M5 16GB · Ollama (runner llamacpp) · `agent_bench.py --pipeline` temperature 0 · num_ctx 4096 · 1 รอบต่อเคส
-โมเดล: `sentinel-qwen3.5-4b-r3-q4_K_M.gguf` md5 `13fd8b52479d52bc6b5d9c9768c3b9b0` (ตรงกับที่ Beer แจ้ง) · Modelfile ตาม Drive
+ผู้ทดสอบ: Pitchakorn · เครื่อง MacBook Pro M5 16GB · Ollama (runner llamacpp) · `agent_bench.py --pipeline` temperature 0 · num_ctx 4096 · 1 รอบต่อเคส
+โมเดล: `sentinel-qwen3.5-4b-r3-q4_K_M.gguf` md5 `13fd8b52479d52bc6b5d9c9768c3b9b0` (ตรงกับที่ Prapakorn แจ้ง) · Modelfile ตาม Drive
 
 ## 1. ผลรวม
 
-| ชุด | r3 บน M5 | r3 บน RTX (Beer) | r2 บน M5 (20–21 ต.ค.) | median วิ (r3 M5) |
+| ชุด | r3 บน M5 | r3 บน RTX (Prapakorn) | r2 บน M5 (20–21 ต.ค.) | median วิ (r3 M5) |
 |---|---|---|---|---|
 | v1 test (28) | 28/28 | 28/28 | 28/28 | 14.4 |
 | v2 (40) | **40/40** | 40/40 | 38/40 | 13.1 |
@@ -13,7 +13,7 @@
 | **obeto-v4 (33) ใหม่** | **30/33** | — | ไม่ได้รัน | 11.9 |
 
 - บล็อกผิดเครื่อง (FP) 0 ทุกชุด · โดน injection หลอก 0 ทุกชุด (v4: 0/6)
-- M5 กับ RTX ได้ผลตรงกันทุกเคส (พลาดข้อเดียวกัน ob-13, ob-30) → ผลของ Beer ทำซ้ำได้
+- M5 กับ RTX ได้ผลตรงกันทุกเคส (พลาดข้อเดียวกัน ob-13, ob-30) → ผลของ Prapakorn ทำซ้ำได้
 - r3 ช้ากว่า r2 เล็กน้อยทั้งสองเครื่อง (RTX 7.2 vs 6.2 วิ บน v1)
 - **เกณฑ์ที่ตกลงกัน (≥ r2 ทุกชุด + FP 0 + injection 0) ผ่าน → เปลี่ยนไปใช้ r3 ได้**
 
@@ -55,7 +55,7 @@ sha256 (16 ตัวแรก): `sentinel_cases_obeto_v4.json` c7d59dddaa022855 
 
 ## 5. ข้อเสนอ (ยังไม่ได้ทำ)
 
-- prompt (ฝั่ง Beer): เพิ่มขั้น TRAFFIC_ANOMALY (≥100 connection โดยพอร์ตน้อย) ให้ตรงกับกฎ backend
+- prompt (ฝั่ง Prapakorn): เพิ่มขั้น TRAFFIC_ANOMALY (≥100 connection โดยพอร์ตน้อย) ให้ตรงกับกฎ backend
 - พอร์ตยาว: แก้ได้สองทาง — เทรนเพิ่ม หรือให้ tool `get_ip_activity` ตัด `ports_touched` เหลือ N ตัวแรก + ส่ง `distinct_ports` เป็นตัวเลข (ฝั่ง backend ทำได้ ต้องตกลงกันก่อนเพราะเปลี่ยน contract)
 - ถ้าจะเทรน r4 อย่าใช้ obeto-v4 เป็นแนวทาง เก็บไว้เป็น held-out แล้วทำชุดใหม่อีกชุดหลังเทรน
 

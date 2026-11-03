@@ -23,7 +23,9 @@
 - snippet ใน config volume ของ Caddy (`/config` ใน container):
   - `sentinel-block.caddy` = รายการ IP ที่ถูกบล็อก (`vps_rules.py` เขียนให้)
   - `sentinel-site.caddy` = `import /config/sentinel-block.caddy` + `log` ลง `/config/sentinel.access.log`
-- **ทุก site block** ใส่บรรทัดเดียว `import /config/sentinel-site.caddy` (เว็บที่เพิ่มทีหลังก็ใส่บรรทัดนี้)
+- **ทุก site block** import อย่างใดอย่างหนึ่ง: `import /config/sentinel-block.caddy` ตรง ๆ (บล็อกอย่างเดียว ต้องใส่ `log` เอง) หรือ `import /config/sentinel-site.caddy` (บล็อก + log ในบรรทัดเดียว แนะนำสำหรับเว็บที่เพิ่มทีหลัง)
+  `vps_rules.py` รองรับทั้งสองแบบ ตอน validate จะสร้าง candidate ของ `sentinel-site.caddy` ด้วย ทุกเว็บจึงถูกทดสอบกับรายการบล็อกใหม่ก่อน reload
+  (เครื่องปัจจุบันใช้แบบ import ตรงใน 2 site block)
   IP ที่อนุมัติบล็อกจะได้ 403 จากทุกเว็บที่ import · SSH/พอร์ตอื่นตรวจจับอย่างเดียว ไม่บล็อก
   บริการที่เปิดพอร์ตตรงโดยไม่ผ่าน Caddy จะเห็นแค่การเชื่อมต่อ บล็อกไม่ได้
 - ถ้า Caddy mount Caddyfile เป็นไฟล์เดี่ยว (`./Caddyfile:/etc/caddy/Caddyfile`) ต้อง **เขียนทับในไฟล์เดิม** (inode เดิม) ถ้าแทนด้วยไฟล์ใหม่ container จะไม่เห็น
@@ -40,6 +42,12 @@
 - รหัส admin: ทำ hash บนเครื่อง admin แล้วส่งแค่ hash ให้สคริปต์บน VPS เขียนลง `.env` (รหัสจริงไม่ออกจากเครื่อง admin)
 
 IP ของ container Caddy เปลี่ยนได้ถ้า container ถูกสร้างใหม่ ถ้า dashboard เห็น IP ผู้ใช้เป็น 172.x ให้แก้ `FORWARDED_ALLOW_IPS` และ `SENTINEL_PROTECTED_IPS`
+
+## ข้อจำกัดของเครื่องนี้
+
+- `"active_config": ""` ไม่มีสำเนา active ให้เทียบ จึงไม่ตรวจว่า Caddyfile ถูกแก้ระหว่างทาง (`vps_rules.py` อ่าน Caddyfile ล่าสุดทุกครั้งแล้ว validate ก่อน reload)
+- ผู้ใช้ IPv6 เข้าเว็บผ่าน docker-proxy ของเจ้าของเครื่อง Caddy จึงเห็นเป็น IP gateway ของ Docker และ bridge ตัดทิ้งเป็นการเชื่อมต่อของเครื่องเอง ผู้ใช้ IPv6 จึงมองไม่เห็นและบล็อกไม่ได้ (ต้องเปิด IPv6 ใน Docker network ของ Caddy ซึ่งเป็นการตั้งค่าของเจ้าของเครื่อง)
+- sensor ไม่นับ SYN พอร์ต 80/443 (คนเข้าเว็บดูจาก Caddy log และ HTTP_FLOOD นับจาก log อยู่แล้ว) SYN flood ที่ 443 ที่ไม่ส่ง HTTP จึงมองไม่เห็น
 
 ## เปิด dashboard
 

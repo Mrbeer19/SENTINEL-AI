@@ -25,5 +25,6 @@
   "access_log": "sentinel.access.log",
   "block_snippet": "sentinel-block.caddy",
   "active_config": "",
-  "reload_config": "/etc/caddy/Caddyfile"
+  "reload_config": "/etc/caddy/Caddyfile",
+  "site_snippet": "sentinel-site.caddy"
 }
