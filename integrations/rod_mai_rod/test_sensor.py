@@ -22,6 +22,13 @@ class SensorTests(unittest.TestCase):
         event,_=syn_event('IP6 2001:4860:4860::8888.1234 > 2606:4700:4700::1111.3306: Flags [S]')
         self.assertEqual(event['destination_port'],3306)
 
+    def test_ecn_syn_is_counted_but_syn_ack_is_not(self):
+        event, _ = syn_event('IP 8.8.8.8.51000 > 1.1.1.1.22: Flags [SEW], seq 1, win 65535')
+        self.assertEqual(event['destination_port'], 22)
+        self.assertIsNotNone(syn_event('IP 8.8.8.8.51001 > 1.1.1.1.22: Flags [SE], seq 1'))
+        self.assertIsNone(syn_event('IP 8.8.8.8.51002 > 1.1.1.1.22: Flags [S.], seq 1, ack 1'))
+        self.assertIsNone(syn_event('IP 8.8.8.8.51003 > 1.1.1.1.22: Flags [S.E], seq 1, ack 1'))
+
     def test_web_ports_are_not_port_knocks(self):
         for port in (80, 443):
             self.assertIsNone(syn_event(f'IP 8.8.8.8.1234 > 1.1.1.1.{port}: Flags [S]'))
