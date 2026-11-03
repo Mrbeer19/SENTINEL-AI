@@ -13,9 +13,11 @@ import urllib.request
 
 DEFAULT_SITE = 'rangsitnanmai.tntstudio.tech'
 PORTS = (21, 23, 25, 110, 143, 445, 3306, 3389, 5432, 6379, 8080, 8443)
+LOGIN_PATH = '/api/v1/auth/login'  # rod-mai-rod login API; the bridge counts its 401/200 as login results
 LABELS = ('Honeypot — HONEYPOT (กฎ ไม่ผ่าน AI)', 'Web scan — WEB_SCAN (กฎ ไม่ผ่าน AI)',
           'HTTP flood — HTTP_FLOOD (กฎ ไม่ผ่าน AI)', 'SSH เดารหัส — SSH_BRUTE_FORCE (AI / 3D)',
-          'Port scan — PORT_SCAN (AI / 3D)', 'Connection flood — TRAFFIC_ANOMALY (AI / 3D)')
+          'Port scan — PORT_SCAN (AI / 3D)', 'Connection flood — TRAFFIC_ANOMALY (AI / 3D) · ยิงเป็นข้อสุดท้าย',
+          'ล็อกอินเว็บผิดซ้ำ (รอดไม่รอด) — HTTP_AUTH_BRUTE_FORCE (AI / 3D)')
 
 
 def validate_ip(value):
@@ -58,9 +60,14 @@ def opener():
     return urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def http_status(url):
+def http_status(url, data=None):
     try:
-        with opener().open(url, timeout=5) as response:
+        if data is None:
+            target = url
+        else:
+            target = urllib.request.Request(url, data=data, method='POST',
+                                            headers={'Content-Type': 'application/json'})
+        with opener().open(target, timeout=5) as response:
             return response.status
     except urllib.error.HTTPError as error:
         code = error.code
@@ -96,6 +103,7 @@ class Journal:
 class LiveTest:
     def __init__(self, ip, site, journal):
         self.ip, self.site, self.journal = ip, site, journal
+        self.login_site = None
         self.url = 'https://' + site + '/'
 
     def report(self, case, target, result, count=None):
@@ -149,26 +157,48 @@ class LiveTest:
         self.report(case, '{}:{}'.format(self.ip, port), result, count)
 
     def ssh(self, module):
-        for index in range(6):
-            client = module.SSHClient()
-            client.set_missing_host_key_policy(module.AutoAddPolicy())
-            try:
-                client.connect(self.ip, port=22, username=random_username(),
-                    password=secrets.token_urlsafe(32), timeout=5, auth_timeout=5,
-                    banner_timeout=5, allow_agent=False, look_for_keys=False)
-                self.report('4', self.ip + ':22', 'unexpected_login_success', index + 1)
-                print('หยุด: บัญชีสุ่มล็อกอินสำเร็จโดยไม่คาดคิด')
-                return False
-            except module.AuthenticationException:
-                self.report('4', self.ip + ':22', 'authentication_failed', index + 1)
-            except (OSError, module.SSHException):
-                # Never log exception strings or credentials.
-                self.report('4', self.ip + ':22', 'ssh_connection_error', index + 1)
-            finally:
-                client.close()
-            if index < 5:
-                time.sleep(2)
+        # One connection, six password guesses (sshd MaxAuthTries 6). OpenSSH 9.8+ PerSourcePenalties adds a
+        # penalty per failed *connection* (authfail:5s, enforced from 15s), so six separate connections would be
+        # refused part-way and log fewer than the 5 failures SSH_BRUTE_FORCE needs.
+        username = random_username()
+        transport = None
+        try:
+            transport = module.Transport(socket.create_connection((self.ip, 22), timeout=5))
+            transport.banner_timeout = 5
+            transport.auth_timeout = 5
+            transport.start_client(timeout=5)
+        except (OSError, module.SSHException):
+            self.report('4', self.ip + ':22', 'ssh_connection_error', 0)
+            if transport is not None:
+                transport.close()
+            return False
+        try:
+            for index in range(6):
+                try:
+                    transport.auth_password(username, secrets.token_urlsafe(32))
+                    self.report('4', self.ip + ':22', 'unexpected_login_success', index + 1)
+                    print('หยุด: บัญชีสุ่มล็อกอินสำเร็จโดยไม่คาดคิด')
+                    return False
+                except module.AuthenticationException:
+                    self.report('4', self.ip + ':22', 'authentication_failed', index + 1)
+                except (OSError, module.SSHException, EOFError):
+                    # sshd closes after its last allowed try. Never log exception strings or credentials.
+                    self.report('4', self.ip + ':22', 'ssh_connection_closed', index + 1)
+                    break
+                if not transport.is_active():
+                    break
+        finally:
+            transport.close()
         return True
+
+    def login(self, site, count):
+        # A wrong password for a made-up account: the site must answer 401 for it to count as a failed login.
+        url = 'https://' + site + LOGIN_PATH
+        body = json.dumps({'email': 'sentinel-test-{}@example.com'.format(secrets.token_hex(4)),
+                           'password': secrets.token_urlsafe(24)}).encode()
+        result = http_status(url, data=body)
+        self.report('7', url, result, count)
+        return result
 
     def run_case(self, case, module=None):
         if case == '1':
@@ -204,6 +234,17 @@ class LiveTest:
             for index in range(110):
                 time.sleep(max(0, started + index * (50 / 110) - time.monotonic()))
                 self.tcp(case, 22, index + 1)
+        elif case == '7':
+            results = []
+            for index in range(6):
+                results.append(self.login(self.login_site, index + 1))
+                if index < 5:
+                    time.sleep(1.5)
+            if results.count(401) < 5:
+                # Only 401 (and 200) on the login path count; 400/404/422 mean the site or body is wrong.
+                print('เว็บตอบ 401 ไม่ถึง 5 ครั้ง ({}) ระบบจะไม่นับเป็นล็อกอินผิด ตรวจชื่อเว็บและ API login ก่อน'.format(results))
+                self.journal.record(case, self.login_site, 'not_enough_401', statuses=results)
+                return False
         return True
 
     def evidence(self):
@@ -235,11 +276,17 @@ def menu(test):
     while True:
         try:
             print('\n' + '\n'.join('{}: {}'.format(i, v) for i, v in enumerate(LABELS, 1)))
-            case = input('เลือก 1–6 หรือ 0 เพื่อออก: ').strip()
+            case = input('เลือก 1–7 หรือ 0 เพื่อออก: ').strip()
             if case == '0':
                 return
-            if case not in ('1', '2', '3', '4', '5', '6'):
+            if case not in ('1', '2', '3', '4', '5', '6', '7'):
                 continue
+            if case == '7':
+                try:
+                    test.login_site = validate_site(input('ชื่อเว็บรอดไม่รอดบน VPS นี้ (ไม่ใส่ https://): '))
+                except (ValueError, UnicodeError):
+                    print('กรอกชื่อเว็บเท่านั้น ไม่ใส่ https:// หรือ path')
+                    continue
             module = None
             if case == '4':
                 try:
@@ -255,9 +302,12 @@ def menu(test):
                 '1': 'GET /backup.sql 1 ครั้ง → ' + test.url,
                 '2': 'GET path สแกน/ไม่มีจริง 12 path → ' + test.url,
                 '3': 'GET / 320 ครั้ง ~40 วินาที พร้อมกันไม่เกิน 5 → ' + test.url,
-                '4': 'SSH บัญชีไม่มีจริงสุ่มใหม่ 6 ครั้ง ห่าง ~2 วินาที → ' + test.ip + ':22',
+                '4': 'SSH บัญชีไม่มีจริง (สุ่ม) เดารหัส 6 ครั้งในการเชื่อมต่อเดียว → ' + test.ip + ':22',
                 '5': 'TCP connect 12 พอร์ต {} → {}'.format(PORTS, test.ip),
-                '6': 'คำเตือน: อาจรบกวน SSH; TCP connect แล้วปิด 110 ครั้ง ~50 วินาที → ' + test.ip + ':22',
+                '6': ('คำเตือน: sshd จะไม่รับ SSH จาก IP นี้นานสุด ~10 นาที (PerSourcePenalties) ยิงเป็นข้อสุดท้าย; '
+                      'TCP connect แล้วปิด 110 ครั้ง ~50 วินาที → ' + test.ip + ':22'),
+                '7': ('POST {} ด้วยบัญชีสุ่มที่ไม่มีจริง รหัสผิด 6 ครั้ง ห่าง ~1.5 วินาที → https://{}'
+                      .format(LOGIN_PATH, getattr(test, 'login_site', ''))),
             }
             print(descriptions[case])
             confirmed = input('ยืนยันว่ามีสิทธิ์ทดสอบเป้าหมายนี้ และเริ่มยิง? [y/n]: ').strip().lower() == 'y'

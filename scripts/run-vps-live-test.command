@@ -5,6 +5,8 @@ cd -- "$SCRIPT_DIR/.." || exit 1
 
 if [[ -x "$PWD/.venv/bin/python3" ]]; then
     PYTHON_BIN="$PWD/.venv/bin/python3"
+elif [[ -x "$PWD/scripts/.venv-live-test/bin/python3" ]]; then
+    PYTHON_BIN="$PWD/scripts/.venv-live-test/bin/python3"
 elif command -v python3 >/dev/null 2>&1; then
     PYTHON_BIN="$(command -v python3)"
 else

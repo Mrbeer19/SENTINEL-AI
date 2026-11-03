@@ -109,24 +109,66 @@ class LiveTests(unittest.TestCase):
         with patch('builtins.input', side_effect=['1', KeyboardInterrupt(), '0']), patch.object(self.test, 'ready', return_value=True):
             live.menu(self.test)
 
-    def test_ssh_random_credentials_no_secrets_in_log(self):
+    def ssh_module(self):
         module = MagicMock()
         module.AuthenticationException = type('AuthError', (Exception,), {})
         module.SSHException = type('SSHError', (Exception,), {})
-        client = module.SSHClient.return_value
-        client.connect.side_effect = module.AuthenticationException('secret-password')
-        with patch.object(live.time, 'sleep'):
+        return module
+
+    def test_ssh_guesses_six_times_on_one_connection_without_secrets_in_log(self):
+        module = self.ssh_module()
+        transport = module.Transport.return_value
+        transport.is_active.return_value = True
+        transport.auth_password.side_effect = module.AuthenticationException('secret-password')
+        with patch.object(live.socket, 'create_connection') as connect:
             self.assertTrue(self.test.ssh(module))
-        calls = client.connect.call_args_list
+        connect.assert_called_once_with(('192.0.2.1', 22), timeout=5)  # one connection: one sshd penalty
+        calls = transport.auth_password.call_args_list
         self.assertEqual(len(calls), 6)
-        self.assertEqual(len({c.kwargs['username'] for c in calls}), 6)
+        self.assertEqual(len({c.args[0] for c in calls}), 1)
+        self.assertTrue(calls[0].args[0].startswith('sentinel-test-'))
+        self.assertEqual(len({c.args[1] for c in calls}), 6)
         for call in calls:
-            self.assertFalse(call.kwargs['allow_agent'])
-            self.assertFalse(call.kwargs['look_for_keys'])
-            self.assertEqual(call.kwargs['timeout'], 5)
-            self.assertNotIn(call.kwargs['password'], str(self.journal.mock_calls))
-        self.assertEqual(client.close.call_count, 6)
+            self.assertNotIn(call.args[1], str(self.journal.mock_calls))
         self.assertNotIn('secret-password', str(self.journal.mock_calls))
+        transport.close.assert_called_once()
+
+    def test_ssh_stops_when_sshd_closes_and_on_unexpected_success(self):
+        module = self.ssh_module()
+        transport = module.Transport.return_value
+        transport.is_active.return_value = True
+        transport.auth_password.side_effect = [module.AuthenticationException()] * 5 + [EOFError()]
+        with patch.object(live.socket, 'create_connection'):
+            self.assertTrue(self.test.ssh(module))
+        self.assertEqual(self.journal.record.call_args.args[2], 'ssh_connection_closed')
+        transport.auth_password.side_effect = None
+        with patch.object(live.socket, 'create_connection'):
+            self.assertFalse(self.test.ssh(module))
+        self.assertEqual(self.journal.record.call_args.args[2], 'unexpected_login_success')
+        with patch.object(live.socket, 'create_connection', side_effect=OSError):
+            self.assertFalse(self.test.ssh(module))
+
+    def test_login_case_posts_six_wrong_logins_and_needs_401(self):
+        self.test.login_site = 'rod.example.test'
+        with patch.object(live, 'http_status', return_value=401) as request, patch.object(live.time, 'sleep'):
+            self.assertTrue(self.test.run_case('7'))
+        self.assertEqual(request.call_count, 6)
+        for call in request.call_args_list:
+            self.assertEqual(call.args[0], 'https://rod.example.test' + live.LOGIN_PATH)
+            body = json.loads(call.kwargs['data'])
+            self.assertTrue(body['email'].startswith('sentinel-test-'))
+            self.assertNotIn(body['password'], str(self.journal.mock_calls))
+        with patch.object(live, 'http_status', return_value=422), patch.object(live.time, 'sleep'):
+            self.assertFalse(self.test.run_case('7'))
+        self.assertEqual(self.journal.record.call_args.args[2], 'not_enough_401')
+
+    def test_post_request_shape(self):
+        with patch.object(live, 'opener') as factory:
+            factory.return_value.open.return_value.__enter__.return_value.status = 401
+            self.assertEqual(live.http_status('https://rod.example.test/x', data=b'{}'), 401)
+            request = factory.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_method(), 'POST')
+            self.assertEqual(request.get_header('Content-type'), 'application/json')
 
     def test_self_target_stops_before_http(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(live, 'ask_target', return_value=('192.0.2.1', 'example.test')), patch.object(live, 'public_ip', return_value='192.0.2.1'), patch.object(live, 'Journal', return_value=self.journal), patch.object(live, 'http_status') as request:
