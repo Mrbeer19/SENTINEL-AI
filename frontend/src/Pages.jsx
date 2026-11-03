@@ -83,7 +83,31 @@ export function Overview({ ctx }) {
   const { data } = ctx,
     [selected, setSelected] = useState(null),
     [feed, setFeed] = useState("requests"),
-    [activityView, setActivityView] = useState("signals");
+    [activityView, setActivityView] = useState("signals"),
+    [mapFull, setMapFull] = useState(false),
+    mapPanel = React.useRef(null);
+  // Full screen through the browser API when it exists (immune to transformed ancestors); a fixed overlay otherwise.
+  const toggleMapFull = () => {
+    const el = mapPanel.current;
+    if (document.fullscreenElement) return document.exitFullscreen();
+    if (!mapFull && el?.requestFullscreen) return el.requestFullscreen().catch(() => setMapFull(true));
+    setMapFull((v) => !v);
+  };
+  useEffect(() => {
+    const sync = () => setMapFull(document.fullscreenElement === mapPanel.current);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  useEffect(() => {
+    if (!mapFull || document.fullscreenElement) return;
+    const close = (e) => e.key === "Escape" && setMapFull(false);
+    document.addEventListener("keydown", close);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.body.style.overflow = "";
+    };
+  }, [mapFull]);
   const sources = useMemo(() => sourcesOf(data), [data]),
     rules = data.rules.filter((r) => activeRule(r, ctx.now)),
     pending = data.proposals.filter((p) => p.status === "pending"),
@@ -190,7 +214,25 @@ export function Overview({ ctx }) {
         ))}
       </div>
       <div className="observatoryGrid">
-        <Panel title="Network map" code="02" className="topologyPanel">
+        <Panel
+          title="Network map"
+          code="02"
+          className={`topologyPanel${mapFull ? " isFullscreen" : ""}`}
+          panelRef={mapPanel}
+          actions={
+            <button
+              type="button"
+              className="mapExpand"
+              aria-pressed={mapFull}
+              aria-label={mapFull ? "ย่อแผนผังกลับ" : "ขยายแผนผังเต็มจอ"}
+              title={mapFull ? "ย่อกลับ (Esc)" : "ขยายเต็มจอ"}
+              onClick={toggleMapFull}
+            >
+              <Icon name={mapFull ? "close" : "expand"} size={14} />
+              {mapFull ? "ย่อ" : "เต็มจอ"}
+            </button>
+          }
+        >
           <Topology
             data={data}
             activeRules={rules}
