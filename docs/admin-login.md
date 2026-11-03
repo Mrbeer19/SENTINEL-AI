@@ -6,7 +6,7 @@ Generate a salted password hash interactively from the repository root:
 
     python -m backend.admin_auth
 
-Choose a unique password of at least 8 characters. Store the printed hash in the server environment as `SENTINEL_ADMIN_PASSWORD_HASH` and set `SENTINEL_ADMIN_USERNAME`. Never commit the password or hash.
+Choose a unique password of at least 8 characters. It prints `SENTINEL_ADMIN_PASSWORD_HASH='scrypt$...$...'`: paste that line into the server environment as is and set `SENTINEL_ADMIN_USERNAME`. Keep the single quotes; without them a shell or Docker Compose expands `$...` and the stored hash becomes just `scrypt`, so every login fails. `preflight` checks the format. Never commit the password or hash.
 
 | Where | How the environment is set |
 | --- | --- |
