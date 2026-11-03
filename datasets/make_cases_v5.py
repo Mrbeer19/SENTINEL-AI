@@ -10,7 +10,7 @@ rule_hint is computed from the logs with the backend thresholds (backend/rules/*
 Labels on harmless-but-rule-firing cases are the author's SOC judgment: blocking would lock out real users, so a
 block is forbidden and NO_ACTION / MONITOR / INVESTIGATE are accepted.
 
-Run: python3 make_cases_v5.py  ->  sentinel_cases_v5.json (same schema as obeto-v4; run with agent_bench.py --pipeline --cases ... --split test)
+Run: python3 make_cases_v5.py  ->  sentinel_cases_v5.json (same schema as v4; run with agent_bench.py --pipeline --cases ... --split test)
 """
 
 import json
