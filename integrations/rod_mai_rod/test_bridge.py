@@ -11,11 +11,22 @@ from vps_rules import active_ips, snippet_for
 
 class BridgeTests(unittest.TestCase):
     def test_only_target_login_results_are_ingested(self):
-        vps_logs.DOMAIN = "site.example.test"
+        vps_logs.DOMAINS = frozenset({"site.example.test"})
+        vps_logs.LOGIN_PATHS = {"site.example.test": frozenset({"/api/v1/auth/login"})}
         row = {"request": {"host": "site.example.test", "remote_ip": "192.0.2.7", "method": "POST", "uri": "/api/v1/auth/login"}, "status": 401}
         self.assertEqual(event(json.dumps(row).encode(), 42), {"offset": 42, "ip": "192.0.2.7", "kind": "auth", "outcome": "failed"})
         row["request"]["host"] = "other.example.test"
         self.assertIsNone(event(json.dumps(row).encode(), 42))
+
+    def test_every_watched_site_is_read_but_login_only_where_configured(self):
+        vps_logs.DOMAINS = frozenset({"site.example.test", "dash.example.test"})
+        vps_logs.LOGIN_PATHS = {"site.example.test": frozenset({"/api/v1/auth/login"}), "dash.example.test": frozenset()}
+        login = {"request": {"host": "site.example.test", "remote_ip": "192.0.2.7", "method": "POST", "uri": "/api/v1/auth/login"}, "status": 401}
+        self.assertEqual(event(json.dumps(login).encode(), 1)["kind"], "auth")
+        login["request"]["host"] = "dash.example.test"  # no login on this site: a 401 there is not a failed login
+        self.assertIsNone(event(json.dumps(login).encode(), 1))
+        denied = {"request": {"host": "dash.example.test", "remote_ip": "192.0.2.7", "method": "GET", "uri": "/"}, "status": 403}
+        self.assertEqual(event(json.dumps(denied).encode(), 2)["kind"], "denied")
 
     def test_only_unexpired_valid_ips_become_caddy_matcher(self):
         now = datetime(2026, 10, 22, tzinfo=timezone.utc)
@@ -36,7 +47,7 @@ class RequestTotalsTest(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from unittest import mock
-        vps_logs.DOMAIN = "site.example.test"
+        vps_logs.DOMAINS = frozenset({"site.example.test"})
         self.log = Path(tempfile.mkdtemp()) / "access.log"
         patcher = mock.patch.object(vps_logs, "LOG", self.log)
         patcher.start()
@@ -90,3 +101,30 @@ class LocalModeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApplyRulesTest(unittest.TestCase):
+    def test_direct_caddyfile_import_in_every_site_is_validated_then_reloaded(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        import vps_rules
+        tmp = Path(tempfile.mkdtemp())
+        caddyfile = tmp / "Caddyfile"
+        caddyfile.write_text("a.test {\n    import /config/sentinel-block.caddy\n}\nb.test {\n    import /config/sentinel-block.caddy\n}\n")
+        (tmp / "rules.json").write_text(json.dumps([{"source_ip": "192.0.2.9", "expires_at": "9999-12-31T00:00:00+00:00"}]))
+        seen = []
+
+        def run(cmd, **_):
+            if "validate" in cmd:  # the candidate config must point every site at the candidate snippet
+                seen.append((tmp / cmd[cmd.index("--config") + 1].removeprefix("/config/")).read_text())
+            return mock.Mock()
+        with mock.patch.multiple(vps_rules, CADDYFILE=caddyfile, ACTIVE_CONFIG=None, RULES=tmp / "rules.json",
+                                 SNIPPET=tmp / "sentinel-block.caddy", CADDY_DIR=tmp, CADDY_CONTAINER="caddy",
+                                 IMPORT="import /config/sentinel-block.caddy", BLOCK_SNIPPET="sentinel-block.caddy",
+                                 RELOAD_CONFIG="/etc/caddy/Caddyfile"), mock.patch.object(vps_rules.subprocess, "run", side_effect=run) as call:
+            self.assertTrue(vps_rules.apply())
+        self.assertEqual(seen[0].count("import /config/sentinel-block.caddy.candidate"), 2)
+        self.assertEqual(call.call_args.args[0][-4:], ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"])
+        self.assertIn("remote_ip 192.0.2.9", (tmp / "sentinel-block.caddy").read_text())
+        self.assertEqual(caddyfile.read_text().count("import /config/sentinel-block.caddy\n"), 2)  # shared file untouched

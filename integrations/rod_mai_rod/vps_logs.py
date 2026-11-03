@@ -1,4 +1,4 @@
-"""Read only rod-mai-rod Caddy access records for the Windows collector.
+"""Read the Caddy access records of the watched sites (site.json "domains") for the collector.
 
 Besides login results and 403 denials, every other request is summed per source IP per WINDOW_S seconds
 (HTTP_REQUEST in docs/api-contract.md), so a flood becomes a few totals instead of one event per request."""
@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from site_config import CADDY_DIR, DOMAIN, HERE, SITE
+from site_config import ACCESS_LOG, CADDY_DIR, DOMAINS, HERE, LOGIN_PATHS, SITE
 
-LOG = CADDY_DIR / "rod-mai-rod.access.log"
+LOG = CADDY_DIR / ACCESS_LOG
 SENSOR_LOG = HERE / "network-events.jsonl"
 MAX_BYTES = 1_000_000
 WINDOW_S = 10
@@ -30,13 +30,14 @@ def event(line: bytes, offset: int):
     try:
         row = json.loads(line)
         request = row["request"]
-        if request.get("host", "").split(":")[0].lower() != DOMAIN:
+        host = request.get("host", "").split(":")[0].lower()
+        if host not in DOMAINS:
             return None
         ip = str(ipaddress.ip_address(request["remote_ip"]))
         method = request["method"].upper()
         path = urlsplit(request["uri"]).path
         status = int(row["status"])
-        if path in ("/api/v1/auth/login", "/api/v1/auth/google") and method == "POST" and status in (200, 401):
+        if path in LOGIN_PATHS.get(host, ()) and method == "POST" and status in (200, 401):
             return {"offset": offset, "ip": ip, "kind": "auth", "outcome": "success" if status == 200 else "failed"}
         if status == 403:
             return {"offset": offset, "ip": ip, "kind": "denied"}
@@ -50,7 +51,7 @@ def request(line: bytes):
     try:
         row = json.loads(line)
         req = row["request"]
-        if req.get("host", "").split(":")[0].lower() != DOMAIN:
+        if req.get("host", "").split(":")[0].lower() not in DOMAINS:
             return None
         status = int(row["status"])
         path = urlsplit(req["uri"]).path
@@ -125,6 +126,6 @@ if __name__ == "__main__":
     parser.add_argument("--start-at-end", action="store_true")
     parser.add_argument("--sensor", action="store_true")
     args = parser.parse_args()
-    if not args.sensor and not DOMAIN:
-        raise SystemExit("site.json is missing domain (see site.example.json)")
+    if not args.sensor and not DOMAINS:
+        raise SystemExit("site.json is missing domain or domains (see site.example.json)")
     print(json.dumps(read_log(args.inode, args.offset, args.start_at_end, args.sensor)))

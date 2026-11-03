@@ -1,9 +1,29 @@
 {
   "domain": "site.example.com",
+  "domains": [
+    "site.example.com",
+    "dashboard.example.com"
+  ],
+  "login_paths": {
+    "site.example.com": [
+      "/api/v1/auth/login",
+      "/api/v1/auth/google"
+    ],
+    "dashboard.example.com": []
+  },
   "caddy_config_dir": "/path/to/caddy/config/volume",
   "caddyfile": "/path/to/gateway/Caddyfile",
   "caddy_container": "caddy-container-name",
   "upstream": "web-container:8000",
-  "honeypot_paths": ["/admin-backup.zip", "/backup.sql", "/.aws/credentials", "/config.php.bak"],
-  "caddyfile_sha256": "sha256 of the shared Caddyfile at inspection time (install_caddy.py only)"
+  "honeypot_paths": [
+    "/admin-backup.zip",
+    "/backup.sql",
+    "/.aws/credentials",
+    "/config.php.bak"
+  ],
+  "caddyfile_sha256": "sha256 of the shared Caddyfile at inspection time (install_caddy.py only)",
+  "access_log": "sentinel.access.log",
+  "block_snippet": "sentinel-block.caddy",
+  "active_config": "",
+  "reload_config": "/etc/caddy/Caddyfile"
 }
