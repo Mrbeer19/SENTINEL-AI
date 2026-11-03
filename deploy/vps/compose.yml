@@ -1,0 +1,29 @@
+# Own Compose project: does not touch the Caddy gateway or the other sites on this VPS.
+name: sentinel
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/vps/Dockerfile
+      args:
+        VITE_PROTECTED_SITE_HOST: ${VITE_PROTECTED_SITE_HOST:-}
+        VITE_PROTECTED_SITE_IP: ${VITE_PROTECTED_SITE_IP:-}
+    image: sentinel-api:local
+    # Host network so the API can bind 127.0.0.1:8001 and reach Ollama on 127.0.0.1:11434
+    # (a reverse SSH tunnel from the GPU workstation). Nothing listens on a public address.
+    network_mode: host
+    env_file: .env
+    volumes:
+      - sentinel-data:/data
+    mem_limit: 384m
+    cpus: 0.5
+    pids_limit: 128
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  sentinel-data:

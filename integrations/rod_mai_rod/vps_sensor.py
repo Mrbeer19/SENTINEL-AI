@@ -14,6 +14,16 @@ LOCK = threading.Lock()
 AUTH = re.compile(r'^(Failed (?:password|publickey)|Accepted (?:password|publickey|keyboard-interactive/pam)) for (?:invalid user )?(\S+) from (\S+) port \d+')
 SYN = re.compile(r'IP6? (\S+) > (\S+): Flags \[S\]')
 
+def local_addresses():
+    """Addresses of this host. Connections from them are the server talking to itself, not visitors."""
+    try:
+        out = subprocess.run(['ip', '-o', 'addr', 'show'], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return frozenset()
+    return frozenset(part.split('/')[0] for line in out.splitlines() for part in line.split()[3:4])
+
+LOCAL_ADDRESSES = local_addresses()
+
 def auth_event(row):
     match = AUTH.search(row.get('MESSAGE',''))
     if not match: return None
@@ -28,9 +38,11 @@ def syn_event(line):
         source, sport = match[1].rsplit('.',1)
         dest, dport = match[2].rsplit('.',1)
         ip = ipaddress.ip_address(source)
-        ipaddress.ip_address(dest)
+        target = ipaddress.ip_address(dest)
         port = int(dport)
-        if not ip.is_global or not 1 <= port <= 65535: return None
+        # Skip the host's own traffic and the copy Docker forwards to internal container addresses;
+        # otherwise the bridge posting to the backend would be recorded as an inbound connection.
+        if not ip.is_global or str(ip) in LOCAL_ADDRESSES or not target.is_global or not 1 <= port <= 65535: return None
         return {'source_ip':str(ip),'event_type':'CONNECTION','outcome':'attempt','destination_port':port}, (source,sport,dest,dport)
     except ValueError: return None
 

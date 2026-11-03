@@ -1,0 +1,31 @@
+# Sigma-inspired rule: base selection + event_sum correlation over paths that match SCANNER_PATTERNS (detection.py).
+title: Web scan (known scanner paths)
+id: sentinel-web-scan-paths
+status: experimental
+description: One source IP asks for several paths that only vulnerability scanners request on this site (/.env, /wp-admin, /phpmyadmin, ../, union select).
+references:
+  - https://attack.mitre.org/techniques/T1595/003/
+  - https://attack.mitre.org/techniques/T1190/
+tags:
+  - attack.reconnaissance
+  - attack.t1595.003
+  - attack.initial_access
+  - attack.t1190
+level: medium
+logsource:
+  product: sentinel
+  category: web
+detection:
+  selection:
+    event_type: HTTP_REQUEST
+  condition: selection
+correlation:
+  type: event_sum
+  field: scan_paths
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 3
+sentinel:
+  kind: WEB_SCAN

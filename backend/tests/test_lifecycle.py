@@ -71,6 +71,18 @@ def test_approved_rule_expiry_matches_action(client):
     assert incident["proposal"]["d3fend"] == "D3-ITF" and incident["proposal"]["reviewer"] == "teacher"
 
 
+
+def test_manual_unblock_keeps_the_rule_until_an_admin_removes_it(make_app):
+    client = connect(make_app(SENTINEL_MANUAL_UNBLOCK="1"))
+    incident = blocked_incident(client)
+    rule = client.get("/api/rules").json()[0]
+    assert incident["proposal"]["duration_seconds"] == 0
+    assert rule["active"] and rule["expires_at"].startswith("9999-")
+    assert client.post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 403
+    assert client.delete(f"/api/rules/{rule['id']}").status_code == 200
+    assert not client.get("/api/rules").json()[0]["active"]
+    assert client.post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 200
+
 # ---- analyze ----
 
 def test_analyze_twice_returns_the_same_result(client):

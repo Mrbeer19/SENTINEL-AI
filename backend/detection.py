@@ -8,13 +8,22 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import unquote
 
 import yaml
 
 LEVELS = {"low": "LOW", "medium": "MEDIUM", "high": "HIGH", "critical": "CRITICAL"}
 # Only these event columns may appear in a rule selection; rule files never reach SQL as raw text.
 SELECTABLE = {"event_type", "outcome"}
+# event_sum adds up one of these columns; HTTP_REQUEST events already hold the totals of a short window.
+SUMMABLE = {"request_count", "not_found", "scan_paths"}
 CRITICAL_MULTIPLIER = 3
+# Paths that only vulnerability scanners ask for on this site. Matched on the decoded, lower-cased path.
+SCANNER_PATTERNS = ("/.env", "/.git", "/wp-admin", "/wp-login", "/xmlrpc.php", "/phpmyadmin", "/cgi-bin", "../", "union select")
+
+
+def scanner_path_count(paths: list[str]) -> int:
+    return sum(any(pattern in unquote(path).lower() for pattern in SCANNER_PATTERNS) for path in paths)
 
 
 @dataclass(frozen=True)
@@ -25,7 +34,7 @@ class Rule:
     level: str
     attack_technique: str | None
     selection: dict[str, str]
-    correlation: str  # event_count | value_count | failures_before
+    correlation: str  # event_count | value_count | event_sum | failures_before
     field: str | None
     window: timedelta
     threshold: int
@@ -54,10 +63,12 @@ def _parse(path: Path) -> Rule:
     if set(selection) - SELECTABLE:
         raise ValueError(f"{path.name}: selection may only use {sorted(SELECTABLE)}")
     corr = doc["correlation"]
-    if corr["type"] not in {"event_count", "value_count", "failures_before"} or corr.get("group-by") != ["source_ip"]:
+    if corr["type"] not in {"event_count", "value_count", "event_sum", "failures_before"} or corr.get("group-by") != ["source_ip"]:
         raise ValueError(f"{path.name}: unsupported correlation")
     if corr["type"] == "value_count" and corr.get("field") != "destination_port":
         raise ValueError(f"{path.name}: value_count only supports destination_port")
+    if corr["type"] == "event_sum" and corr.get("field") not in SUMMABLE:
+        raise ValueError(f"{path.name}: event_sum only supports {sorted(SUMMABLE)}")
     techniques = [tag.split(".", 1)[1].upper() for tag in doc.get("tags", []) if re.fullmatch(r"attack\.t\d{4}(\.\d{3})?", tag)]
     return Rule(
         id=doc["id"], title=doc["title"], kind=doc["sentinel"]["kind"], level=LEVELS[doc["level"]],
@@ -90,7 +101,9 @@ class RuleSet:
                 ).fetchone()[0]
             else:
                 where = " AND ".join(f"{key}=?" for key in rule.selection)
-                measure = "COUNT(DISTINCT destination_port)" if rule.correlation == "value_count" else "COUNT(*)"
+                # rule.field comes from SUMMABLE (checked in _parse), never from raw rule text.
+                measure = {"value_count": "COUNT(DISTINCT destination_port)",
+                           "event_sum": f"COALESCE(SUM({rule.field}), 0)"}.get(rule.correlation, "COUNT(*)")
                 count = con.execute(
                     f"SELECT {measure} FROM events WHERE source_ip=? AND {where} AND timestamp>=? AND timestamp<=?",
                     (event["source_ip"], *rule.selection.values(), start, event["timestamp"]),

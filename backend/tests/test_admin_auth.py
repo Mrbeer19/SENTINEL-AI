@@ -34,6 +34,18 @@ def test_csrf_and_rate_limit(monkeypatch,tmp_path):
     assert c.post('/api/auth/login',json=body).status_code == 429
 
 
+
+def test_rate_limit_is_per_client_ip(monkeypatch,tmp_path):
+    monkeypatch.setenv('SENTINEL_ADMIN_PASSWORD_HASH', password_hash('test-only-password-482'))
+    monkeypatch.setenv('SENTINEL_COOKIE_SECURE', '0')
+    app = create_app(tmp_path/'admin.db')
+    attacker = TestClient(app, client=('203.0.113.7', 1234))
+    admin = TestClient(app, client=('198.51.100.4', 1234))
+    body = {'username':'admin','password':'wrong'}
+    for _ in range(10): assert attacker.post('/api/auth/login',json=body).status_code == 401
+    assert attacker.post('/api/auth/login',json=body).status_code == 429
+    assert admin.post('/api/auth/login',json={'username':'admin','password':'test-only-password-482'}).status_code == 200
+
 def test_unconfigured_fails_closed(monkeypatch,tmp_path):
     monkeypatch.delenv('SENTINEL_ADMIN_PASSWORD_HASH',raising=False)
     c = TestClient(create_app(tmp_path/'unconfigured.db'))

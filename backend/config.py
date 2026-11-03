@@ -47,6 +47,7 @@ class Settings:
     demo_enabled: bool
     allowed_hosts: frozenset[str]
     local_peers: frozenset[str]
+    manual_unblock: bool = False
 
 
 def load_settings() -> Settings:
@@ -69,4 +70,6 @@ def load_settings() -> Settings:
         # `make run-lan` binds the M5 LAN IP only, so the operator's own dashboard arrives from that IP, not loopback.
         # Only the M5 holds that address, so it counts as local like 127.0.0.1.
         local_peers=LOCAL_PEERS | parse_ips(os.getenv("SENTINEL_LAN_HOST", "")),
+        # Approved blocks stay until an admin unblocks them on the dashboard (no automatic expiry).
+        manual_unblock=os.getenv("SENTINEL_MANUAL_UNBLOCK", "0") == "1",
     )

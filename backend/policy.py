@@ -4,10 +4,23 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 
 BLOCK_ACTIONS = ("TEMP_BLOCK_IP", "BLOCK_IP")
 DURATION_SECONDS = {"TEMP_BLOCK_IP": 600, "BLOCK_IP": 3600}
 D3FEND_TECHNIQUE = "D3-ITF"  # MITRE D3FEND Inbound Traffic Filtering
+# duration_seconds 0 means the rule has no expiry; an admin removes it from the dashboard.
+NO_EXPIRY = "9999-12-31T23:59:59+00:00"
+
+
+def expires_at(duration_seconds: int) -> str:
+    if not duration_seconds:
+        return NO_EXPIRY
+    return (datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)).isoformat(timespec="seconds")
+
+
+def duration_text(duration_seconds: int) -> str:
+    return f"for {duration_seconds} seconds" if duration_seconds else "until an admin unblocks it"
 
 
 @dataclass

@@ -1,0 +1,18 @@
+[Unit]
+Description=SENTINEL bridge for rod-mai-rod (runs on the VPS, no SSH hop)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sentinel-bridge.env
+Environment=SENTINEL_API_URL=http://127.0.0.1:8001
+ExecStart=/usr/bin/python3 __VPS_DIR__/agent.py --local --remote-dir __VPS_DIR__ --state /var/lib/sentinel-bridge/state.json --network-sensor
+StateDirectory=sentinel-bridge
+Restart=always
+RestartSec=10
+MemoryMax=96M
+CPUQuota=20%
+
+[Install]
+WantedBy=multi-user.target
