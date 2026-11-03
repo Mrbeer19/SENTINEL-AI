@@ -1,6 +1,6 @@
 # รายงานแต่ละเฟส
 
-เขียนรายงานเฟสเป็น `phase-0-obeto.md`, `phase-0-beer.md` และเฟสถัดไปตามรูปแบบนี้ แล้วส่งสรุปใน Discord
+เขียนรายงานเฟสเป็น `phase-0-pitchakorn.md`, `phase-0-prapakorn.md` และเฟสถัดไปตามรูปแบบนี้ แล้วส่งสรุปใน Discord
 
 ```text
 Phase / ผู้รับผิดชอบ:
