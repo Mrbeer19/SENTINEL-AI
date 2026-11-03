@@ -368,6 +368,11 @@ export function Workspace({
                   ? "CONNECTED"
                   : "RECONNECTING"}
             </span>
+            {/* Model status in the same chip: /api/health is re-read with every refresh (at least every 15 s). */}
+            <span className="modelState" aria-label={live.data.health?.model_ready ? "โมเดล AI ออนไลน์" : "โมเดล AI ออฟไลน์"}>
+              <i className={`dot ${!live.data.health ? "amber" : live.data.health.model_ready ? "" : "red"}`} />
+              {!live.data.health ? "AI …" : live.data.health.model_ready ? "AI ONLINE" : "AI OFFLINE"}
+            </span>
           </summary>
           <div>
             <b>สถานะการเชื่อมต่อ</b>
@@ -381,38 +386,10 @@ export function Workspace({
             <small>MODEL / {live.data.health?.model || "—"}</small>
             <small>
               {live.data.health?.model_ready
-                ? "พร้อมวิเคราะห์"
-                : "โมเดลยังไม่พร้อม อาจใช้ rule fallback"}
+                ? "AI ออนไลน์ · incident ใหม่วิเคราะห์ด้วยโมเดล"
+                : "AI ออฟไลน์ · incident ใหม่ใช้กฎแทน (rule fallback)"}
             </small>
             <small>LAST UPDATE / {time(live.updatedAt)}</small>
-          </div>
-        </details>
-        {/* Model status at a glance: /api/health is re-read with every refresh (at least every 15 s). */}
-        <details className="connection modelStatus">
-          <summary
-            data-connected={live.data.health?.model_ready || undefined}
-            aria-label={live.data.health?.model_ready ? "โมเดล AI ออนไลน์" : "โมเดล AI ออฟไลน์"}
-          >
-            <i
-              className={`dot ${!live.data.health ? "amber" : live.data.health.model_ready ? "" : "red"}`}
-            />
-            <span>
-              {!live.data.health
-                ? "AI …"
-                : live.data.health.model_ready
-                  ? "AI ONLINE"
-                  : "AI OFFLINE"}
-            </span>
-          </summary>
-          <div>
-            <b>สถานะโมเดล AI</b>
-            <span>
-              {live.data.health?.model_ready
-                ? "ออนไลน์ · incident ใหม่วิเคราะห์ด้วยโมเดล"
-                : "ออฟไลน์ · incident ใหม่ใช้กฎแทน (rule fallback)"}
-            </span>
-            <small>MODEL / {live.data.health?.model || "—"}</small>
-            <small>LAST CHECK / {time(live.updatedAt)}</small>
           </div>
         </details>
         <button
