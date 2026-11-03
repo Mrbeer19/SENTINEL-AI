@@ -1,299 +1,548 @@
-"""SENTINEL AI local SOC MVP. Run: uvicorn backend.app:app --reload."""
+"""SENTINEL AI local SOC backend. Run: uvicorn backend.app:app --reload."""
 
 from __future__ import annotations
 
-import ipaddress
-import json
 import os
+import ipaddress
+from contextlib import asynccontextmanager, suppress
+import asyncio
+import json
 import secrets
-import sqlite3
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, IPvAnyAddress
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError, model_validator
 
-ROOT = Path(__file__).resolve().parent
-DEFAULT_DB = ROOT / "data" / "sentinel.db"
-MODEL = os.getenv("SENTINEL_MODEL", "qwen3.5:4b")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-PROTECTED_IPS = {"127.0.0.1", "::1", "0.0.0.0"}
+from backend import logparse, policy, soc
+from backend.admin_auth import AdminAuth, COOKIE
+from backend.agent import Agent
+from backend.config import ROOT, load_settings, same_model
+from backend.detection import Match, RuleSet, scanner_path_count
+from backend.store import Store, audit, utcnow, verify_audit
 
+DEFAULT_DB = Path(os.getenv("SENTINEL_DB_PATH", str(ROOT / "data" / "sentinel.db")))
+API_VERSION = "0.2.0"
+WS_VERSION = 2
 
-def utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+TERMINAL = {"verified", "rejected", "closed"}
+TRANSITIONS = {
+    "detected": {"analyzing", "closed"},
+    "analyzing": {"awaiting_approval", "needs_review", "monitoring", "closed"},
+    "awaiting_approval": {"blocked", "rejected", "closed"},
+    "blocked": {"verified", "closed"},
+    "needs_review": {"closed"},
+    "monitoring": {"closed"},
+}
+ACTION_STATUS = {"INVESTIGATE": "needs_review", "MONITOR": "monitoring", "NO_ACTION": "closed"}
+PUBLIC_PATHS = {"/api/health", "/api/demo/login", "/api/demo/traffic"}
+RATE_LIMITED = {"/api/demo/login", "/api/demo/traffic"}
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+OCSF_CLASS = {"HTTP_AUTH": 3002, "SSH_AUTH": 3002, "CONNECTION": 4001, "HTTP_REQUEST": 4002}  # Authentication / Network / HTTP Activity
+USERNAME_MAX = 80  # stored length
+USERNAME_INPUT_MAX = 1024  # longer than this is refused (422); between the two it is cut and flagged
+PATH_MAX = 100  # stored length of each HTTP_REQUEST path (attacker-controlled text)
 
 
 class EventIn(BaseModel):
     source_ip: IPvAnyAddress
-    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION"]
-    outcome: Literal["failed", "success", "attempt"]
+    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION", "HTTP_REQUEST"]
+    outcome: Literal["failed", "success", "attempt"] | None = None
     destination_port: int | None = Field(default=None, ge=1, le=65535)
     timestamp: datetime | None = None
     label: Literal["normal", "attack", "unknown"] = "unknown"
+    username: str | None = Field(default=None, max_length=USERNAME_INPUT_MAX)
+    # HTTP_REQUEST only: one source IP's totals for a short window, sent by the web log bridge.
+    count: int = Field(default=0, ge=0, le=1_000_000)
+    not_found: int = Field(default=0, ge=0, le=1_000_000)
+    paths: list[Annotated[str, Field(max_length=USERNAME_INPUT_MAX)]] = Field(default_factory=list, max_length=5)
+    honeypot: bool = False
+    window_s: int | None = Field(default=None, ge=1, le=300)
+
+    @model_validator(mode="after")
+    def fields_match_event_type(self):
+        if self.event_type == "HTTP_REQUEST":
+            if self.outcome is not None:
+                raise ValueError("HTTP_REQUEST has no outcome; a decoy path hit is honeypot=true")
+        elif self.outcome is None:
+            raise ValueError("outcome is required")
+        elif self.count or self.not_found or self.paths or self.honeypot:
+            raise ValueError("count, not_found, paths and honeypot are only for HTTP_REQUEST")
+        return self
 
 
 class DecisionIn(BaseModel):
     reviewer: str = Field(min_length=2, max_length=80)
 
 
-class AnalysisOut(BaseModel):
-    classification: Literal["HTTP_AUTH_BRUTE_FORCE", "SSH_BRUTE_FORCE", "PORT_SCAN", "UNKNOWN"]
-    severity: Literal["low", "medium", "high"]
-    summary: str = Field(min_length=1, max_length=2500)
-    evidence: list[str] = Field(min_length=1, max_length=10)
-    recommendation: str = Field(min_length=1, max_length=1000)
-
-
 class LoginIn(BaseModel):
-    username: str = Field(max_length=80)
+    username: str = Field(max_length=USERNAME_INPUT_MAX)
     password: str = Field(max_length=120)
+
+
+class AdminLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class TrafficIn(BaseModel):
     source_ip: IPvAnyAddress | None = None
 
 
+class EnforceIn(BaseModel):
+    client_ip: IPvAnyAddress
+
+
 class SimulationIn(BaseModel):
-    scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "normal"]
+    scenario: Literal["http_brute_force", "ssh_brute_force_logs", "port_scan", "suspicious_login", "traffic_anomaly", "normal"]
     source_ip: IPvAnyAddress = "192.0.2.25"
 
 
+class LogsIn(BaseModel):
+    format: Literal["sshd"]
+    lines: list[str] = Field(min_length=1, max_length=1000)
+    label: Literal["normal", "attack", "unknown"] = "unknown"
+
+
+class SimulationRunIn(SimulationIn):
+    interval_ms: int = Field(default=500, ge=50, le=10_000)
+
+
+def scenario_samples(scenario: str) -> list[tuple[str, str, int | None]]:
+    """(event_type, outcome, destination_port) for each event a scenario sends."""
+    if scenario == "http_brute_force":
+        return [("HTTP_AUTH", "failed", None)] * 6
+    if scenario == "ssh_brute_force_logs":
+        return [("SSH_AUTH", "failed", None)] * 6
+    if scenario == "port_scan":
+        return [("CONNECTION", "attempt", port) for port in range(8000, 8009)]
+    if scenario == "suspicious_login":
+        return [("HTTP_AUTH", "failed", None)] * 6 + [("HTTP_AUTH", "success", None)]
+    if scenario == "traffic_anomaly":
+        return [("CONNECTION", "attempt", 443)] * 120
+    return [("HTTP_AUTH", "success", None), ("CONNECTION", "attempt", 443)]
+
+
+def source_note(scenario: str) -> str:
+    return "Synthetic log replay; not a live SSH attack" if scenario == "ssh_brute_force_logs" else "Controlled app-level simulation"
+
+
+def clean_username(value: str | None) -> tuple[str | None, bool]:
+    """Attacker-controlled text: keep printable characters only, never the password.
+
+    A long name is cut, not refused: refusing would drop the event and hide the attempt from detection.
+    Returns (stored value, was_truncated)."""
+    printable = "".join(ch for ch in value or "" if ch.isprintable())
+    return printable[:USERNAME_MAX] or None, len(printable) > USERNAME_MAX
+
+
 def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
-    db_path = Path(db_path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    api = FastAPI(title="SENTINEL AI", version="0.1.0")
+    settings = load_settings()
+    store = Store(db_path)
+    auth = AdminAuth(db_path)
+    ruleset = RuleSet(settings.rules_dir)
+    agent = Agent(settings, store)
+    async def automatic_analysis():
+        while True:
+            # Reconcile events written by the legacy collector backend sharing this DB.
+            expired = store.rows("""SELECT i.id,i.source_ip,i.kind FROM incidents i
+                WHERE i.status='blocked' AND NOT EXISTS
+                (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id WHERE p.incident_id=i.id AND r.expires_at>?)
+                AND EXISTS (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id
+                            WHERE p.incident_id=i.id AND i.updated_at>r.expires_at) LIMIT 20""", (utcnow(),))
+            for old in expired:
+                with store.tx() as con:
+                    event = con.execute('SELECT * FROM events WHERE source_ip=? ORDER BY id DESC LIMIT 1',(old['source_ip'],)).fetchone()
+                    if event:
+                        record = dict(event)
+                        for match in ruleset.evaluate(con, record):
+                            if match.rule.kind == old['kind']:
+                                upsert_incident(con, match, record)
+            rows = store.rows("SELECT id FROM incidents WHERE status='detected' AND analysis IS NULL ORDER BY id LIMIT 1")
+            if not rows:
+                await asyncio.sleep(2)
+                continue
+            incident_id = rows[0]['id']
+            try:
+                await analyze(incident_id)
+            except HTTPException as error:
+                if error.status_code != 409:
+                    await asyncio.sleep(10)
+            except Exception:
+                with store.tx() as con:
+                    con.execute("UPDATE incidents SET status='detected', updated_at=? WHERE id=? AND status='analyzing' AND analysis IS NULL", (utcnow(), incident_id))
+                    log(con, incident_id, 'analysis_error', 'Automatic analysis failed; queued for retry')
+                await asyncio.sleep(30)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        task = asyncio.create_task(automatic_analysis())
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    api = FastAPI(title="SENTINEL AI", version=API_VERSION, lifespan=lifespan)
     api.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
+    # DNS rebinding: a hostile name resolving to 127.0.0.1 still carries its own Host header.
+    api.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(settings.allowed_hosts))
+    docs_paths = {api.docs_url, api.redoc_url, api.openapi_url, api.swagger_ui_oauth2_redirect_url}
     sockets: set[WebSocket] = set()
+    run = {"task": None, "state": {"running": False, "scenario": None, "source_ip": None, "sent": 0, "total": 0,
+                                   "interval_ms": None, "started_at": None, "finished_at": None, "stopped": False, "incident_ids": []}}
+    hits: dict[str, deque] = defaultdict(deque)
+
+    def same_site(origin: str | None) -> bool:
+        """CSRF / WebSocket hijack guard. Browsers send Origin; curl and the Neo terminal do not."""
+        if origin is None:
+            return True
+        parts = urlsplit(origin)
+        return parts.scheme in {"http", "https"} and parts.hostname in settings.allowed_hosts
+
+    def trusted(peer: str, headers) -> bool:
+        provided = headers.get("X-Admin-Key", "")
+        return bool(settings.admin_key and secrets.compare_digest(settings.admin_key, provided))
 
     @api.middleware("http")
-    async def restrict_remote_management(request: Request, call_next):
+    async def access_control(request: Request, call_next):
         peer = request.client.host if request.client else ""
-        demo = request.url.path in {"/api/demo/login", "/api/demo/traffic"}
-        if request.url.path.startswith("/api/") and request.method in {"POST", "PUT", "DELETE", "PATCH"} and not demo and peer not in {"127.0.0.1", "::1", "testclient"}:
-            expected = os.getenv("SENTINEL_ADMIN_KEY", "")
-            provided = request.headers.get("X-Admin-Key", "")
-            if not expected or not secrets.compare_digest(expected, provided):
-                return JSONResponse({"detail": "Remote management requires X-Admin-Key"}, status_code=403)
-        return await call_next(request)
+        path = request.url.path
+        if not settings.demo_enabled and (path.startswith("/api/demo/") or path.startswith("/api/simulations")):
+            return JSONResponse({"detail": "Demo endpoints are disabled"}, status_code=404)
+        if request.method in UNSAFE_METHODS and not same_site(request.headers.get("origin")):
+            return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
+        public_auth = path in {'/api/auth/login', '/api/auth/session'}
+        authenticated = auth.valid(request.cookies.get(COOKIE))
+        if path.startswith('/api/') and not public_auth and not (settings.demo_enabled and path in RATE_LIMITED) and not authenticated and not trusted(peer, request.headers):
+            return JSONResponse({'detail': 'Admin login required'}, status_code=401)
+        if path in docs_paths and not authenticated and not trusted(peer, request.headers):
+            return JSONResponse({'detail': 'Admin login required'}, status_code=401)
+        if not authenticated and not trusted(peer, request.headers) and not public_auth:
+            if (path.startswith("/api/") and path not in PUBLIC_PATHS) or path in docs_paths:
+                return JSONResponse({"detail": "Remote access to the SOC API requires X-Admin-Key"}, status_code=403)
+            if path in RATE_LIMITED:
+                now = time.monotonic()
+                if len(hits) > 1000:  # forget peers whose window has passed
+                    for stale in [ip for ip, seen in hits.items() if not seen or now - seen[-1] > settings.demo_rate_window_s]:
+                        del hits[stale]
+                window = hits[peer]
+                while window and now - window[0] > settings.demo_rate_window_s:
+                    window.popleft()
+                if len(window) >= settings.demo_rate_limit:
+                    return JSONResponse({"detail": "Too many demo requests; slow down"}, status_code=429)
+                window.append(now)
+        response = await call_next(request)
+        if path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        return response
 
-    def db():
-        con = sqlite3.connect(db_path, timeout=10)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA foreign_keys=ON")
-        return con
+    @api.get('/api/auth/session')
+    async def admin_session(request: Request):
+        valid = auth.valid(request.cookies.get(COOKIE))
+        return {'authenticated': valid, 'configured': bool(auth.password), 'username': auth.username if valid else None}
 
-    with db() as con:
-        con.executescript("""
-        CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, timestamp TEXT NOT NULL, source_ip TEXT NOT NULL, event_type TEXT NOT NULL, outcome TEXT NOT NULL, destination_port INTEGER, label TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS incidents (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, source_ip TEXT NOT NULL, status TEXT NOT NULL, severity TEXT NOT NULL, event_count INTEGER NOT NULL, created_at TEXT NOT NULL, analysis TEXT, analysis_mode TEXT);
-        CREATE TABLE IF NOT EXISTS traces (id INTEGER PRIMARY KEY, incident_id INTEGER NOT NULL, tool TEXT NOT NULL, input TEXT NOT NULL, output TEXT NOT NULL, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS proposals (id INTEGER PRIMARY KEY, incident_id INTEGER UNIQUE NOT NULL, source_ip TEXT NOT NULL, action TEXT NOT NULL, duration_seconds INTEGER NOT NULL, status TEXT NOT NULL, reviewer TEXT, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS rules (id INTEGER PRIMARY KEY, proposal_id INTEGER NOT NULL, source_ip TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS traffic (id INTEGER PRIMARY KEY, source_ip TEXT NOT NULL, decision TEXT NOT NULL, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS timeline (id INTEGER PRIMARY KEY, incident_id INTEGER, stage TEXT NOT NULL, detail TEXT NOT NULL, created_at TEXT NOT NULL);
-        """)
+    @api.post('/api/auth/login')
+    async def admin_login(body: AdminLogin, request: Request):
+        if not auth.password:
+            raise HTTPException(503, 'Admin credentials have not been configured')
+        peer = request.client.host if request.client else ''
+        status, token = await asyncio.to_thread(auth.login, body.username, body.password, peer)
+        if status == 'limited': raise HTTPException(429, 'Too many attempts. Try again in 5 minutes')
+        if status != 'ok': raise HTTPException(401, 'Invalid username or password')
+        auth.revoke(request.cookies.get(COOKIE))
+        response = JSONResponse({'authenticated': True})
+        response.set_cookie(COOKIE, token, max_age=28800, httponly=True, secure=auth.secure, samesite='strict', path='/')
+        return response
 
-    def rows(sql: str, params=()) -> list[dict]:
-        with db() as con:
-            return [dict(row) for row in con.execute(sql, params).fetchall()]
-
-    def one(sql: str, params=()) -> dict | None:
-        found = rows(sql, params)
-        return found[0] if found else None
+    @api.post('/api/auth/logout')
+    async def admin_logout(request: Request):
+        auth.revoke(request.cookies.get(COOKIE))
+        response = JSONResponse({'authenticated': False})
+        response.delete_cookie(COOKIE, path='/', secure=auth.secure, httponly=True, samesite='strict')
+        return response
 
     def log(con, incident_id: int | None, stage: str, detail: str):
         con.execute("INSERT INTO timeline(incident_id,stage,detail,created_at) VALUES(?,?,?,?)", (incident_id, stage, detail, utcnow()))
 
-    async def broadcast(stage: str, payload: dict):
-        stale = []
-        for socket in tuple(sockets):
-            try:
-                await socket.send_json({"stage": stage, "payload": payload})
-            except Exception:
-                stale.append(socket)
-        for socket in stale:
-            sockets.discard(socket)
+    def transition(con, incident_id: int, to: str, actor: str, reason: str) -> None:
+        current = con.execute("SELECT status FROM incidents WHERE id=?", (incident_id,)).fetchone()["status"]
+        if to not in TRANSITIONS.get(current, set()):
+            raise HTTPException(409, f"incident cannot move from {current} to {to}")
+        con.execute("UPDATE incidents SET status=?, updated_at=? WHERE id=?", (to, utcnow(), incident_id))
+        audit(con, actor, "status_changed", incident_id, {"from": current, "to": to, "reason": reason})
 
-    def detect(con, event: EventIn) -> dict | None:
-        ip = str(event.source_ip)
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=60)).isoformat(timespec="seconds")
-        kind = None
-        count = 0
-        if event.event_type in {"HTTP_AUTH", "SSH_AUTH"} and event.outcome == "failed":
-            count = con.execute("SELECT COUNT(*) FROM events WHERE source_ip=? AND event_type=? AND outcome='failed' AND timestamp>=?", (ip, event.event_type, cutoff)).fetchone()[0]
-            if count >= 5:
-                kind = "HTTP_AUTH_BRUTE_FORCE" if event.event_type == "HTTP_AUTH" else "SSH_BRUTE_FORCE"
-        elif event.event_type == "CONNECTION":
-            count = con.execute("SELECT COUNT(DISTINCT destination_port) FROM events WHERE source_ip=? AND event_type='CONNECTION' AND timestamp>=?", (ip, cutoff)).fetchone()[0]
-            if count >= 8:
-                kind = "PORT_SCAN"
-        if not kind:
+    async def broadcast(stage: str, payload: dict):
+        message = {"v": WS_VERSION, "stage": stage, "ts": utcnow(), "payload": payload}
+        for socket in tuple(sockets):
+            if not (auth.valid(socket.cookies.get(COOKIE)) or trusted('', socket.headers)):
+                await socket.close(code=1008)
+                sockets.discard(socket)
+                continue
+            try:
+                await socket.send_json(message)
+            except Exception:
+                sockets.discard(socket)
+
+    def format_proposal(row: dict | None) -> dict | None:
+        if not row:
             return None
-        current = con.execute("SELECT * FROM incidents WHERE source_ip=? AND kind=? AND status != 'closed' ORDER BY id DESC LIMIT 1", (ip, kind)).fetchone()
+        return {**row, "target_ip": row["target_ip"] or row["source_ip"], "policy_notes": json.loads(row["policy_notes"] or "[]")}
+
+    def format_incident(row: dict) -> dict:
+        return {**row, "analysis": json.loads(row["analysis"]) if row["analysis"] else None,
+                "analysis_meta": json.loads(row["analysis_meta"]) if row["analysis_meta"] else None}
+
+    def upsert_incident(con, match: Match, event: dict) -> dict:
+        rule, ip = match.rule, event["source_ip"]
+        # A previously approved block must not absorb future attacks after expiry.
+        expired = con.execute("""SELECT i.id FROM incidents i WHERE i.source_ip=? AND i.kind=? AND i.status='blocked'
+            AND NOT EXISTS (SELECT 1 FROM proposals p JOIN rules r ON r.proposal_id=p.id
+                            WHERE p.incident_id=i.id AND r.expires_at>?)""", (ip, rule.kind, utcnow())).fetchall()
+        for old in expired:
+            con.execute("UPDATE incidents SET status='closed', updated_at=? WHERE id=?", (utcnow(), old['id']))
+            log(con, old['id'], 'closed', 'Previous block expired; a new detection opens a separate incident')
+            audit(con, 'detection', 'status_changed', old['id'], {'from':'blocked','to':'closed','reason':'block expired before new detection'})
+        placeholders = ",".join("?" * len(TERMINAL))
+        current = con.execute(f"SELECT * FROM incidents WHERE source_ip=? AND kind=? AND status NOT IN ({placeholders}) ORDER BY id DESC LIMIT 1", (ip, rule.kind, *TERMINAL)).fetchone()
         if current:
-            con.execute("UPDATE incidents SET event_count=? WHERE id=?", (count, current["id"]))
+            severity = "CRITICAL" if match.severity == "CRITICAL" else current["severity"]
+            con.execute("UPDATE incidents SET event_count=?, severity=?, updated_at=? WHERE id=?", (match.count, severity, utcnow(), current["id"]))
             return dict(con.execute("SELECT * FROM incidents WHERE id=?", (current["id"],)).fetchone())
-        cur = con.execute("INSERT INTO incidents(kind,source_ip,status,severity,event_count,created_at) VALUES(?,?,?,?,?,?)", (kind, ip, "detected", "high", count, utcnow()))
-        log(con, cur.lastrowid, "detected", f"{kind}: {count} events from {ip}")
+        cur = con.execute(
+            "INSERT INTO incidents(kind,source_ip,status,severity,event_count,created_at,rule_id,attack_technique,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (rule.kind, ip, "detected", match.severity, match.count, utcnow(), rule.id, rule.attack_technique, utcnow()))
+        log(con, cur.lastrowid, "detected", f"{rule.kind}: {match.count} events from {ip} ({rule.id}, {rule.attack_technique})")
+        audit(con, "detection", "incident_created", cur.lastrowid, {"rule_id": rule.id, "rules_version": ruleset.version, "source_ip": ip, "count": match.count})
         return dict(con.execute("SELECT * FROM incidents WHERE id=?", (cur.lastrowid,)).fetchone())
 
     async def ingest(event: EventIn) -> dict:
         stamp = event.timestamp or datetime.now(timezone.utc)
         if stamp.tzinfo is None:
             raise HTTPException(422, "timestamp must include timezone")
+        stamp = stamp.astimezone(timezone.utc)
         if stamp > datetime.now(timezone.utc) + timedelta(minutes=5):
             raise HTTPException(422, "timestamp is in the future")
-        with db() as con:
-            cur = con.execute("INSERT INTO events(timestamp,source_ip,event_type,outcome,destination_port,label) VALUES(?,?,?,?,?,?)", (stamp.isoformat(timespec="seconds"), str(event.source_ip), event.event_type, event.outcome, event.destination_port, event.label))
-            incident = detect(con, event)
+        username, truncated = clean_username(event.username)
+        record = {"timestamp": stamp.isoformat(timespec="seconds"), "source_ip": str(event.source_ip), "event_type": event.event_type,
+                  "outcome": event.outcome, "destination_port": event.destination_port, "label": event.label,
+                  "username": username, "username_truncated": int(truncated), "ocsf_class_uid": OCSF_CLASS[event.event_type]}
+        if event.event_type == "HTTP_REQUEST":
+            paths = ["".join(ch for ch in path if ch.isprintable())[:PATH_MAX] for path in event.paths]
+            record |= {"outcome": "honeypot" if event.honeypot else "attempt", "request_count": event.count,
+                       "not_found": event.not_found, "scan_paths": scanner_path_count(paths), "paths": json.dumps(paths, ensure_ascii=False)}
+        incident = None
+        with store.tx() as con:
+            cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
+            for match in ruleset.evaluate(con, record):
+                incident = upsert_incident(con, match, record)
             result = dict(con.execute("SELECT * FROM events WHERE id=?", (cur.lastrowid,)).fetchone())
         await broadcast("event", result)
         if incident:
+            incident = format_incident(incident)
             await broadcast("incident", incident)
         return {"event": result, "incident": incident}
+
+    geo_cache = {}
+    geo_lock = asyncio.Lock()
+
+    @api.get("/api/geoip/{address}")
+    async def geoip(address: str):
+        try:
+            parsed = ipaddress.ip_address(address)
+        except ValueError:
+            raise HTTPException(400, "Invalid IP address")
+        if not parsed.is_global:
+            raise HTTPException(400, "Public IP required")
+        address = str(parsed)
+        async with geo_lock:
+            cached = geo_cache.get(address)
+            if cached and cached[0] > time.time():
+                return cached[1]
+            try:
+                async with httpx.AsyncClient(timeout=8) as client:
+                    response = await client.get(f"https://ipwho.is/{address}")
+                    response.raise_for_status()
+                    result = response.json()
+                if not result.get("success") or result.get("ip") != address:
+                    raise ValueError("Location unavailable")
+            except (httpx.HTTPError, ValueError):
+                raise HTTPException(503, "GeoIP temporarily unavailable")
+            if len(geo_cache) >= 2048:
+                geo_cache.pop(next(iter(geo_cache)))
+            geo_cache[address] = (time.time() + 86400, result)
+            return result
 
     @api.get("/api/health")
     async def health():
         model_ready = False
         try:
             async with httpx.AsyncClient(timeout=2) as client:
-                response = await client.get(f"{OLLAMA_URL}/api/tags")
-                model_ready = response.is_success and any(item.get("name", "").split(":")[0] == MODEL.split(":")[0] and (item.get("name") == MODEL or MODEL.endswith(":latest")) for item in response.json().get("models", []))
+                response = await client.get(f"{settings.ollama_url}/api/tags")
+                model_ready = response.is_success and any(same_model(item.get("name", ""), settings.model) for item in response.json().get("models", []))
         except (httpx.HTTPError, ValueError):
             pass
-        return {"status": "ok", "model": MODEL, "model_ready": model_ready, "ai_mode": "ollama" if model_ready else "rule_fallback"}
+        return {"status": "ok", "version": API_VERSION, "model": settings.model, "model_ready": model_ready, "ai_mode": "ollama" if model_ready else "rule_fallback"}
 
     @api.post("/api/events", status_code=201)
     async def add_event(event: EventIn):
         return await ingest(event)
 
+    @api.post("/api/logs")
+    async def add_logs(logs: LogsIn):
+        """Raw sshd lines → events through the same validation and detection as POST /api/events."""
+        now = datetime.now(timezone.utc)
+        accepted, skipped, errors, incident_ids = 0, 0, [], []
+        for number, line in enumerate(logs.lines, start=1):
+            try:
+                if len(line) > 1000:
+                    raise ValueError("line longer than 1000 characters")
+                result = await ingest(EventIn(**logparse.parse_line(line, now), label=logs.label))
+            except logparse.Skip:
+                skipped += 1
+                continue
+            except (ValueError, ValidationError, HTTPException) as exc:
+                reason = exc.detail if isinstance(exc, HTTPException) else str(exc).splitlines()[0]
+                if len(errors) < 20:
+                    errors.append({"line": number, "error": reason[:200]})
+                continue
+            accepted += 1
+            if result["incident"] and result["incident"]["id"] not in incident_ids:
+                incident_ids.append(result["incident"]["id"])
+        return {"lines": len(logs.lines), "accepted": accepted, "skipped": skipped, "rejected": len(logs.lines) - accepted - skipped,
+                "errors": errors, "incident_ids": incident_ids}
+
     @api.get("/api/events")
-    def list_events(limit: int = 100):
-        return rows("SELECT * FROM events ORDER BY id DESC LIMIT ?", (min(max(limit, 1), 500),))
+    def list_events(limit: int = 100, before_id: int | None = None,
+                    event_type: Literal["HTTP_AUTH", "SSH_AUTH", "CONNECTION", "HTTP_REQUEST"] | None = None):
+        conditions, params = [], []
+        if before_id is not None:
+            conditions.append("id < ?")
+            params.append(before_id)
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        return store.rows(f"SELECT * FROM events{where} ORDER BY id DESC LIMIT ?", (*params, min(max(limit, 1), 500)))
 
     @api.get("/api/incidents")
     def list_incidents():
-        return rows("SELECT * FROM incidents ORDER BY id DESC")
+        return [format_incident(row) for row in store.rows("SELECT * FROM incidents ORDER BY id DESC")]
 
     @api.get("/api/incidents/{incident_id}")
     def get_incident(incident_id: int):
-        incident = one("SELECT * FROM incidents WHERE id=?", (incident_id,))
+        incident = store.one("SELECT * FROM incidents WHERE id=?", (incident_id,))
         if not incident:
             raise HTTPException(404, "incident not found")
-        incident["trace"] = rows("SELECT * FROM traces WHERE incident_id=? ORDER BY id", (incident_id,))
-        incident["timeline"] = rows("SELECT * FROM timeline WHERE incident_id=? ORDER BY id", (incident_id,))
-        incident["proposal"] = one("SELECT * FROM proposals WHERE incident_id=?", (incident_id,))
+        incident = format_incident(incident)
+        incident["trace"] = store.rows("SELECT * FROM traces WHERE incident_id=? ORDER BY id", (incident_id,))
+        incident["timeline"] = store.rows("SELECT * FROM timeline WHERE incident_id=? ORDER BY id", (incident_id,))
+        incident["proposal"] = format_proposal(store.one("SELECT * FROM proposals WHERE incident_id=?", (incident_id,)))
         return incident
-
-    async def call_model(messages: list[dict], tools: list[dict] | None = None, schema: dict | None = None) -> dict:
-        if os.getenv("SENTINEL_DISABLE_OLLAMA") == "1":
-            raise httpx.ConnectError("Ollama disabled for isolated tests")
-        body = {"model": MODEL, "messages": messages, "stream": False, "think": False, "options": {"temperature": 0, "num_ctx": 4096}}
-        if tools:
-            body["tools"] = tools
-        if schema:
-            body["format"] = schema
-        async with httpx.AsyncClient(timeout=90) as client:
-            response = await client.post(f"{OLLAMA_URL}/api/chat", json=body)
-            response.raise_for_status()
-            return response.json()["message"]
 
     @api.post("/api/incidents/{incident_id}/analyze")
     async def analyze(incident_id: int):
-        incident = one("SELECT * FROM incidents WHERE id=?", (incident_id,))
+        incident = store.one("SELECT * FROM incidents WHERE id=?", (incident_id,))
         if not incident:
             raise HTTPException(404, "incident not found")
         if incident["analysis"]:
             return get_incident(incident_id)
-        tools = [
-            {"type": "function", "function": {"name": "get_recent_events", "description": "Read recent security events for this incident source IP", "parameters": {"type": "object", "properties": {}, "required": []}}},
-            {"type": "function", "function": {"name": "get_active_rules", "description": "Read active firewall simulator rules for this source IP", "parameters": {"type": "object", "properties": {}, "required": []}}},
-        ]
-        messages = [
-            {"role": "system", "content": "You are a local SOC analyst. Use the provided read-only tools to inspect evidence. Never execute shell commands or claim a firewall block happened. Keep recommendations grounded in returned records."},
-            {"role": "user", "content": f"Investigate incident {incident_id}, type {incident['kind']}, source {incident['source_ip']}. Call tools first, then summarize evidence, classification, severity and a temporary block recommendation."},
-        ]
-        mode = "ollama"
-        analysis = ""
-        try:
-            reply = await call_model(messages, tools=tools)
-            messages.append(reply)
-            for call in reply.get("tool_calls", [])[:3]:
-                name = call.get("function", {}).get("name")
-                if name == "get_recent_events":
-                    output = rows("SELECT id,timestamp,source_ip,event_type,outcome,destination_port FROM events WHERE source_ip=? ORDER BY id DESC LIMIT 30", (incident["source_ip"],))
-                elif name == "get_active_rules":
-                    output = rows("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC", (incident["source_ip"], utcnow()))
+        with store.tx() as con:
+            claimed = con.execute("UPDATE incidents SET status='analyzing', updated_at=? WHERE id=? AND status='detected' AND analysis IS NULL", (utcnow(), incident_id))
+            if claimed.rowcount != 1:
+                raise HTTPException(409, f"Incident is {incident['status']}; already being analyzed or no longer eligible")
+            log(con, incident_id, 'analyzing', 'Investigation started')
+            audit(con, 'agent', 'status_changed', incident_id, {'from': 'detected', 'to': 'analyzing', 'reason': 'investigation started'})
+        await broadcast("incident", format_incident(store.one("SELECT * FROM incidents WHERE id=?", (incident_id,))))
+
+        async def step(row: dict):
+            await broadcast("analysis_step", row)
+
+        analysis, mode, meta, reason = await agent.investigate(incident, step)
+        meta["rules_version"] = ruleset.version
+        source = "rule_fallback" if mode == "rule_fallback" else "model"
+        action = analysis.recommended_action
+        with store.tx() as con:
+            con.execute("UPDATE incidents SET analysis=?, analysis_mode=?, analysis_meta=? WHERE id=?",
+                        (analysis.model_dump_json(), mode, json.dumps(meta), incident_id))
+            log(con, incident_id, "analysis", f"{mode}: {analysis.threat_type} {analysis.severity} → {action}")
+            audit(con, "agent", "analysis_recorded", incident_id, {"mode": mode, "recommended_action": action, **meta})
+            if action in policy.BLOCK_ACTIONS:
+                decision = policy.evaluate(action, incident["source_ip"], incident, settings.protected_ips)
+                if decision.allowed:
+                    if settings.manual_unblock:
+                        decision.duration_seconds = 0  # 0 = until an admin unblocks it
+                    con.execute(
+                        "INSERT INTO proposals(incident_id,source_ip,target_ip,action,duration_seconds,status,created_at,source,d3fend,reason,policy_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                        (incident_id, decision.target_ip, decision.target_ip, decision.action, decision.duration_seconds, "pending", utcnow(),
+                         source, policy.D3FEND_TECHNIQUE, (reason or analysis.evidence[0])[:500], json.dumps(decision.notes)))
+                    log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} {policy.duration_text(decision.duration_seconds)} ({source}); pending human approval")
+                    audit(con, "policy", "proposal_created", incident_id, {"action": decision.action, "target_ip": decision.target_ip, "source": source, "notes": decision.notes})
+                    transition(con, incident_id, "awaiting_approval", "policy", "block proposal passed policy")
                 else:
-                    continue
-                with db() as con:
-                    con.execute("INSERT INTO traces(incident_id,tool,input,output,created_at) VALUES(?,?,?,?,?)", (incident_id, name, json.dumps({"source_ip": incident["source_ip"]}), json.dumps(output, ensure_ascii=False), utcnow()))
-                messages.append({"role": "tool", "tool_name": name, "content": json.dumps(output, ensure_ascii=False)})
-            if not reply.get("tool_calls"):
-                mode = "ollama_no_tools"
-            messages.append({"role": "user", "content": "Return a JSON object with classification, severity, summary, evidence (array of strings), and recommendation. Do not claim approval or blocking occurred."})
-            final = await call_model(messages, schema=AnalysisOut.model_json_schema())
-            validated = AnalysisOut.model_validate_json(final.get("content", ""))
-            analysis = validated.model_dump_json()
-        except (httpx.HTTPError, KeyError, ValueError):
-            mode = "rule_fallback"
-            evidence = rows("SELECT id,timestamp,source_ip,event_type,outcome,destination_port FROM events WHERE source_ip=? ORDER BY id DESC LIMIT 30", (incident["source_ip"],))
-            analysis = f"Rule fallback: {incident['kind']} from {incident['source_ip']}; {len(evidence)} recent events inspected. Local model was unavailable. Recommend human review before temporary app-level block."
-            with db() as con:
-                con.execute("INSERT INTO traces(incident_id,tool,input,output,created_at) VALUES(?,?,?,?,?)", (incident_id, "get_recent_events", json.dumps({"source_ip": incident["source_ip"]}), json.dumps(evidence, ensure_ascii=False), utcnow()))
-        with db() as con:
-            con.execute("UPDATE incidents SET analysis=?,analysis_mode=?,status='awaiting_approval' WHERE id=?", (analysis, mode, incident_id))
-            con.execute("INSERT OR IGNORE INTO proposals(incident_id,source_ip,action,duration_seconds,status,created_at) VALUES(?,?,?,?,?,?)", (incident_id, incident["source_ip"], "TEMP_BLOCK_IP", 600, "pending", utcnow()))
-            log(con, incident_id, "analysis", f"{mode}: {analysis[:200]}")
-            log(con, incident_id, "proposal", "TEMP_BLOCK_IP for 600 seconds; pending human approval")
+                    log(con, incident_id, "policy", "; ".join(decision.notes))
+                    audit(con, "policy", "proposal_rejected", incident_id, {"action": action, "notes": decision.notes})
+                    transition(con, incident_id, "needs_review", "policy", "; ".join(decision.notes))
+            else:
+                transition(con, incident_id, ACTION_STATUS[action], "agent", f"recommended_action={action}")
         result = get_incident(incident_id)
         await broadcast("analysis", result)
         return result
 
     @api.get("/api/proposals")
     def list_proposals():
-        return rows("SELECT * FROM proposals ORDER BY id DESC")
+        return [format_proposal(row) for row in store.rows("SELECT * FROM proposals ORDER BY id DESC")]
 
-    @api.post("/api/proposals/{proposal_id}/approve")
-    async def approve(proposal_id: int, decision: DecisionIn):
-        proposal = one("SELECT * FROM proposals WHERE id=?", (proposal_id,))
+    def pending_proposal(proposal_id: int) -> dict:
+        proposal = store.one("SELECT * FROM proposals WHERE id=?", (proposal_id,))
         if not proposal:
             raise HTTPException(404, "proposal not found")
         if proposal["status"] != "pending":
             raise HTTPException(409, "proposal already decided")
-        if proposal["source_ip"] in PROTECTED_IPS or ipaddress.ip_address(proposal["source_ip"]).is_loopback:
-            raise HTTPException(400, "protected IP cannot be blocked")
-        with db() as con:
+        return format_proposal(proposal)
+
+    @api.post("/api/proposals/{proposal_id}/approve")
+    async def approve(proposal_id: int, decision: DecisionIn):
+        proposal = pending_proposal(proposal_id)
+        incident = store.one("SELECT * FROM incidents WHERE id=?", (proposal["incident_id"],))
+        # Re-check at decision time: protected IPs may have changed since the proposal was made.
+        check = policy.evaluate(proposal["action"], proposal["target_ip"], incident, settings.protected_ips)
+        if not check.allowed:
+            raise HTTPException(400, "; ".join(check.notes))
+        with store.tx() as con:
             changed = con.execute("UPDATE proposals SET status='approved',reviewer=? WHERE id=? AND status='pending'", (decision.reviewer, proposal_id))
             if changed.rowcount != 1:
                 raise HTTPException(409, "proposal already decided")
-            expires = (datetime.now(timezone.utc) + timedelta(seconds=proposal["duration_seconds"])).isoformat(timespec="seconds")
-            con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal_id, proposal["source_ip"], expires, utcnow()))
-            con.execute("UPDATE incidents SET status='blocked' WHERE id=?", (proposal["incident_id"],))
-            log(con, proposal["incident_id"], "approved", f"{decision.reviewer} approved temporary block")
+            expires = policy.expires_at(proposal["duration_seconds"])
+            con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal_id, proposal["target_ip"], expires, utcnow()))
+            transition(con, proposal["incident_id"], "blocked", decision.reviewer, "proposal approved")
+            log(con, proposal["incident_id"], "approved", f"{decision.reviewer} approved {proposal['action']}")
             log(con, proposal["incident_id"], "firewall", f"App-level rule active until {expires}")
+            audit(con, decision.reviewer, "rule_applied", proposal["incident_id"], {"proposal_id": proposal_id, "target_ip": proposal["target_ip"], "expires_at": expires, "d3fend": policy.D3FEND_TECHNIQUE})
         result = get_incident(proposal["incident_id"])
         await broadcast("approval", result)
         return result
 
     @api.post("/api/proposals/{proposal_id}/reject")
     async def reject(proposal_id: int, decision: DecisionIn):
-        proposal = one("SELECT * FROM proposals WHERE id=?", (proposal_id,))
-        if not proposal:
-            raise HTTPException(404, "proposal not found")
-        if proposal["status"] != "pending":
-            raise HTTPException(409, "proposal already decided")
-        with db() as con:
+        proposal = pending_proposal(proposal_id)
+        with store.tx() as con:
             changed = con.execute("UPDATE proposals SET status='rejected',reviewer=? WHERE id=? AND status='pending'", (decision.reviewer, proposal_id))
             if changed.rowcount != 1:
                 raise HTTPException(409, "proposal already decided")
-            con.execute("UPDATE incidents SET status='rejected' WHERE id=?", (proposal["incident_id"],))
+            transition(con, proposal["incident_id"], "rejected", decision.reviewer, "proposal rejected")
             log(con, proposal["incident_id"], "rejected", f"{decision.reviewer} rejected proposal")
         result = get_incident(proposal["incident_id"])
         await broadcast("approval", result)
@@ -301,17 +550,20 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
 
     @api.get("/api/rules")
     def list_rules():
-        return [{**row, "active": row["expires_at"] > utcnow()} for row in rows("SELECT * FROM rules ORDER BY id DESC")]
+        return [{**row, "active": row["expires_at"] > utcnow()} for row in store.rows("SELECT * FROM rules ORDER BY id DESC")]
 
     @api.delete("/api/rules/{rule_id}")
     async def unblock(rule_id: int):
-        rule = one("SELECT * FROM rules WHERE id=?", (rule_id,))
+        rule = store.one("SELECT * FROM rules WHERE id=?", (rule_id,))
         if not rule:
             raise HTTPException(404, "rule not found")
-        with db() as con:
+        with store.tx() as con:
             con.execute("UPDATE rules SET expires_at=? WHERE id=?", (utcnow(), rule_id))
-            proposal = con.execute("SELECT incident_id FROM proposals WHERE id=?", (rule["proposal_id"],)).fetchone()
-            log(con, proposal["incident_id"], "unblocked", f"Rule {rule_id} disabled by operator")
+            incident_id = con.execute("SELECT incident_id FROM proposals WHERE id=?", (rule["proposal_id"],)).fetchone()["incident_id"]
+            if con.execute("SELECT status FROM incidents WHERE id=?", (incident_id,)).fetchone()["status"] == "blocked":
+                transition(con, incident_id, "closed", "operator", f"rule {rule_id} disabled before verification")
+            log(con, incident_id, "unblocked", f"Rule {rule_id} disabled by operator")
+            audit(con, "operator", "rule_disabled", incident_id, {"rule_id": rule_id, "target_ip": rule["source_ip"]})
         await broadcast("firewall", {"rule_id": rule_id, "active": False})
         return {"rule_id": rule_id, "active": False}
 
@@ -322,76 +574,172 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if traffic.status_code == 403:
             return traffic
         success = login.username == "student" and login.password == "sentinel-demo"
-        result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed"))
+        result = await ingest(EventIn(source_ip=peer, event_type="HTTP_AUTH", outcome="success" if success else "failed", username=login.username))
         return JSONResponse({"authenticated": success, "source_ip": peer, "event_id": result["event"]["id"]}, status_code=200 if success else 401)
+
+    async def record_source_decision(source: str, record_allowed: bool = True) -> dict:
+        """Check the active block rules for one source IP, log the request, and flip the
+        incident to verified when a blocked source is denied. Shared by the demo traffic
+        endpoint and the real-server enforcement endpoint so both decide identically.
+        record_allowed=False skips the traffic row and broadcast for allowed requests, so a
+        busy real site only stores the denials used as verification evidence."""
+        rule = store.one("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC LIMIT 1", (source, utcnow()))
+        decision = "denied" if rule else "allowed"
+        if not rule and not record_allowed:
+            return {"source_ip": source, "decision": decision, "rule_id": None}
+        with store.tx() as con:
+            con.execute("INSERT INTO traffic(source_ip,decision,created_at) VALUES(?,?,?)", (source, decision, utcnow()))
+            if rule:
+                incident_id = con.execute("SELECT incident_id FROM proposals WHERE id=?", (rule["proposal_id"],)).fetchone()["incident_id"]
+                if con.execute("SELECT status FROM incidents WHERE id=?", (incident_id,)).fetchone()["status"] == "blocked":
+                    transition(con, incident_id, "verified", "verification", f"new request from {source} denied by rule {rule['id']}")
+                    audit(con, "verification", "verification_passed", incident_id, {"source_ip": source, "rule_id": rule["id"], "http_status": 403})
+                log(con, incident_id, "verification", f"New request from {source} denied by rule {rule['id']}")
+        result = {"source_ip": source, "decision": decision, "rule_id": rule["id"] if rule else None}
+        await broadcast("traffic", result)
+        if rule:
+            await broadcast("verification", result)
+        return result
 
     @api.post("/api/demo/traffic")
     async def demo_traffic(traffic: TrafficIn, request: Request):
         peer = request.client.host if request.client else "127.0.0.1"
         # Source override is only for local, controlled lab simulation.
-        if traffic.source_ip and peer not in {"127.0.0.1", "::1", "testclient"}:
+        if traffic.source_ip and peer not in settings.local_peers:
             raise HTTPException(403, "source override requires localhost")
         source = str(traffic.source_ip) if traffic.source_ip else peer
-        rule = one("SELECT * FROM rules WHERE source_ip=? AND expires_at>? ORDER BY id DESC LIMIT 1", (source, utcnow()))
-        decision = "denied" if rule else "allowed"
-        with db() as con:
-            con.execute("INSERT INTO traffic(source_ip,decision,created_at) VALUES(?,?,?)", (source, decision, utcnow()))
-            if rule:
-                proposal = con.execute("SELECT incident_id FROM proposals WHERE id=?", (rule["proposal_id"],)).fetchone()
-                con.execute("UPDATE incidents SET status='verified' WHERE id=?", (proposal["incident_id"],))
-                log(con, proposal["incident_id"], "verification", f"New request from {source} denied by rule {rule['id']}")
-        result = {"source_ip": source, "decision": decision, "rule_id": rule["id"] if rule else None}
-        await broadcast("traffic", result)
-        if rule:
-            await broadcast("verification", result)
-        return JSONResponse(result, status_code=403 if rule else 200)
+        result = await record_source_decision(source)
+        return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
+
+    @api.post("/api/enforce")
+    async def enforce(body: EnforceIn):
+        """Enforcement hook for a real server behind SENTINEL. A trusted reverse proxy
+        (same admin key) reports the real client IP per request; the response says whether
+        to block it. Admin-only: the access-control middleware refuses every caller,
+        localhost included, that has neither an admin session nor X-Admin-Key."""
+        result = await record_source_decision(str(body.client_ip), record_allowed=False)
+        return JSONResponse(result, status_code=403 if result["rule_id"] else 200)
+
+    @api.post("/api/demo/reset")
+    async def demo_reset():
+        """Start a fresh rehearsal: disable active rules and close open incidents. History is kept."""
+        now = utcnow()
+        with store.tx() as con:
+            disabled = con.execute("UPDATE rules SET expires_at=? WHERE expires_at>?", (now, now)).rowcount
+            placeholders = ",".join("?" * len(TERMINAL))
+            open_ids = [row["id"] for row in con.execute(f"SELECT id FROM incidents WHERE status NOT IN ({placeholders})", tuple(TERMINAL))]
+            for incident_id in open_ids:
+                transition(con, incident_id, "closed", "operator", "demo reset")
+            con.execute("UPDATE proposals SET status='rejected', reviewer='demo reset' WHERE status='pending'")
+            audit(con, "operator", "demo_reset", None, {"rules_disabled": disabled, "incidents_closed": open_ids})
+        result = {"rules_disabled": disabled, "incidents_closed": len(open_ids)}
+        await broadcast("reset", result)
+        return result
 
     @api.get("/api/traffic")
     def list_traffic():
-        return rows("SELECT * FROM traffic ORDER BY id DESC LIMIT 100")
+        return store.rows("SELECT * FROM traffic ORDER BY id DESC LIMIT 100")
+
+    def sample_event(sim: SimulationIn, sample: tuple) -> EventIn:
+        kind, outcome, port = sample
+        return EventIn(source_ip=sim.source_ip, event_type=kind, outcome=outcome, destination_port=port,
+                       label="normal" if sim.scenario == "normal" else "attack")
 
     @api.post("/api/simulations")
     async def simulate(sim: SimulationIn):
-        ip = str(sim.source_ip)
-        if sim.scenario == "http_brute_force":
-            samples = [("HTTP_AUTH", "failed", None)] * 6
-        elif sim.scenario == "ssh_brute_force_logs":
-            samples = [("SSH_AUTH", "failed", None)] * 6
-        elif sim.scenario == "port_scan":
-            samples = [("CONNECTION", "attempt", port) for port in range(8000, 8009)]
-        else:
-            samples = [("HTTP_AUTH", "success", None), ("CONNECTION", "attempt", 443)]
+        samples = scenario_samples(sim.scenario)
         result = None
-        for kind, outcome, port in samples:
-            result = await ingest(EventIn(source_ip=ip, event_type=kind, outcome=outcome, destination_port=port, label="normal" if sim.scenario == "normal" else "attack"))
-        return {"scenario": sim.scenario, "events_created": len(samples), "incident": result["incident"] if result else None, "source_note": "Synthetic log replay; not a live SSH attack" if sim.scenario == "ssh_brute_force_logs" else "Controlled app-level simulation"}
+        for sample in samples:
+            result = await ingest(sample_event(sim, sample))
+        return {"scenario": sim.scenario, "events_created": len(samples), "incident": result["incident"] if result else None, "source_note": source_note(sim.scenario)}
+
+    async def paced(sim: SimulationRunIn, samples: list) -> None:
+        state = run["state"]
+        try:
+            for sample in samples:
+                result = await ingest(sample_event(sim, sample))
+                state["sent"] += 1
+                if result["incident"] and result["incident"]["id"] not in state["incident_ids"]:
+                    state["incident_ids"].append(result["incident"]["id"])
+                await broadcast("simulation", dict(state))
+                if state["sent"] < state["total"]:
+                    await asyncio.sleep(sim.interval_ms / 1000)
+        finally:
+            state["running"], state["finished_at"] = False, utcnow()
+            await broadcast("simulation", dict(state))
+
+    @api.post("/api/simulations/start", status_code=202)
+    async def simulation_start(sim: SimulationRunIn):
+        """Send a scenario one event at a time so the dashboard shows it arriving live. One run at a time."""
+        if run["state"]["running"]:
+            raise HTTPException(409, "a simulation is already running; stop it first")
+        samples = scenario_samples(sim.scenario)
+        run["state"] = {"running": True, "scenario": sim.scenario, "source_ip": str(sim.source_ip), "sent": 0, "total": len(samples),
+                        "interval_ms": sim.interval_ms, "started_at": utcnow(), "finished_at": None, "stopped": False, "incident_ids": [],
+                        "source_note": source_note(sim.scenario)}
+        run["task"] = asyncio.create_task(paced(sim, samples))
+        return dict(run["state"])
+
+    @api.post("/api/simulations/stop")
+    async def simulation_stop():
+        task = run["task"]
+        if task and not task.done():
+            run["state"]["stopped"] = True
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        return dict(run["state"])
+
+    @api.get("/api/simulations/state")
+    def simulation_state():
+        return dict(run["state"])
 
     @api.get("/api/metrics")
     def metrics():
-        events = rows("SELECT * FROM events")
-        incidents = rows("SELECT * FROM incidents")
+        events = store.rows("SELECT * FROM events")
+        incidents = store.rows("SELECT * FROM incidents")
         predicted = {row["source_ip"] for row in incidents}
         actual = {row["source_ip"] for row in events if row["label"] == "attack"}
         tp, fp, fn = len(predicted & actual), len(predicted - actual), len(actual - predicted)
         precision = tp / (tp + fp) if tp + fp else 0
         recall = tp / (tp + fn) if tp + fn else 0
-        return {"events": len(events), "incidents": len(incidents), "precision": precision, "recall": recall, "f1": 2 * precision * recall / (precision + recall) if precision + recall else 0, "note": "Exploratory source-IP metric only; use held-out labeled dataset for final evaluation"}
+        return {"events": len(events), "incidents": len(incidents), "precision": precision, "recall": recall, "f1": 2 * precision * recall / (precision + recall) if precision + recall else 0, "note": "Exploratory source-IP metric only; use held-out labeled dataset for final evaluation",
+                "soc": soc.summary([soc.timings(store, ruleset, row) for row in incidents])}
 
     @api.get("/api/reports/{incident_id}")
     def report(incident_id: int):
         incident = get_incident(incident_id)
-        incident["events"] = rows("SELECT * FROM events WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
-        incident["traffic"] = rows("SELECT * FROM traffic WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
+        incident["events"] = store.rows("SELECT * FROM events WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
+        incident["traffic"] = store.rows("SELECT * FROM traffic WHERE source_ip=? ORDER BY id", (incident["source_ip"],))
+        incident["audit"] = store.rows("SELECT * FROM audit_log WHERE incident_id=? ORDER BY id", (incident_id,))
+        incident["soc_timings"] = soc.timings(store, ruleset, incident)
         return incident
+
+    @api.get("/api/audit")
+    def list_audit(limit: int = 200):
+        return store.rows("SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (min(max(limit, 1), 1000),))
+
+    @api.get("/api/audit/verify")
+    def audit_verify():
+        return verify_audit(store.rows("SELECT * FROM audit_log ORDER BY id"))
 
     @api.websocket("/ws")
     async def websocket(socket: WebSocket):
+        peer = socket.client.host if socket.client else ""
+        if not same_site(socket.headers.get("origin")) or not (auth.valid(socket.cookies.get(COOKIE)) or trusted(peer, socket.headers)):
+            await socket.close(code=1008)
+            return
         await socket.accept()
         sockets.add(socket)
         try:
-            await socket.send_json({"stage": "connected", "payload": {"message": "Refetch current state after reconnect"}})
+            await socket.send_json({"v": WS_VERSION, "stage": "connected", "ts": utcnow(), "payload": {"message": "Refetch current state after reconnect"}})
             while True:
                 await socket.receive_text()
+                if not (auth.valid(socket.cookies.get(COOKIE)) or trusted(peer, socket.headers)):
+                    await socket.close(code=1008)
+                    break
         except WebSocketDisconnect:
             sockets.discard(socket)
 

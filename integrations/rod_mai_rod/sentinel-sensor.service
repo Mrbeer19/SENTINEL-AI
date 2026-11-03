@@ -1,0 +1,16 @@
+[Unit]
+Description=Sentinel SSH and TCP metadata sensor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 __VPS_DIR__/vps_sensor.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

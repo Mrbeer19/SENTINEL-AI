@@ -1,4 +1,4 @@
-# Qwen 3.5 4B — บันทึกเริ่มต้นของ Beer
+# Qwen 3.5 4B — บันทึกเริ่มต้นของ ประภากรณ์
 
 โมเดลหลักที่เลือก: **`qwen3.5:4b` ผ่าน Ollama** ตั้งค่าได้ด้วย `SENTINEL_MODEL` ของ backend เริ่ม context 4096 และ temperature 0 ใช้ text/tool calling เป็นหลัก
 
@@ -24,7 +24,7 @@
 
 ดู `backend/app.py` ฟังก์ชัน `analyze` และ `call_model`: ให้ local SOC analyst ใช้ read-only tools อ่าน evidence, ไม่อ้างว่าบล็อกสำเร็จ, แล้วคืน classification/severity/summary/evidence/recommendation ผ่าน schema `AnalysisOut` Backend ผูกขอบเขต tool กับ IP ของ incident และไม่ส่ง evaluation label ให้โมเดล
 
-## งาน M00/M01 ที่ Beer ต้องทำต่อ
+## งาน M00/M01 ที่ ประภากรณ์ ต้องทำต่อ
 
 1. วัด cold/warm latency หลายรอบ, peak VRAM, RAM และ JSON/tool validity บน cases ที่แยกไว้
 2. บันทึก Ollama/model tag+ID และ prompt version เพื่อทำซ้ำ

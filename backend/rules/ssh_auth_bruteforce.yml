@@ -1,0 +1,28 @@
+# Sigma-inspired rule: base selection + event_count correlation in one file.
+title: SSH authentication brute force (log replay)
+id: sentinel-ssh-auth-bruteforce
+status: stable
+description: Many failed SSH logins from one source IP. In the lab these come from replayed SSH logs, not a live SSH server.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+level: high
+logsource:
+  product: sentinel
+  category: authentication
+detection:
+  selection:
+    event_type: SSH_AUTH
+    outcome: failed
+  condition: selection
+correlation:
+  type: event_count
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 5
+sentinel:
+  kind: SSH_BRUTE_FORCE

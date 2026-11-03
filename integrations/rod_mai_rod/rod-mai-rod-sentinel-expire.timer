@@ -1,0 +1,11 @@
+[Unit]
+Description=Check rod-mai-rod SENTINEL rule expirations
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+AccuracySec=5s
+Unit=rod-mai-rod-sentinel-expire.service
+
+[Install]
+WantedBy=timers.target

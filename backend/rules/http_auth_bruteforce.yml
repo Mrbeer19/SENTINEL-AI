@@ -1,0 +1,28 @@
+# Sigma-inspired rule: base selection + event_count correlation in one file.
+title: HTTP authentication brute force
+id: sentinel-http-auth-bruteforce
+status: stable
+description: Many failed logins to the demo HTTP login from one source IP in a short window.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+level: high
+logsource:
+  product: sentinel
+  category: authentication
+detection:
+  selection:
+    event_type: HTTP_AUTH
+    outcome: failed
+  condition: selection
+correlation:
+  type: event_count
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 5
+sentinel:
+  kind: HTTP_AUTH_BRUTE_FORCE

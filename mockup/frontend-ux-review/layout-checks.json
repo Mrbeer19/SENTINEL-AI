@@ -1,0 +1,114 @@
+[
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/overview",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/incidents",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/incident/1",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/trace/3",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/approvals/2",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/rules/1",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/reports/1",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/lab",
+    "scrollWidth": 1351,
+    "width": 1366
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/overview",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/incidents",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/incident/1",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/trace/3",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/approvals/2",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/rules/1",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/reports/1",
+    "scrollWidth": 375,
+    "width": 390
+  },
+  {
+    "overflowPanels": [],
+    "overlay": false,
+    "page": "#/lab",
+    "scrollWidth": 375,
+    "width": 390
+  }
+]

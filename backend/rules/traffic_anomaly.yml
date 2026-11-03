@@ -1,0 +1,27 @@
+# Sigma-inspired rule: base selection + event_count correlation in one file.
+title: Connection flood from one source
+id: sentinel-traffic-anomaly
+status: experimental
+description: One source IP opens an unusually high number of connections in a short window, whatever the ports. Spec scenario E (optional).
+references:
+  - https://attack.mitre.org/techniques/T1498/
+tags:
+  - attack.impact
+  - attack.t1498
+level: medium
+logsource:
+  product: sentinel
+  category: network_activity
+detection:
+  selection:
+    event_type: CONNECTION
+  condition: selection
+correlation:
+  type: event_count
+  group-by:
+    - source_ip
+  timespan: 60s
+  condition:
+    gte: 100
+sentinel:
+  kind: TRAFFIC_ANOMALY
