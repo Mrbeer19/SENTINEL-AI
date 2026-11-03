@@ -1874,3 +1874,13 @@ textarea {
     gap: 0;
   }
 }
+
+/* Approval of an SSH / port incident: say plainly that only the websites are blocked. */
+.detectOnly {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber, #f2b94b);
+  background: var(--surface-2);
+  border-radius: 6px;
+  font-size: 13px;
+}

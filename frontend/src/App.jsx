@@ -556,7 +556,7 @@ export function Workspace({
           />}
           <span>
             {busy ? "กำลังบันทึก…" : toast.message}
-            {!busy && toast?.approved && <small>บล็อกที่ Caddy ทุกเว็บบน VPS แล้ว</small>}
+            {!busy && toast?.approved && <small>เว็บที่ป้องกันจะตอบ 403 กับ IP นี้</small>}
             {toast?.detail && (
               <details>
                 <summary>รายละเอียด</summary>
