@@ -1,4 +1,4 @@
-"""Read only rod-mai-rod Caddy access records for the Windows collector.
+"""Read the Caddy access records of the watched sites (site.json "domains") for the collector.
 
 Besides login results and 403 denials, every other request is summed per source IP per WINDOW_S seconds
 (HTTP_REQUEST in docs/api-contract.md), so a flood becomes a few totals instead of one event per request."""
@@ -7,12 +7,13 @@ import argparse
 import ipaddress
 import json
 import re
+import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from site_config import CADDY_DIR, DOMAIN, HERE, SITE
+from site_config import ACCESS_LOG, CADDY_DIR, DOMAINS, HERE, LOGIN_PATHS, SITE
 
-LOG = CADDY_DIR / "rod-mai-rod.access.log"
+LOG = CADDY_DIR / ACCESS_LOG
 SENSOR_LOG = HERE / "network-events.jsonl"
 MAX_BYTES = 1_000_000
 WINDOW_S = 10
@@ -26,17 +27,59 @@ STATIC = re.compile(r"^/(_next/static|assets|fonts)/|^/api/v1/maps/[^/]+/[^/]+/\
 HONEYPOT_PATHS = frozenset(path.lower() for path in SITE.get("honeypot_paths", ["/admin-backup.zip", "/backup.sql", "/.aws/credentials", "/config.php.bak"]))
 
 
+def own_networks():
+    """This VPS's own addresses, and the subnets of its non-public interfaces (loopback, Docker bridges).
+
+    Requests from them are the server or its containers calling a site through Caddy, not visitors; counting
+    them once made SENTINEL flag and block the VPS itself. The public interface's subnet is not excluded:
+    other hosts in it are ordinary internet clients."""
+    try:
+        out = subprocess.run(["ip", "-o", "addr", "show"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return frozenset(), ()
+    addresses, internal = set(), []
+    for line in out.splitlines():
+        try:
+            iface = ipaddress.ip_interface(line.split()[3])
+        except (IndexError, ValueError):
+            continue
+        addresses.add(iface.ip)
+        if not iface.ip.is_global:
+            internal.append(iface.network)
+    return frozenset(addresses), tuple(internal)
+
+
+OWN_ADDRESSES, INTERNAL_NETS = own_networks()
+
+
+def is_own(ip) -> bool:
+    ip = ipaddress.ip_address(ip)
+    return ip.is_loopback or ip in OWN_ADDRESSES or any(ip in net for net in INTERNAL_NETS)
+
+
+def watched(host: str) -> bool:
+    # "*" watches every site block that writes to the shared access log, including sites added later.
+    return host in DOMAINS or "*" in DOMAINS
+
+
+def login_paths(host: str):
+    return LOGIN_PATHS.get(host, LOGIN_PATHS.get("*", ()))
+
+
 def event(line: bytes, offset: int):
     try:
         row = json.loads(line)
         request = row["request"]
-        if request.get("host", "").split(":")[0].lower() != DOMAIN:
+        host = request.get("host", "").split(":")[0].lower()
+        if not watched(host):
             return None
         ip = str(ipaddress.ip_address(request["remote_ip"]))
+        if is_own(ip):
+            return None
         method = request["method"].upper()
         path = urlsplit(request["uri"]).path
         status = int(row["status"])
-        if path in ("/api/v1/auth/login", "/api/v1/auth/google") and method == "POST" and status in (200, 401):
+        if path in login_paths(host) and method == "POST" and status in (200, 401):
             return {"offset": offset, "ip": ip, "kind": "auth", "outcome": "success" if status == 200 else "failed"}
         if status == 403:
             return {"offset": offset, "ip": ip, "kind": "denied"}
@@ -50,7 +93,7 @@ def request(line: bytes):
     try:
         row = json.loads(line)
         req = row["request"]
-        if req.get("host", "").split(":")[0].lower() != DOMAIN:
+        if not watched(req.get("host", "").split(":")[0].lower()) or is_own(req["remote_ip"]):
             return None
         status = int(row["status"])
         path = urlsplit(req["uri"]).path
@@ -125,6 +168,6 @@ if __name__ == "__main__":
     parser.add_argument("--start-at-end", action="store_true")
     parser.add_argument("--sensor", action="store_true")
     args = parser.parse_args()
-    if not args.sensor and not DOMAIN:
-        raise SystemExit("site.json is missing domain (see site.example.json)")
+    if not args.sensor and not DOMAINS:
+        raise SystemExit("site.json is missing domain or domains (see site.example.json)")
     print(json.dumps(read_log(args.inode, args.offset, args.start_at_end, args.sensor)))

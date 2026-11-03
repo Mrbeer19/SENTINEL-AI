@@ -6,19 +6,29 @@ export const GROUPS = [
   { key: "attention", label: "ต้องตรวจสอบ", short: "REVIEW" },
   { key: "normal", label: "บันทึกการเชื่อมต่อ", short: "OBSERVED" },
 ];
-export function topologyOf(data, rules) {
+// How far back the map looks. HTTP has no "left the site" signal, so an IP stays only while it is recent.
+export const TIME_RANGES = [
+  { key: "15m", label: "15 นาที", ms: 15 * 60 * 1000 },
+  { key: "1h", label: "1 ชม.", ms: 60 * 60 * 1000 },
+  { key: "all", label: "ทั้งหมด", ms: null },
+];
+export function topologyOf(data, rules, { range = "all", now = Date.now() } = {}) {
   const blocked = new Set(rules.map((r) => r.source_ip)),
     attention = new Set(
       data.incidents.filter(isOpenIncident).map((i) => i.source_ip),
-    );
-  const sources = sourcesOf(data).map((s) => ({
-    ...s,
-    status: blocked.has(s.ip)
-      ? "blocked"
-      : attention.has(s.ip)
-        ? "attention"
-        : "normal",
-  }));
+    ),
+    windowMs = TIME_RANGES.find((r) => r.key === range)?.ms;
+  const sources = sourcesOf(data)
+    .map((s) => ({
+      ...s,
+      status: blocked.has(s.ip)
+        ? "blocked"
+        : attention.has(s.ip)
+          ? "attention"
+          : "normal",
+    }))
+    // Blocked IPs and open incidents stay however quiet they are: an admin still has to act on them.
+    .filter((s) => !windowMs || s.status !== "normal" || now - Date.parse(s.at) <= windowMs);
   const counts = { blocked: 0, attention: 0, normal: 0 };
   for (const s of sources) counts[s.status]++;
   return {

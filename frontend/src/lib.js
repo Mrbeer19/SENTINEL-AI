@@ -114,7 +114,7 @@ export const action = (v) =>
 // Where a source was seen. The network sensor records SYNs to any port of the whole VPS, so most of its
 // sources are internet-wide scanners that never open the protected website.
 export const CHANNELS = [
-  { key: "web", label: "คนเข้าเว็บ", short: "เว็บ", note: "คำขอถึงเว็บที่ป้องกัน" },
+  { key: "web", label: "คนเข้าเว็บ", short: "เว็บ", note: "คำขอถึงทุกเว็บบน VPS ที่ผ่าน Caddy (ไม่นับ IP ของ VPS และ container เอง)" },
   { key: "ssh", label: "ล็อกอิน SSH", short: "SSH", note: "การล็อกอินเข้าเซิร์ฟเวอร์" },
   { key: "port", label: "เคาะพอร์ต VPS", short: "เคาะพอร์ต", note: "การเชื่อมต่อพอร์ตใดก็ได้ของ VPS ทั้งเครื่อง ส่วนใหญ่เป็นบอทสแกน" },
 ];

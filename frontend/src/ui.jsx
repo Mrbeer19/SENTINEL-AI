@@ -105,9 +105,9 @@ export function Badge({ value, children, color }) {
     </span>
   );
 }
-export function Panel({ title, code, actions, children, className = "" }) {
+export function Panel({ title, code, actions, children, className = "", panelRef }) {
   return (
-    <section className={`instrument ${className}`}>
+    <section className={`instrument ${className}`} ref={panelRef}>
       <header>
         <h2>
           <small>{code || "//"} </small>

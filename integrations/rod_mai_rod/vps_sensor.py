@@ -23,6 +23,7 @@ def local_addresses():
     return frozenset(part.split('/')[0] for line in out.splitlines() for part in line.split()[3:4])
 
 LOCAL_ADDRESSES = local_addresses()
+WEB_PORTS = frozenset({80, 443})
 
 def auth_event(row):
     match = AUTH.search(row.get('MESSAGE',''))
@@ -43,6 +44,8 @@ def syn_event(line):
         # Skip the host's own traffic and the copy Docker forwards to internal container addresses;
         # otherwise the bridge posting to the backend would be recorded as an inbound connection.
         if not ip.is_global or str(ip) in LOCAL_ADDRESSES or not target.is_global or not 1 <= port <= 65535: return None
+        # 80/443 are the websites behind Caddy: visitors are counted from its access log, not as port knocks.
+        if port in WEB_PORTS: return None
         return {'source_ip':str(ip),'event_type':'CONNECTION','outcome':'attempt','destination_port':port}, (source,sport,dest,dport)
     except ValueError: return None
 

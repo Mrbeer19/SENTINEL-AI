@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import {
   GROUPS,
+  TIME_RANGES,
   topologyOf,
   topologyWindow,
   MAX_VISIBLE_SOURCES,
@@ -16,6 +17,8 @@ import {
 import { Badge, Empty, Search, Table, Toggle, typeKey } from "./ui.jsx";
 import { CHANNELS, channelLabel, time, kind as kindLabel } from "./lib.js";
 const GeoMap = lazy(() => import("./GeoMap.jsx"));
+// What an IP did on the VPS, as shown under its node.
+const ACTIVITY = { web: "เข้าเว็บ", ssh: "ล็อกอิน SSH", port: "เคาะพอร์ต" };
 
 export default function Topology({
   data,
@@ -24,8 +27,18 @@ export default function Topology({
   onSelectIp,
   connected,
 }) {
+  const [range, setRange] = useState("15m"),
+    [now, setNow] = useState(() => Date.now());
+  // Re-check every 30 s so a quiet IP leaves the map even when no new data arrives.
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(tick);
+  }, []);
   const uid = useId().replace(/:/g, ""),
-    model = useMemo(() => topologyOf(data, activeRules), [data, activeRules]);
+    model = useMemo(
+      () => topologyOf(data, activeRules, { range, now }),
+      [data, activeRules, range, now],
+    );
   const latestIncidents = useMemo(() => {
     const latest = new Map();
     for (const incident of data.incidents) {
@@ -89,8 +102,9 @@ export default function Topology({
         cluster: false,
         incidentKind: latestIncidents.get(s.ip)?.kind,
       }));
+  // The centre node is the whole VPS (every site behind its Caddy, SSH, every port), not one website.
   const host =
-      import.meta.env.VITE_PROTECTED_SITE_HOST || "Protected application",
+      import.meta.env.VITE_PROTECTED_SITE_HOST || "Protected VPS",
     hostIp = import.meta.env.VITE_PROTECTED_SITE_IP;
   return (
     <div className="networkExplorer">
@@ -104,6 +118,16 @@ export default function Topology({
             ["sources", "SOURCES"],
             ["world", "WORLD"],
           ]}
+        />
+        <Toggle
+          label="ช่วงเวลาที่แสดง"
+          value={range}
+          onChange={(r) => {
+            setRange(r);
+            setPage(0);
+            onSelectIp(null);
+          }}
+          items={TIME_RANGES.map((r) => [r.key, r.label])}
         />
         {(model.sources.length > 12 || query || group) && (
           <Search
@@ -358,9 +382,11 @@ export default function Topology({
                             textAnchor="middle"
                             className="connectionNodeState"
                           >
-                            {GROUPS.find((g) => g.key === node.status)?.short}
-                            {node.channels.length > 0 &&
-                              ` · ${node.channels.map((c) => CHANNELS.find((x) => x.key === c)?.short).join(" + ")}`}
+                            {/* Ordinary IPs show only what they did; BLOCKED / REVIEW stay because they need an admin. */}
+                            {[
+                              node.status !== "normal" && GROUPS.find((g) => g.key === node.status)?.short,
+                              node.channels.map((c) => ACTIVITY[c] || c).join(" + "),
+                            ].filter(Boolean).join(" · ")}
                           </text>
                           {node.incidentKind && <text x={x} y={y + 44} textAnchor="middle" className="connectionTypeLabel">{kindLabel(node.incidentKind)}</text>}
                         </>
@@ -388,7 +414,7 @@ export default function Topology({
                   textAnchor="middle"
                   className="connectionNodeState"
                 >
-                  {hostIp || "APPLICATION NODE"}
+                  {hostIp ? `VPS ${hostIp}` : "ALL SITES · SSH · PORTS"}
                 </text>
               </g>
             </svg>
@@ -422,7 +448,9 @@ export default function Topology({
               <Empty>
                 {query
                   ? "ไม่พบ IP ที่ตรงกับคำค้นหา"
-                  : "ยังไม่มี IP ที่ระบบบันทึก"}
+                  : range !== "all"
+                    ? `ไม่มี IP ใน ${TIME_RANGES.find((r) => r.key === range).label} ล่าสุด · เลือก "ทั้งหมด" เพื่อดูย้อนหลัง`
+                    : "ยังไม่มี IP ที่ระบบบันทึก"}
               </Empty>
             )}
           </div>

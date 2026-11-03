@@ -280,6 +280,8 @@ export default function GeoMap({ sources, selectedIp, onSelectIp }) {
           )}
         </div>
         <div className="geoListSection">
+          {/* Section = the map's height (sizing only); the card inside is as tall as its rows, capped there. */}
+          <div className="geoListCard">
           <div className="geoListHeader">
             <span>เลือก IP เพื่อดูตำแหน่ง</span>
             {focused && (
@@ -323,6 +325,7 @@ export default function GeoMap({ sources, selectedIp, onSelectIp }) {
                 </Badge>
               </button>
             ))}
+          </div>
           </div>
         </div>
       </div>

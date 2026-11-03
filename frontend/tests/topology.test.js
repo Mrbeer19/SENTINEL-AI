@@ -92,3 +92,24 @@ test("channel filter keeps only sources seen on that channel", () => {
   assert.deepEqual(topologyWindow(m, { channel: "web" }).filtered.map((s) => s.ip), ["192.0.2.1"]);
   assert.deepEqual(m.channels.map((c) => [c.key, c.count]), [["web", 1], ["ssh", 0], ["port", 1]]);
 });
+
+test("the time range hides quiet IPs but keeps blocked ones and open incidents", () => {
+  const now = Date.parse("2026-11-04T02:00:00Z");
+  const ago = (min) => new Date(now - min * 60000).toISOString();
+  const recent = {
+    events: [
+      { source_ip: "198.51.100.1", timestamp: ago(2), event_type: "HTTP_REQUEST" },
+      { source_ip: "198.51.100.2", timestamp: ago(40), event_type: "HTTP_REQUEST" },
+      { source_ip: "198.51.100.3", timestamp: ago(90), event_type: "CONNECTION" },
+      { source_ip: "198.51.100.4", timestamp: ago(300), event_type: "SSH_AUTH" },
+    ],
+    traffic: [],
+    incidents: [{ source_ip: "198.51.100.4", status: "detected", kind: "SSH_BRUTE_FORCE", created_at: ago(300) }],
+  };
+  const blockedRule = [{ source_ip: "198.51.100.3" }];
+  const ips = (range) => topologyOf(recent, blockedRule, { range, now }).sources.map((s) => s.ip).sort();
+  assert.deepEqual(ips("15m"), ["198.51.100.1", "198.51.100.3", "198.51.100.4"]);
+  assert.deepEqual(ips("1h"), ["198.51.100.1", "198.51.100.2", "198.51.100.3", "198.51.100.4"]);
+  assert.equal(ips("all").length, 4);
+  assert.equal(topologyOf(recent, blockedRule, { range: "15m", now }).channels.find((c) => c.key === "web").count, 1);
+});

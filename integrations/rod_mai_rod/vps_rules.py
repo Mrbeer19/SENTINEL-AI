@@ -1,4 +1,4 @@
-"""Install and expire Caddy IP rules inside the rod-mai-rod site block only."""
+"""Install and expire Caddy IP rules in every site block that imports the SENTINEL snippet."""
 
 import argparse
 import ipaddress
@@ -10,12 +10,15 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from site_config import CADDY_CONTAINER, CADDY_DIR, CADDYFILE, HERE
+from site_config import ACTIVE_CONFIG as ACTIVE_NAME, BLOCK_SNIPPET, CADDY_CONTAINER, CADDY_DIR, CADDYFILE, HERE, RELOAD_CONFIG, SITE_SNIPPET as SITE_NAME
 
 RULES = HERE / "rules.json"
-SNIPPET = CADDY_DIR / "rod-mai-rod-sentinel.caddy"
-ACTIVE_CONFIG = CADDY_DIR / "rod-mai-rod-active.Caddyfile"
-IMPORT = "import /config/rod-mai-rod-sentinel.caddy"
+SNIPPET = CADDY_DIR / BLOCK_SNIPPET
+ACTIVE_CONFIG = CADDY_DIR / ACTIVE_NAME if ACTIVE_NAME else None
+IMPORT = f"import /config/{BLOCK_SNIPPET}"
+# Site blocks may import the block snippet directly or through the site snippet (block list + access log).
+SITE_SNIPPET = CADDY_DIR / SITE_NAME
+SITE_IMPORT = f"import /config/{SITE_NAME}"
 
 
 def active_ips(data, now=None):
@@ -52,9 +55,13 @@ def apply():
     if not CADDY_CONTAINER:
         raise RuntimeError("site.json is missing caddy_container (see site.example.json)")
     config = CADDYFILE.read_text()
-    if IMPORT not in config:
-        raise RuntimeError("rod-mai-rod import is missing from Caddyfile")
-    if ACTIVE_CONFIG.read_text() != config:
+    via_site = SITE_IMPORT in config
+    if IMPORT not in config and not via_site:
+        raise RuntimeError("SENTINEL import is missing from Caddyfile")
+    site_text = SITE_SNIPPET.read_text() if via_site else ""
+    if via_site and IMPORT not in site_text:
+        raise RuntimeError("site snippet does not import the SENTINEL block snippet")
+    if ACTIVE_CONFIG and ACTIVE_CONFIG.read_text() != config:
         raise RuntimeError("shared Caddyfile changed; refusing to reload stale configuration")
     data = json.loads(RULES.read_text()) if RULES.exists() else []
     new = snippet_for(active_ips(data))
@@ -62,22 +69,28 @@ def apply():
     if new == old:
         return False
     # Validate the complete candidate before touching Caddy's live import.
-    candidate_snippet = CADDY_DIR / "rod-mai-rod-sentinel.candidate"
-    candidate_config = CADDY_DIR / "rod-mai-rod-candidate.Caddyfile"
+    candidate_snippet = CADDY_DIR / (BLOCK_SNIPPET + ".candidate")
+    candidate_site = CADDY_DIR / (SITE_NAME + ".candidate")
+    candidate_config = CADDY_DIR / "sentinel-candidate.Caddyfile"
     atomic_write(candidate_snippet, new, 0o644)
-    candidate = config.replace(IMPORT, "import /config/rod-mai-rod-sentinel.candidate")
+    candidate = config.replace(IMPORT, f"import /config/{candidate_snippet.name}")
+    if via_site:
+        # Site blocks that import the site snippet must also see the candidate block list.
+        atomic_write(candidate_site, site_text.replace(IMPORT, f"import /config/{candidate_snippet.name}"), 0o644)
+        candidate = candidate.replace(SITE_IMPORT, f"import /config/{candidate_site.name}")
     atomic_write(candidate_config, candidate, 0o644)
     try:
-        subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "validate", "--config", "/config/rod-mai-rod-candidate.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+        subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "validate", "--config", f"/config/{candidate_config.name}", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
         atomic_write(SNIPPET, new, 0o644)
         try:
-            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", RELOAD_CONFIG, "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError:
             atomic_write(SNIPPET, old, 0o644)
-            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", "/config/rod-mai-rod-active.Caddyfile", "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
+            subprocess.run(["docker", "exec", CADDY_CONTAINER, "caddy", "reload", "--config", RELOAD_CONFIG, "--adapter", "caddyfile"], check=True, capture_output=True, text=True)
             raise
     finally:
         candidate_snippet.unlink(missing_ok=True)
+        candidate_site.unlink(missing_ok=True)
         candidate_config.unlink(missing_ok=True)
     return True
 

@@ -1729,3 +1729,148 @@ textarea {
     background: none;
   }
 }
+
+/* Network map: wheel scrolls the page, button opens the map full screen. */
+/* "contain" kept the wheel inside the map even when it had nothing to scroll. */
+.mapViewport {
+  overscroll-behavior: auto;
+}
+.mapExpand {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: 600 12px/1 var(--font-tech);
+  cursor: pointer;
+}
+.mapExpand:hover,
+.mapExpand:focus-visible {
+  border-color: currentColor;
+}
+.topologyPanel:fullscreen,
+.topologyPanel.isFullscreen,
+.topologyPanel.isFullscreen:is(*) {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  padding: 20px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.topologyPanel.isFullscreen:not(:fullscreen) {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  height: 100dvh;
+  border-radius: 0;
+}
+.topologyPanel:fullscreen .mapViewport {
+  overscroll-behavior: contain;
+}
+@media (max-width: 700px) {
+  .topologyPanel.isFullscreen:not(:fullscreen) {
+    min-height: 0;
+  }
+}
+
+/* World view: the IP list beside the map is a card as tall as its rows, never taller than the map
+   (it scrolls inside after that), instead of a fixed 300px box with empty space under it.
+   The section takes no part in the row height (contain: size), so the row is the map's height. */
+@container (min-width: 720px) {
+  .geoContent {
+    align-items: stretch;
+  }
+  .geoListSection {
+    contain: size;
+    min-height: 0;
+  }
+  .geoListCard {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    min-height: 0;
+    padding: 10px 10px 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .geoListCard .geoIpList {
+    max-height: none;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow: auto;
+  }
+}
+
+/* World view fits its frame (card or full screen) instead of scrolling. The map scales down to the height
+   that is left (SVG keeps its 2:1 shape); only a long IP list scrolls, inside its own card. */
+.topologyPanel .mapViewport[data-view="world"] {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.topologyPanel .mapViewport[data-view="world"] > .geoExplorer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topologyPanel .geoContent {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+.topologyPanel .geoStage {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.topologyPanel .geoWorld {
+  flex: 1 1 0;
+  min-height: 0;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 2;
+  align-self: center;
+}
+.topologyPanel .geoControls,
+.topologyPanel .geoStage > .geoNote,
+.topologyPanel .geoExplorer > .geoNote,
+.topologyPanel .geoSummary {
+  flex-shrink: 0;
+}
+
+/* The card keeps one height whatever the view: the size the MAP view first opened at (920px).
+   contain: size stops MAP/SOURCES/WORLD content from changing it; each view fits or scrolls inside
+   .mapViewport instead. The side column stretches to the same row height. */
+@media (min-width: 701px) {
+  .topologyPanel:not(:fullscreen):not(.isFullscreen),
+  .topologyPanel:not(:fullscreen):not(.isFullscreen):is(*) {
+    contain: size;
+    height: 920px;
+    min-height: 0;
+    align-self: start;
+  }
+}
+
+/* Model status inside the connection chip, separated by a thin divider. */
+.connection > summary > .modelState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding-left: 9px;
+  border-left: 1px solid var(--line);
+}
+@media (max-width: 850px) {
+  /* Narrow screens hide the chip labels; keep the model dot visible. */
+  .connection > summary > .modelState {
+    font-size: 0;
+    gap: 0;
+  }
+}
