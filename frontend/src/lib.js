@@ -52,8 +52,9 @@ export const statusLabels = {
   detected: "รอวิเคราะห์",
   analyzing: "กำลังวิเคราะห์",
   awaiting_approval: "รออนุมัติ",
-  blocked: "บล็อกแล้ว · รอยืนยันผล",
-  verified: "ยืนยันผลแล้ว",
+  blocked: "บล็อกแล้ว",
+  // A blocked IP came back and got 403: proof the block works. Many scanners never return, so "blocked" is final too.
+  verified: "บล็อกได้ผล · เจอ 403",
   rejected: "ปฏิเสธแล้ว",
   closed: "ปิดแล้ว",
   needs_review: "ต้องตรวจเพิ่มเติม",
@@ -62,14 +63,13 @@ export const statusLabels = {
   approved: "อนุมัติแล้ว",
 };
 export const tone = (v) =>
-  ["verified", "approved", "ok", "allowed", "success"].includes(v)
+  ["verified", "blocked", "approved", "ok", "allowed", "success"].includes(v)
     ? "good"
     : ["rejected", "failed", "denied", "error", "CRITICAL", "HIGH"].includes(v)
       ? "bad"
       : [
             "pending",
             "awaiting_approval",
-            "blocked",
             "MEDIUM",
             "needs_review",
             "analyzing",
@@ -97,8 +97,9 @@ export function analysisOf(report) {
 }
 export const activeRule = (r, now = Date.now()) =>
   Date.parse(r.expires_at) > now;
+// Blocked needs no further admin action, so it is not counted as open.
 export const isOpenIncident = (i) =>
-  !["verified", "rejected", "closed"].includes(i.status);
+  !["blocked", "verified", "rejected", "closed"].includes(i.status);
 export const duration = (s) =>
   s ? `${Math.round(s / 60)} นาที` : "จนกว่าจะปลดบล็อก";
 export const action = (v) =>

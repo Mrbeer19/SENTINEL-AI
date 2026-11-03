@@ -109,8 +109,8 @@ export function deriveFlow(report) {
   if (p?.status === "pending") labels[4] = "รอผู้ดูแล";
   if (p?.status === "rejected") labels[4] = "ปฏิเสธแล้ว";
   if (p?.status === "approved") labels[4] = "อนุมัติแล้ว";
-  if (states[5] === "active") labels[5] = "รอคำขอใหม่";
-  if (states[5] === "done") labels[5] = "ยืนยันผลแล้ว";
+  if (states[5] === "active") labels[5] = "บล็อกแล้ว";
+  if (states[5] === "done") labels[5] = "เจอ 403 แล้ว";
   const active = states.indexOf("active");
   const focus =
     active >= 0

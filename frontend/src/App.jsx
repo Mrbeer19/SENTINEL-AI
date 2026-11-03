@@ -556,7 +556,7 @@ export function Workspace({
           />}
           <span>
             {busy ? "กำลังบันทึก…" : toast.message}
-            {!busy && toast?.approved && <small>กฎระดับแอป · รอคำขอใหม่เพื่อยืนยันผล</small>}
+            {!busy && toast?.approved && <small>บล็อกที่ Caddy ทุกเว็บบน VPS แล้ว</small>}
             {toast?.detail && (
               <details>
                 <summary>รายละเอียด</summary>
