@@ -233,6 +233,15 @@ def as_list(value) -> list:
     return value if isinstance(value, list) else [value]
 
 
+# Same text and condition as backend/agent.py (PR #29), so --backend-hints measures what the backend sends.
+NO_USERNAME_HINT = "The log records carry no username: do not name, list or count accounts. "
+
+
+def has_usernames(evidence: list[dict]) -> bool:
+    return any(record.get("user") for item in evidence if item.get("tool") == "get_incident_logs"
+               for record in ((item.get("result") or {}).get("untrusted_log_records") or []))
+
+
 def score(case: dict, calls: list[dict], analysis: dict | None, json_errors: list[str]) -> dict:
     expected = case["expected"]
     src = case["incident"]["source_ip"]
@@ -505,7 +514,8 @@ def run_case_pipeline(case: dict, chat, opts: dict) -> dict:
         threat, threat_errors, raw, first = json_stage(
             [{"role": "system", "content": prompts["analyst"]},
              {"role": "user", "content": "Incident: " + json.dumps(incident) + "\nTool results: " + json.dumps(evidence, ensure_ascii=False)
-              + "\nInvestigator summary: " + json.dumps(summary[:2000], ensure_ascii=False) + "\n" + threat_instruction}],
+              + "\nInvestigator summary: " + json.dumps(summary[:2000], ensure_ascii=False) + "\n"
+              + (NO_USERNAME_HINT if opts.get("backend_hints") and not has_usernames(evidence) else "") + threat_instruction}],
             THREAT_KEYS, threat_instruction)
         record["stage_seconds"]["threat_analysis"] = round(time.perf_counter() - t, 2)
         record["first_try_json_ok"] = first
@@ -568,6 +578,7 @@ def main(argv=None) -> int:
     parser.add_argument("--system-prompt", type=Path, default=DEFAULT_PROMPT)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--machine", default="", help="free text, e.g. 'MacBook Pro M5 16GB'")
+    parser.add_argument("--backend-hints", action="store_true", help="add the analyst hint the backend adds when no log record names an account (PR #29)")
     args = parser.parse_args(argv)
 
     cases = json.loads(args.cases.read_text(encoding="utf-8"))["cases"]
@@ -577,7 +588,7 @@ def main(argv=None) -> int:
     cases = cases[: args.limit] if args.limit else cases
     if not cases:
         parser.error("no cases selected")
-    opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint,
+    opts = {"model": args.model, "temperature": args.temperature, "num_ctx": args.num_ctx, "rule_hint": args.rule_hint, "backend_hints": args.backend_hints,
             "format_schema": args.format_schema, "retry": args.retry, "max_rounds": args.max_rounds, "strict_json": args.strict_json,
             "system_prompt": args.system_prompt.read_text(encoding="utf-8"), "pipeline": args.pipeline,
             "pipeline_prompts": {k: v.read_text(encoding="utf-8") for k, v in pipeline_prompts(args.prompt_version).items()}}
