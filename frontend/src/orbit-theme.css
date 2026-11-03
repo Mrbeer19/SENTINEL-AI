@@ -1730,13 +1730,7 @@ textarea {
   }
 }
 
-/* Network map: compact card, wheel scrolls the page, button opens it full screen. */
-.topologyPanel,
-.topologyPanel:is(*) {
-  height: clamp(440px, 62vh, 560px);
-  min-height: 0;
-  align-self: start;
-}
+/* Network map: wheel scrolls the page, button opens the map full screen. */
 /* "contain" kept the wheel inside the map even when it had nothing to scroll. */
 .mapViewport {
   overscroll-behavior: auto;
@@ -1762,6 +1756,7 @@ textarea {
 .topologyPanel.isFullscreen,
 .topologyPanel.isFullscreen:is(*) {
   height: 100%;
+  min-height: 0;
   max-height: none;
   padding: 20px;
   background: var(--bg);
@@ -1778,11 +1773,7 @@ textarea {
   overscroll-behavior: contain;
 }
 @media (max-width: 700px) {
-  .topologyPanel,
-  .topologyPanel:is(*) {
-    height: 480px;
-  }
   .topologyPanel.isFullscreen:not(:fullscreen) {
-    height: 100dvh;
+    min-height: 0;
   }
 }
