@@ -7,6 +7,7 @@ import argparse
 import ipaddress
 import json
 import re
+import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -26,18 +27,59 @@ STATIC = re.compile(r"^/(_next/static|assets|fonts)/|^/api/v1/maps/[^/]+/[^/]+/\
 HONEYPOT_PATHS = frozenset(path.lower() for path in SITE.get("honeypot_paths", ["/admin-backup.zip", "/backup.sql", "/.aws/credentials", "/config.php.bak"]))
 
 
+def own_networks():
+    """This VPS's own addresses, and the subnets of its non-public interfaces (loopback, Docker bridges).
+
+    Requests from them are the server or its containers calling a site through Caddy, not visitors; counting
+    them once made SENTINEL flag and block the VPS itself. The public interface's subnet is not excluded:
+    other hosts in it are ordinary internet clients."""
+    try:
+        out = subprocess.run(["ip", "-o", "addr", "show"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return frozenset(), ()
+    addresses, internal = set(), []
+    for line in out.splitlines():
+        try:
+            iface = ipaddress.ip_interface(line.split()[3])
+        except (IndexError, ValueError):
+            continue
+        addresses.add(iface.ip)
+        if not iface.ip.is_global:
+            internal.append(iface.network)
+    return frozenset(addresses), tuple(internal)
+
+
+OWN_ADDRESSES, INTERNAL_NETS = own_networks()
+
+
+def is_own(ip) -> bool:
+    ip = ipaddress.ip_address(ip)
+    return ip.is_loopback or ip in OWN_ADDRESSES or any(ip in net for net in INTERNAL_NETS)
+
+
+def watched(host: str) -> bool:
+    # "*" watches every site block that writes to the shared access log, including sites added later.
+    return host in DOMAINS or "*" in DOMAINS
+
+
+def login_paths(host: str):
+    return LOGIN_PATHS.get(host, LOGIN_PATHS.get("*", ()))
+
+
 def event(line: bytes, offset: int):
     try:
         row = json.loads(line)
         request = row["request"]
         host = request.get("host", "").split(":")[0].lower()
-        if host not in DOMAINS:
+        if not watched(host):
             return None
         ip = str(ipaddress.ip_address(request["remote_ip"]))
+        if is_own(ip):
+            return None
         method = request["method"].upper()
         path = urlsplit(request["uri"]).path
         status = int(row["status"])
-        if path in LOGIN_PATHS.get(host, ()) and method == "POST" and status in (200, 401):
+        if path in login_paths(host) and method == "POST" and status in (200, 401):
             return {"offset": offset, "ip": ip, "kind": "auth", "outcome": "success" if status == 200 else "failed"}
         if status == 403:
             return {"offset": offset, "ip": ip, "kind": "denied"}
@@ -51,7 +93,7 @@ def request(line: bytes):
     try:
         row = json.loads(line)
         req = row["request"]
-        if req.get("host", "").split(":")[0].lower() not in DOMAINS:
+        if not watched(req.get("host", "").split(":")[0].lower()) or is_own(req["remote_ip"]):
             return None
         status = int(row["status"])
         path = urlsplit(req["uri"]).path

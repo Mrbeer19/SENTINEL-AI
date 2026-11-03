@@ -128,3 +128,27 @@ class ApplyRulesTest(unittest.TestCase):
         self.assertEqual(call.call_args.args[0][-4:], ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"])
         self.assertIn("remote_ip 192.0.2.9", (tmp / "sentinel-block.caddy").read_text())
         self.assertEqual(caddyfile.read_text().count("import /config/sentinel-block.caddy\n"), 2)  # shared file untouched
+
+
+class OwnTrafficTest(unittest.TestCase):
+    def setUp(self):
+        import ipaddress
+        from unittest import mock
+        patches = [mock.patch.object(vps_logs, "OWN_ADDRESSES", frozenset({ipaddress.ip_address("203.0.113.5"), ipaddress.ip_address("172.18.0.1")})),
+                   mock.patch.object(vps_logs, "INTERNAL_NETS", (ipaddress.ip_network("172.18.0.0/16"),)),
+                   mock.patch.object(vps_logs, "DOMAINS", frozenset({"*"})),
+                   mock.patch.object(vps_logs, "LOGIN_PATHS", {"*": frozenset()})]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_the_vps_and_its_containers_are_not_visitors(self):
+        for ip in ("203.0.113.5", "172.18.0.1", "172.18.0.7", "127.0.0.1"):
+            self.assertIsNone(vps_logs.request(access_line("/", ip=ip)), ip)
+            self.assertIsNone(event(access_line("/", status=403, ip=ip), 1), ip)
+        # a neighbour in the VPS's public /24 is an ordinary client
+        self.assertEqual(vps_logs.request(access_line("/", ip="203.0.113.77"))[0], "203.0.113.77")
+
+    def test_wildcard_watches_sites_added_later(self):
+        self.assertEqual(vps_logs.request(access_line("/", ip="198.51.100.4", host="new-site.example.test"))[0], "198.51.100.4")
+        self.assertEqual(event(access_line("/", status=403, ip="198.51.100.4", host="another.example.test"), 1)["kind"], "denied")

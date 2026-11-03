@@ -89,8 +89,9 @@ export default function Topology({
         cluster: false,
         incidentKind: latestIncidents.get(s.ip)?.kind,
       }));
+  // The centre node is the whole VPS (every site behind its Caddy, SSH, every port), not one website.
   const host =
-      import.meta.env.VITE_PROTECTED_SITE_HOST || "Protected application",
+      import.meta.env.VITE_PROTECTED_SITE_HOST || "Protected VPS",
     hostIp = import.meta.env.VITE_PROTECTED_SITE_IP;
   return (
     <div className="networkExplorer">
@@ -388,7 +389,7 @@ export default function Topology({
                   textAnchor="middle"
                   className="connectionNodeState"
                 >
-                  {hostIp || "APPLICATION NODE"}
+                  {hostIp ? `VPS ${hostIp}` : "ALL SITES · SSH · PORTS"}
                 </text>
               </g>
             </svg>
