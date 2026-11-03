@@ -1,4 +1,4 @@
-"""Independent held-out cases for agent_bench.py (written by Obeto, no code shared with datasets/generate_cases.py
+"""Independent held-out cases for agent_bench.py (written by Pitchakorn, no code shared with datasets/generate_cases.py
 or model/finetune/make_sft.py).
 
 What differs from v1/v2/SFT data: irregular timing, counts exactly on the thresholds, logs longer than the 40 records the
@@ -6,7 +6,7 @@ backend returns, SSH lines for real users and "Accepted password", credential st
 injections in Thai / JSON / tool-call form and inside SSH usernames, and FP traps (4 fails then success, busy web client).
 Labels follow model/prompts/threat_analyst_v1.md; rule_hint is the backend rule kind that would have fired (None = no rule).
 
-Run: python3 make_cases_obeto.py  ->  sentinel_cases_obeto_v3.json
+Run: python3 make_cases_v3.py  ->  sentinel_cases_v3.json
 """
 
 import json
@@ -188,6 +188,6 @@ p4 = [22, 80, 443, 8080]
 s = src(); logs = [conn(s, p, x) for p, x in zip(p4, times(4, 20))]
 add("low_4ports", "insufficient_evidence", s, logs, activity(s, logs, 0, 0, p4), LOWINFO, None)
 
-out = Path(__file__).with_name("sentinel_cases_obeto_v3.json")
+out = Path(__file__).with_name("sentinel_cases_v3.json")
 out.write_text(json.dumps({"version": "obeto-v3", "seed": SEED, "cases": cases}, ensure_ascii=False, indent=1), encoding="utf-8")
 print(f"{len(cases)} cases -> {out.name}")

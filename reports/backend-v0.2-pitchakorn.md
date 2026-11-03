@@ -1,8 +1,8 @@
-# Backend v0.2 — Obeto
+# Backend v0.2 — Pitchakorn
 
-**Phase / ผู้รับผิดชอบ:** B00–B07 + ส่วนที่ทำได้ก่อนของ B08–B09 · Obeto · อัปเดต 20 ต.ค. (รอบ 2)
+**Phase / ผู้รับผิดชอบ:** B00–B07 + ส่วนที่ทำได้ก่อนของ B08–B09 · Pitchakorn · อัปเดต 20 ต.ค. (รอบ 2)
 **สถานะ:** ผ่านบางส่วน — โค้ด + เทสครบตาม contract v0.2 · ยังไม่ได้ซ้อม 2 เครื่อง และ UI ยังเป็น v0.1
-**Branch:** `feature/ai-backend/pitchakorn-pkt` (แตกจาก `beer/model-eval-v2`)
+**Branch:** `feature/ai-backend/pitchakorn-pkt` (แตกจาก `model-eval-v2` (ลบแล้ว))
 
 ## ตอนนี้ระบบทำอะไรได้
 
@@ -15,7 +15,7 @@
 - audit log hash chain + `GET /api/audit/verify`
 - เครื่องอื่นเข้าได้แค่ health + demo endpoints (rate limit) · ที่เหลือต้อง localhost หรือ `X-Admin-Key`
 - `python -m backend.preflight --host <IP>` ตรวจเครื่องก่อนเดโม
-- **agent 3 ตัว (LangGraph)** investigation → threat_analysis → defense_planning · planner ไม่เห็นข้อความจาก log · โมเดลจริงบน M5 19.4–22.2 วิ/incident (ตัวเดียว 22–23) planner 1–2 วิ · กับ prompt 3 ไฟล์ของ Beer (PR #7) 20.1–24.3 วิ 6.3 GB · investigator ใช้ tool อ่านอย่างเดียว 4 ตัว
+- **agent 3 ตัว (LangGraph)** investigation → threat_analysis → defense_planning · planner ไม่เห็นข้อความจาก log · โมเดลจริงบน M5 19.4–22.2 วิ/incident (ตัวเดียว 22–23) planner 1–2 วิ · กับ prompt 3 ไฟล์ของ Prapakorn (PR #7) 20.1–24.3 วิ 6.3 GB · investigator ใช้ tool อ่านอย่างเดียว 4 ตัว
 - กฎ 5 ตัว: HTTP/SSH brute force, port scan, **suspicious login** (success หลัง failed ≥5), **traffic anomaly** (≥100 connection/60 วิ)
 - scenario 6 แบบตามสเปก A–E + `POST /api/simulations/start|stop`, `GET /api/simulations/state` ส่งทีละ event ให้ dashboard เห็นสด
 - `POST /api/logs` แปลง log sshd ดิบเป็น event (สเปก D: log parser)
@@ -57,7 +57,7 @@ make -C backend test
 ## ยังไม่ได้ทดสอบ/ยังไม่ผ่าน
 
 - ซ้อม 2 เครื่องจริงบน hotspot (Neo → M5)
-- benchmark 47 เคสของ Beer บน M5 (นัดวันที่ 22)
+- benchmark 47 เคสของ Prapakorn บน M5 (นัดวันที่ 22)
 - UI ยังอ่านรูปแบบ v0.1 (`analysis.summary`, `proposal.source_ip` ฯลฯ) จะพังบางหน้าจนกว่าฝั่ง frontend อัปเดต
 - ยังไม่มีกฎ honeypot · กฎ `SUSPICIOUS_LOGIN` เพิ่มแล้ว (success หลัง failed ≥5 / 60 วิ)
 - ยังไม่จำกัดขนาด body ระดับ server · rate limit อยู่ในหน่วยความจำ
@@ -66,12 +66,12 @@ make -C backend test
 
 ## สิ่งที่เจอระหว่างเทส
 
-1. ✅ **แก้แล้ว** `/docs`, `/redoc`, `/openapi.json` เคยเปิดให้เครื่องใน LAN อ่านแผนผัง API ได้ → ตอนนี้ต้อง localhost หรือ `X-Admin-Key` (Beer ตกลง 20 ต.ค.)
+1. ✅ **แก้แล้ว** `/docs`, `/redoc`, `/openapi.json` เคยเปิดให้เครื่องใน LAN อ่านแผนผัง API ได้ → ตอนนี้ต้อง localhost หรือ `X-Admin-Key` (Prapakorn ตกลง 20 ต.ค.)
 2. ✅ **แก้แล้ว** event ที่ `username` ยาวเกิน 80 ตัวเคยถูกปฏิเสธทั้งแถว (เจอในเคส `dev-18` ชื่อยาว 116 ตัว) = ผู้โจมตีใส่ชื่อยาวแล้วหลบการตรวจจับได้ → ตอนนี้เก็บ 80 ตัวแรก + `username_truncated = 1` ทั้ง `/api/events` และ `/api/demo/login` · เกิน 1024 ตัวยัง 422 · contract อัปเดตแล้ว
 3. **ลบ audit แถวล่าสุดแล้ว verify ยัง valid** — ข้อจำกัดของ hash chain (อยู่ใน threat model แล้ว) · ลดได้โดยใส่จำนวนแถว + hash ล่าสุดในรายงาน/สไลด์ตอนจบเดโม
-4. ✅ `scripts/smoke_local.py` (v0.1) Beer ลบใน PR #3 · ใช้ `make -C backend smoke` แทน · `docs/demo-runbook.md` เลิกใช้ `--host 0.0.0.0` แล้ว (Beer ให้แก้ใน PR นี้)
+4. ✅ `scripts/smoke_local.py` (v0.1) Prapakorn ลบใน PR #3 · ใช้ `make -C backend smoke` แทน · `docs/demo-runbook.md` เลิกใช้ `--host 0.0.0.0` แล้ว (Prapakorn ให้แก้ใน PR นี้)
 
-## สิ่งที่เพื่อนต้องใช้หรือทำต่อ (Beer)
+## สิ่งที่เพื่อนต้องใช้หรือทำต่อ (Prapakorn)
 
 - อ่าน `docs/api-contract.md` หัวข้อ "เปลี่ยนจาก v0.1" แล้วปรับ UI
 - `proposal.source = rule_fallback` และ `analysis.confidence = null` ควรมีป้ายบนหน้าจอ
@@ -87,6 +87,6 @@ make -C backend test
 
 ## เฟสถัดไป
 
-- B08: ส่วน backend เสร็จ (detection P/R/F1, SOC timings, report API, benchmark) · เหลือรวมกับผลโมเดลของ Beer บน M5 (นัด 22 ต.ค.)
+- B08: ส่วน backend เสร็จ (detection P/R/F1, SOC timings, report API, benchmark) · เหลือรวมกับผลโมเดลของ Prapakorn บน M5 (นัด 22 ต.ค.)
 - B09: runbook ฝั่ง backend เสร็จ (`docs/backend-runbook.md`) · เหลือซ้อม 2 เครื่องจริง (ต้องรอ UI อ่าน v0.2)
 - ค้าง: กฎ honeypot

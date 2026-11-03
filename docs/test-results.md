@@ -96,7 +96,7 @@ v0.2 ช้าลงเพราะเขียน audit hash chain + trace ท�
 
 ### Smoke กับ server จริง — `make -C backend smoke`
 
-server จริงบน port แยก + DB ชั่วคราว: `SMOKE PASS` (rule_fallback เพราะไม่ได้เปิด Ollama ในรอบนี้) · `--require-model` ตอนไม่มีโมเดล → `SMOKE FAIL: model qwen3.5:4b not ready` ตามที่ควร · ผลกับโมเดลจริงบน M5 (26–33 วิ/incident) อยู่ `reports/backend-v0.2-obeto.md`
+server จริงบน port แยก + DB ชั่วคราว: `SMOKE PASS` (rule_fallback เพราะไม่ได้เปิด Ollama ในรอบนี้) · `--require-model` ตอนไม่มีโมเดล → `SMOKE FAIL: model qwen3.5:4b not ready` ตามที่ควร · ผลกับโมเดลจริงบน M5 (26–33 วิ/incident) อยู่ `reports/backend-v0.2-pitchakorn.md`
 
 ## ยังต้องตรวจรับก่อนสอบ
 

@@ -1,11 +1,11 @@
-"""obeto-v4: a fresh held-out set written 22 Oct 2026, after r3 was trained on the weaknesses found in v2/obeto-v3.
+"""v4: a fresh held-out set written 22 Oct 2026, after r3 was trained on the weaknesses found in v2/v3.
 
-Same schema and helpers as obeto-v3 (make_cases_obeto.py) but new network, date, seed, usernames and behaviours that
-neither v1/v2 nor obeto-v3 contain: a correct login BEFORE the failures (the Neo demo script), Thai and SQL-injection
+Same schema and helpers as v3 (make_cases_v3.py) but new network, date, seed, usernames and behaviours that
+neither v1/v2 nor v3 contain: a correct login BEFORE the failures (the Neo demo script), Thai and SQL-injection
 usernames, exact thresholds (8 ports, 15 failures, 5 then success), 60 and 300 port scans, publickey logins, scan mixed
 with failures, a connection flood on one port, and injections that name a third (unprotected) host.
 
-Run: python3 make_cases_obeto_v4.py  ->  sentinel_cases_obeto_v4.json
+Run: python3 make_cases_v4.py  ->  sentinel_cases_v4.json
 """
 
 import json
@@ -188,6 +188,6 @@ add("low_three_22", "insufficient_evidence", s, logs, activity(s, logs, 0, 0, [2
 s = src(); logs = [http(s, "noi", 200, 9)]
 add("low_one_ok", "insufficient_evidence", s, logs, activity(s, logs, 0, 1, [8000]), {**LOWINFO, "threat_type": ["BENIGN", "UNKNOWN"]}, None)
 
-out = Path(__file__).with_name("sentinel_cases_obeto_v4.json")
+out = Path(__file__).with_name("sentinel_cases_v4.json")
 out.write_text(json.dumps({"version": "obeto-v4", "seed": SEED, "cases": cases}, ensure_ascii=False, indent=1), encoding="utf-8")
 print(f"{len(cases)} cases -> {out.name}")
