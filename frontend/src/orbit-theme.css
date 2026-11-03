@@ -1777,3 +1777,70 @@ textarea {
     min-height: 0;
   }
 }
+
+/* World view: the IP list beside the map is a card as tall as its rows, never taller than the map
+   (it scrolls inside after that), instead of a fixed 300px box with empty space under it.
+   The section takes no part in the row height (contain: size), so the row is the map's height. */
+@container (min-width: 720px) {
+  .geoContent {
+    align-items: stretch;
+  }
+  .geoListSection {
+    contain: size;
+    min-height: 0;
+  }
+  .geoListCard {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    min-height: 0;
+    padding: 10px 10px 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .geoListCard .geoIpList {
+    max-height: none;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow: auto;
+  }
+}
+
+/* Full screen: the world view fits the screen instead of scrolling. The map scales down to the height
+   that is left (SVG keeps its 2:1 shape); only a long IP list scrolls, inside its own card. */
+.topologyPanel:is(:fullscreen, .isFullscreen) .mapViewport[data-view="world"] {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.topologyPanel:is(:fullscreen, .isFullscreen) .mapViewport[data-view="world"] > .geoExplorer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoContent {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoStage {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoWorld {
+  flex: 1 1 0;
+  min-height: 0;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 2;
+  align-self: center;
+}
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoControls,
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoStage > .geoNote,
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoExplorer > .geoNote,
+.topologyPanel:is(:fullscreen, .isFullscreen) .geoSummary {
+  flex-shrink: 0;
+}
