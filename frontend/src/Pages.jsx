@@ -559,7 +559,8 @@ export function Incidents({ ctx }) {
           items={[
             ["open", "ยังเปิดอยู่"],
             ["awaiting_approval", "รออนุมัติ"],
-            ["verified", "ยืนยันผล"],
+            ["blocked", "บล็อกแล้ว"],
+            ["verified", "เจอ 403"],
             ["all", "ทั้งหมด"],
           ]}
         />
@@ -758,15 +759,15 @@ export function Incident({ ctx, id }) {
             <Icon name={proof ? "check" : "clock"} />
             <b>
               {proof
-                ? "มีคำขอใหม่ถูกปฏิเสธแล้ว"
+                ? "IP นี้กลับมาแล้วได้ 403"
                 : rule
-                  ? "รอหลักฐานจากคำขอใหม่"
-                  : "ยังไม่มีหลักฐานยืนยันการบล็อก"}
+                  ? "บล็อกแล้ว · IP นี้ยังไม่กลับมา"
+                  : "ยังไม่ได้บล็อก"}
             </b>
             <small>
               {proof
                 ? `${time(proof.created_at)} · HTTP 403`
-                : "การอนุมัติอย่างเดียวไม่ถือว่ายืนยันผล"}
+                : "ถ้า IP นี้กลับมาจะได้ 403 และขึ้นเป็นหลักฐานตรงนี้"}
             </small>
           </div>
         </Panel>
@@ -1050,7 +1051,7 @@ function Decision({ ctx, p }) {
           <p className="mono large">{targetIp(p)}</p>
           <p>
             {confirm === "approve"
-              ? `แอปที่ป้องกันจะปฏิเสธคำขอจาก IP นี้ ${duration(p.duration_seconds)} ต้องมีคำขอใหม่เพื่อยืนยันผลภายหลัง`
+              ? `ทุกเว็บบน VPS จะตอบ 403 กับ IP นี้ ${duration(p.duration_seconds)}`
               : "ไม่สร้างกฎจากข้อเสนอนี้ และบันทึกผู้ตัดสินใจ"}
           </p>
           <small>ผู้ตรวจทาน · {reviewer}</small>
@@ -1109,8 +1110,8 @@ export function Rules({ ctx, id }) {
               render: (r) => (
                 <Badge color={proofFor(r, ctx.data.traffic) ? "good" : "quiet"}>
                   {proofFor(r, ctx.data.traffic)
-                    ? "ยืนยัน 403 แล้ว"
-                    : "ยังไม่ยืนยันผล"}
+                    ? "เจอ 403 แล้ว"
+                    : "IP ยังไม่กลับมา"}
                 </Badge>
               ),
             },
@@ -1151,8 +1152,8 @@ export function Rules({ ctx, id }) {
               <div className="proof">
                 <b>
                   {proofFor(selected, ctx.data.traffic)
-                    ? "มีหลักฐานคำขอถูกปฏิเสธแล้ว"
-                    : "ยังไม่มีคำขอใหม่ยืนยันผล"}
+                    ? "IP นี้กลับมาแล้วได้ 403"
+                    : "บล็อกอยู่ · IP นี้ยังไม่กลับมา"}
                 </b>
               </div>
             </>
