@@ -1845,15 +1845,15 @@ textarea {
   flex-shrink: 0;
 }
 
-/* The card keeps one height whatever the view: the side column's height (never under 640px).
-   contain: size stops MAP/SOURCES/WORLD content from growing the grid row; each view fits or
-   scrolls inside .mapViewport instead. */
+/* The card keeps one height whatever the view: the size the MAP view first opened at (920px).
+   contain: size stops MAP/SOURCES/WORLD content from changing it; each view fits or scrolls inside
+   .mapViewport instead. The side column stretches to the same row height. */
 @media (min-width: 701px) {
   .topologyPanel:not(:fullscreen):not(.isFullscreen),
   .topologyPanel:not(:fullscreen):not(.isFullscreen):is(*) {
     contain: size;
-    height: auto;
-    min-height: 640px;
-    align-self: stretch;
+    height: 920px;
+    min-height: 0;
+    align-self: start;
   }
 }
