@@ -80,8 +80,9 @@ def test_printed_env_line_survives_shell_sourcing(tmp_path):
     from backend.admin_auth import env_line
     encoded = password_hash('test-only-password-482')
     env = tmp_path / '.env'
-    env.write_text(env_line(encoded) + '\n')
-    out = subprocess.run(['sh', '-c', f'set -a; . {env}; set +a; printf %s "$SENTINEL_ADMIN_PASSWORD_HASH"'], capture_output=True, text=True).stdout
+    # bytes + relative path: Windows text mode adds \r, and sh cannot read C:\ paths
+    env.write_bytes((env_line(encoded) + '\n').encode())
+    out = subprocess.run(['sh', '-c', 'set -a; . ./.env; set +a; printf %s "$SENTINEL_ADMIN_PASSWORD_HASH"'], cwd=tmp_path, capture_output=True, text=True).stdout
     assert out == encoded
 
 
