@@ -1,10 +1,10 @@
-# Dashboard v1 + Neo Demo — Beer
+# Dashboard v1 + Neo Demo — Prapakorn
 
 > บันทึกเวอร์ชันเดิม: ปัจจุบันใช้ Neo Terminal เท่านั้น หน้า Neo ที่กล่าวถึงในรายงานนี้ถูกยกเลิกแล้ว วิธีใช้งานล่าสุดอยู่ที่ [คู่มือ Neo Terminal](../scripts/neo/README.md)
 
-**Phase / ผู้รับผิดชอบ:** Frontend/dashboard · Beer
+**Phase / ผู้รับผิดชอบ:** Frontend/dashboard · Prapakorn
 **สถานะ:** ผ่านบางส่วน — หน้าเว็บครบตามแบบและ flow ข้ามเครื่องผ่านบนเครื่องพัฒนา ยังไม่ได้ลองบน M5 + Neo
-**Branch:** `beer/dashboard-v1` (แยกจาก `main` ไม่แก้ backend)
+**Branch:** `dashboard-v1` (branch ส่วนตัวเดิม) (แยกจาก `main` ไม่แก้ backend)
 
 ## ตอนนี้ทำอะไรได้
 

@@ -30,7 +30,7 @@ Review these paths explicitly:
 - `README.md`
 - `frontend/` — source, assets, documentation and the intended deletions; `dist/` and `node_modules/` are ignored
 - `scripts/neo/README.md`
-- `reports/dashboard-v1-beer.md`
+- `reports/dashboard-v1-prapakorn.md`
 - `reports/frontend-review-2026-10-19.md`
 - `reports/frontend-review-request.md`
 - `reports/frontend-ux-review-2026-10-20.md`
