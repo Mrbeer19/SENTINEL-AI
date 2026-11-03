@@ -15,6 +15,7 @@ import {
   proofFor,
   sourcesOf,
   CHANNELS,
+  channelOfKind,
   sortIncidents,
   ruleLifetime,
   statusLabels,
@@ -53,7 +54,7 @@ export const titles = {
   ],
   trace: ["AI investigation", "สำรวจเส้นทางการวิเคราะห์และเครื่องมือที่ใช้"],
   approvals: ["Approvals", "ตรวจคำแนะนำ · ผู้ดูแลเป็นผู้ตัดสินใจ"],
-  rules: ["Protection rules", "จัดการกฎระดับแอปและตรวจผลของคำขอใหม่"],
+  rules: ["Protection rules", "จัดการกฎบล็อกที่เว็บที่ป้องกันและหลักฐาน 403"],
   reports: [
     "Security reports",
     "เปิดรายงาน ส่งออกหลักฐาน และติดตามการตัดสินใจ",
@@ -111,7 +112,7 @@ export function Overview({ ctx }) {
   const sources = useMemo(() => sourcesOf(data), [data]),
     rules = data.rules.filter((r) => activeRule(r, ctx.now)),
     pending = data.proposals.filter((p) => p.status === "pending"),
-    attention = attentionQueue(data.incidents, data.proposals);
+    attention = attentionQueue(data.incidents, data.proposals, data.rules, data.events);
   const src = selected && sources.find((s) => s.ip === selected);
   useEffect(() => {
     if (selected && !sources.some((s) => s.ip === selected)) setSelected(null);
@@ -313,22 +314,27 @@ export function Overview({ ctx }) {
               {attention.length ? (
                 attention.slice(0, 3).map((item) => {
                   const i = item.incident,
-                    approval = item.type === "approval";
+                    approval = item.type === "approval",
+                    afterBlock = item.type === "afterBlock";
                   return (
                     <a
-                      className={`signalCard attention ${approval ? "" : "needsAnalysis"}`}
+                      className={`signalCard attention ${approval || afterBlock ? "" : "needsAnalysis"}`}
                       key={item.key}
                       href={approval ? `#/approvals/${item.proposal.id}` : `#/incident/${i.id}`}
                     >
                       <small>
-                        <i className={`dot ${approval ? "amber" : "red"}`} />
-                        {approval ? "รออนุมัติ" : "รอวิเคราะห์"}
+                        <i className={`dot ${approval || afterBlock ? "amber" : "red"}`} />
+                        {approval ? "รออนุมัติ" : afterBlock ? "ยังเคลื่อนไหวหลังบล็อก" : "รอวิเคราะห์"}
                         {i?.severity && <Badge value={i.severity} />}
                       </small>
                       <b>{kind(i?.kind)}</b>
                       <span className="mono">{approval ? targetIp(item.proposal) : i.source_ip}</span>
                       <footer>
-                        {approval ? `บล็อก ${duration(item.proposal.duration_seconds)}` : "เปิดหลักฐานและเริ่มวิเคราะห์"}
+                        {approval
+                          ? `บล็อก ${duration(item.proposal.duration_seconds)}`
+                          : afterBlock
+                            ? `SSH/พอร์ต ${item.count} ครั้งหลังบล็อก · ช่องทางนี้ตรวจจับได้แต่ไม่บล็อก`
+                            : "เปิดหลักฐานและเริ่มวิเคราะห์"}
                         <Icon name="arrow" size={15} />
                       </footer>
                     </a>
@@ -980,7 +986,7 @@ function Decision({ ctx, p }) {
           <details className="policy">
             <summary>ขอบเขตและนโยบายที่ต้องตรวจ</summary>
             <p>
-              เพิ่มเฉพาะกฎระดับแอป ไม่เปลี่ยน firewall ของเครื่อง
+              บล็อกที่เว็บที่ป้องกันเท่านั้น ไม่เปลี่ยน firewall ของเครื่อง SSH และพอร์ตอื่นตรวจจับได้แต่ไม่บล็อก
               ต้องตรวจว่าเป้าหมายตรงกับต้นทาง และเป็น IP ที่นโยบายอนุญาต
             </p>
             <p>
@@ -1051,9 +1057,15 @@ function Decision({ ctx, p }) {
           <p className="mono large">{targetIp(p)}</p>
           <p>
             {confirm === "approve"
-              ? `ทุกเว็บบน VPS จะตอบ 403 กับ IP นี้ ${duration(p.duration_seconds)}`
+              ? `เว็บที่ป้องกันจะตอบ 403 กับ IP นี้ ${duration(p.duration_seconds)}`
               : "ไม่สร้างกฎจากข้อเสนอนี้ และบันทึกผู้ตัดสินใจ"}
           </p>
+          {confirm === "approve" && ["ssh", "port"].includes(channelOfKind(report?.kind)) && (
+            <p className="detectOnly">
+              ภัยนี้มาทาง {channelOfKind(report.kind) === "ssh" ? "SSH" : "พอร์ตของเครื่อง"} ซึ่งตรวจจับได้แต่ไม่บล็อก ·
+              การอนุมัติจะกัน IP นี้จากเว็บเท่านั้น ไม่หยุด SSH หรือการเคาะพอร์ต
+            </p>
+          )}
           <small>ผู้ตรวจทาน · {reviewer}</small>
         </Confirmation>
       )}

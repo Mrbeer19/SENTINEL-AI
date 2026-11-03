@@ -23,7 +23,21 @@ export const sortIncidents = (rows) =>
     (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0),
   );
 // What an analyst should look at first: pending approvals and unanalyzed serious incidents, worst first.
-export function attentionQueue(incidents = [], proposals = []) {
+// Blocked at the website, but the same IP kept guessing SSH or knocking ports afterwards: those channels
+// are detect-only (no host firewall), so the admin should know even though the incident is "blocked".
+export function activeAfterBlock(incident, rules = [], events = []) {
+  if (incident.status !== "blocked") return 0;
+  const rule = rules.find((r) => r.source_ip === incident.source_ip);
+  const since = rule ? Date.parse(rule.created_at) : NaN;
+  if (!Number.isFinite(since)) return 0;
+  return events.filter(
+    (e) =>
+      e.source_ip === incident.source_ip &&
+      ["ssh", "port"].includes(channelOfEvent(e.event_type)) &&
+      Date.parse(e.timestamp) > since,
+  ).length;
+}
+export function attentionQueue(incidents = [], proposals = [], rules = [], events = []) {
   const byId = new Map(incidents.map((i) => [i.id, i]));
   const items = [
     ...proposals
@@ -32,6 +46,10 @@ export function attentionQueue(incidents = [], proposals = []) {
     ...incidents
       .filter((i) => i.status === "detected" && ["CRITICAL", "HIGH"].includes(i.severity))
       .map((i) => ({ type: "analysis", key: `i${i.id}`, incident: i })),
+    ...incidents
+      .map((i) => ({ i, n: activeAfterBlock(i, rules, events) }))
+      .filter(({ n }) => n > 0)
+      .map(({ i, n }) => ({ type: "afterBlock", key: `b${i.id}`, incident: i, count: n })),
   ];
   const rank = (x) => severityRank[x.incident?.severity] || 0;
   const at = (x) => Date.parse(x.incident?.created_at || x.proposal?.created_at) || 0;
