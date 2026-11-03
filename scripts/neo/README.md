@@ -6,7 +6,9 @@ M5 เปิด SOC Dashboard ส่วน Mac Neo ส่งคำขอจา�
 
 ## แผนหลัก: ทดสอบสดกับ VPS จาก Mac
 
-ใช้เฉพาะ VPS และเว็บที่ได้รับอนุญาต จาก root โปรเจกต์รัน:
+ใช้เฉพาะ VPS และเว็บที่ได้รับอนุญาต บน Mac ดับเบิลคลิก `scripts/run-vps-live-test.command` เพื่อเปิด Terminal และเริ่มถามข้อมูลได้ทันที ต้องมี Python 3.9+ ตัวเปิดจะใช้ `.venv/bin/python3` ใน root โปรเจกต์ถ้ามี ไม่เช่นนั้นใช้ `python3` ของเครื่อง บันทึก JSONL อยู่ที่ root โปรเจกต์
+
+หรือจาก root โปรเจกต์รัน:
 
 ```sh
 python3 scripts/vps_live_test.py
