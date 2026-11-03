@@ -12,7 +12,8 @@ from pathlib import Path
 OUTPUT = Path(__file__).resolve().parent / 'network-events.jsonl'
 LOCK = threading.Lock()
 AUTH = re.compile(r'^(Failed (?:password|publickey)|Accepted (?:password|publickey|keyboard-interactive/pam)) for (?:invalid user )?(\S+) from (\S+) port \d+')
-SYN = re.compile(r'IP6? (\S+) > (\S+): Flags \[S\]')
+# ECN-capable clients (e.g. macOS after an ECN-accepting peer) send SYN as [SEW]; SYN-ACKs ([S.]) stay excluded.
+SYN = re.compile(r'IP6? (\S+) > (\S+): Flags \[S[EW]*\]')
 
 def local_addresses():
     """Addresses of this host. Connections from them are the server talking to itself, not visitors."""
