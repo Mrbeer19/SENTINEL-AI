@@ -43,7 +43,7 @@ const severe = (i) => ["CRITICAL", "HIGH"].includes(i.severity);
 // pending proposal or HIGH/CRITICAL incident arrives, or the connection drops or
 // returns, it jumps on its own and announces it. Items present at first load are
 // treated as already seen, so opening the dashboard does not trigger alerts.
-export function RailBuddy({ incidents = [], proposals = [], offline = false }) {
+export function RailBuddy({ incidents = [], proposals = [], offline = false, onAsk, thinking = false }) {
   const root = useRef(null),
     [index, setIndex] = useState(0),
     [spin, setSpin] = useState(0),
@@ -146,6 +146,12 @@ export function RailBuddy({ incidents = [], proposals = [], offline = false }) {
   }, []);
   useEffect(() => () => clearTimeout(hush.current), []);
   const poke = () => {
+    // With Ask me on, the mascot opens the panel; alerts keep showing in the bubble and its link.
+    if (onAsk) {
+      setSpin((n) => n + 1);
+      onAsk();
+      return;
+    }
     // Collapsed rail shows no bubble, so a click on an alert goes straight to it.
     if (alert?.href && !root.current?.closest(".nRail")?.hasAttribute("data-open")) {
       location.hash = alert.href.slice(1);
@@ -163,6 +169,7 @@ export function RailBuddy({ incidents = [], proposals = [], offline = false }) {
       className="railBuddy"
       ref={root}
       data-talking={talking || undefined}
+      data-thinking={thinking || undefined}
       data-alert={alert?.tone}
     >
       <div className="buddyCore">
@@ -178,9 +185,11 @@ export function RailBuddy({ incidents = [], proposals = [], offline = false }) {
         type="button"
         className="buddyButton"
         aria-label={
-          alert
-            ? `มาสคอต Sentinel · ${alert.text}`
-            : "มาสคอต Sentinel · กดเพื่อฟังคำแนะนำถัดไป"
+          onAsk
+            ? `มาสคอต Sentinel · กดเพื่อเปิด Ask me${alert ? ` · ${alert.text}` : ""}`
+            : alert
+              ? `มาสคอต Sentinel · ${alert.text}`
+              : "มาสคอต Sentinel · กดเพื่อฟังคำแนะนำถัดไป"
         }
         onClick={poke}
       >
@@ -188,7 +197,7 @@ export function RailBuddy({ incidents = [], proposals = [], offline = false }) {
         <span className="buddyLook">
           <span key={spin} className={spin ? "buddySpin" : undefined}>
             <span className="buddyBob">
-              <Mascot pose="laptop" size={176} loading="eager" mood={offline ? "offline" : pending ? "idle" : "happy"} />
+              <Mascot pose={thinking ? "pilot" : "laptop"} size={176} loading="eager" mood={offline ? "offline" : pending ? "idle" : "happy"} />
             </span>
           </span>
         </span>

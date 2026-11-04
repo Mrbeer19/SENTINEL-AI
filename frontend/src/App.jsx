@@ -8,6 +8,7 @@ import Mascot, { ConnectionLoader, PageSkeleton, RailBuddy } from "./Mascot.jsx"
 import { NetworkBackdrop, TiltStage } from "./LoginScene.jsx";
 import { RefreshMotion, useNavIndicator } from "./motion.jsx";
 import AutoBlockAlerts from "./AutoBlockAlerts.jsx";
+import AskPanel from "./AskPanel.jsx";
 import {
   Approvals,
   Incident,
@@ -241,10 +242,22 @@ export function Workspace({
         return true;
       }
     }),
+    [askEnabled, setAskEnabled] = useState(false),
+    [askOpen, setAskOpen] = useState(false),
+    [askThinking, setAskThinking] = useState(false),
     lock = useRef(false),
     toastTimer = useRef(null),
     routeTransition = useRef(null),
     routeRef = useRef(route);
+  useEffect(() => {
+    let alive = true;
+    request("/api/rag", { accept: [404] })
+      .then(({ data }) => alive && setAskEnabled(Boolean(data?.enabled)))
+      .catch(() => alive && setAskEnabled(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
   useEffect(() => {
     const change = () => {
       const nextRoute = routeOf();
@@ -335,7 +348,7 @@ export function Workspace({
     location.hash = `/incidents`;
   };
   return (
-    <div className="nShell">
+    <div className="nShell" data-ask-open={askOpen || undefined}>
       <a
         className="skipLink"
         href="#workspace"
@@ -477,6 +490,8 @@ export function Workspace({
           incidents={live.data.incidents}
           proposals={live.data.proposals}
           offline={Boolean(live.error)}
+          onAsk={askEnabled ? () => setAskOpen(true) : undefined}
+          thinking={askThinking}
         />
       </nav>
       <main id="workspace" tabIndex="-1">
@@ -555,6 +570,22 @@ export function Workspace({
           </span>
         </footer>
       </main>
+      {askEnabled && (
+        <AskPanel
+          open={askOpen}
+          onClose={() => setAskOpen(false)}
+          incidents={live.data.incidents}
+          route={route}
+          user={user}
+          onThinking={setAskThinking}
+        />
+      )}
+      {askEnabled && !askOpen && (
+        <button type="button" className="askLauncher" onClick={() => setAskOpen(true)} aria-label="เปิด Ask me ถามเรื่อง incident">
+          <span className="askLauncherDot" aria-hidden="true" />
+          Ask me
+        </button>
+      )}
       {(busy || toast) && (
         <div className={`toast ${toast?.type || ""} ${!busy && toast?.approved ? "mascotToast" : ""}`} role="status">
           {!busy && toast?.approved ? <Mascot size={72} mood="happy" /> : <Icon

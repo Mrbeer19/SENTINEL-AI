@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError, model_validator
 
-from backend import logparse, policy, soc
+from backend import logparse, policy, rag, soc
 from backend.admin_auth import AdminAuth, COOKIE
 from backend.agent import Agent
 from backend.config import ROOT, load_settings, same_model
@@ -818,6 +818,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                     break
         except WebSocketDisconnect:
             sockets.discard(socket)
+
+    api.include_router(rag.make_router(settings, store))  # 'Ask me': read-only, off unless SENTINEL_RAG=1
 
     dashboard = ROOT.parent / "frontend" / "dist"
     if dashboard.exists():

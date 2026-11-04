@@ -49,6 +49,9 @@ class Settings:
     local_peers: frozenset[str]
     manual_unblock: bool = False
     auto_approve: bool = False
+    rag: bool = False
+    rag_model: str = ""
+    rag_generate: bool = False
 
 
 def load_settings() -> Settings:
@@ -75,4 +78,10 @@ def load_settings() -> Settings:
         manual_unblock=os.getenv("SENTINEL_MANUAL_UNBLOCK", "0") == "1",
         # Honeypot, scanner paths and CRITICAL floods are blocked for 600 s without a human (policy.AUTO_RULES).
         auto_approve=os.getenv("SENTINEL_AUTO_APPROVE", "0") == "1",
+        # 'Ask me' on the mascot explains an incident from backend/kb; it never decides anything (backend/rag.py).
+        rag=os.getenv("SENTINEL_RAG", "0") == "1",
+        # Same model as the analysis by default, so the GPU does not swap models during a demo.
+        rag_model=os.getenv("SENTINEL_RAG_MODEL", "") or os.getenv("SENTINEL_MODEL", "qwen3.5:4b"),
+        # 0 = answer with the KB note itself (no model call). 1 = the model may rephrase it, with number checks.
+        rag_generate=os.getenv("SENTINEL_RAG_GENERATE", "0") == "1",
     )
