@@ -51,6 +51,7 @@ class Settings:
     auto_approve: bool = False
     rag: bool = False
     rag_model: str = ""
+    rag_generate: bool = False
 
 
 def load_settings() -> Settings:
@@ -81,4 +82,6 @@ def load_settings() -> Settings:
         rag=os.getenv("SENTINEL_RAG", "0") == "1",
         # Same model as the analysis by default, so the GPU does not swap models during a demo.
         rag_model=os.getenv("SENTINEL_RAG_MODEL", "") or os.getenv("SENTINEL_MODEL", "qwen3.5:4b"),
+        # 0 = answer with the KB note itself (no model call). 1 = the model may rephrase it, with number checks.
+        rag_generate=os.getenv("SENTINEL_RAG_GENERATE", "0") == "1",
     )
