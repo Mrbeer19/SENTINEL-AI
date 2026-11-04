@@ -257,6 +257,13 @@ textarea {
   background: var(--glass-soft);
   border-color: var(--glass-line);
 }
+/* The open list of a native <select> is drawn by the browser, not over the glass: without a solid
+   background Windows draws white rows with the theme's light text (unreadable in dark mode). */
+select option,
+select optgroup {
+  background: var(--surface);
+  color: var(--ink);
+}
 .agentLab .labCanvas,
 .labViewport,
 .dataScroll th {
