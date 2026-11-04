@@ -35,7 +35,9 @@ def worker(events: int, loops: int) -> dict:
 
     from backend.app import create_app
 
-    client = TestClient(create_app(Path(tempfile.mkdtemp()) / "bench.db"))
+    os.environ.setdefault("SENTINEL_ADMIN_KEY", "bench-ingest-local")  # the SOC API needs an admin since the login change
+    os.environ.setdefault("SENTINEL_ENABLE_DEMO", "1")  # the benchmark uses /api/simulations on a throwaway DB
+    client = TestClient(create_app(Path(tempfile.mkdtemp()) / "bench.db"), base_url="http://127.0.0.1", headers={"X-Admin-Key": os.environ["SENTINEL_ADMIN_KEY"]})
     kinds = [("HTTP_AUTH", "failed", None), ("SSH_AUTH", "failed", None), ("CONNECTION", "attempt", "port"), ("HTTP_AUTH", "success", None)]
     took = []
     for i in range(events):
