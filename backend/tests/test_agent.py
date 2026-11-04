@@ -4,7 +4,7 @@ import json
 
 import httpx
 import pytest
-from conftest import ATTACKER, analysis, connect, event, simulate
+from conftest import ATTACKER, analysis, at, connect, event, simulate
 from pydantic import ValidationError
 
 from backend.app import create_app
@@ -95,6 +95,21 @@ def test_ip_activity_summarises_own_source(tools):
     client.post("/api/events", json=event(event_type="CONNECTION", outcome="attempt", destination_port=22))
     status, output = run(tools, "get_ip_activity", ip_address=ATTACKER)
     assert status == "ok" and output["total_events"] == 7 and output["failed_logins"] == 6 and output["ports_touched"] == [22]
+
+
+def test_tools_only_see_the_incident_window(tmp_path):
+    # Live rehearsal: every case came from one IP, so a port scan saw the earlier login test and was read as SUSPICIOUS_LOGIN.
+    db = tmp_path / "window.db"
+    client = connect(create_app(db))
+    for _ in range(6):
+        client.post("/api/events", json=event(timestamp=at(600)))
+    client.post("/api/events", json=event(outcome="success", timestamp=at(600)))
+    incident = simulate(client, scenario="port_scan")
+    agent = Agent(load_settings(), Store(db))
+    _, activity = agent.run_tool(incident, "get_ip_activity", {"ip_address": ATTACKER})
+    _, logs = agent.run_tool(incident, "get_incident_logs", {"incident_id": "INC-%04d" % incident["id"]})
+    assert activity["failed_logins"] == 0 and activity["success_logins"] == 0 and len(activity["ports_touched"]) >= 8
+    assert {r["type"] for r in logs["untrusted_log_records"]} == {"CONNECTION"}
 
 
 def test_ip_activity_refuses_other_ips(tools):
