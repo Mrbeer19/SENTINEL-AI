@@ -1,5 +1,7 @@
 """SENTINEL_AUTO_APPROVE=1: honeypot, scanner paths and CRITICAL floods are blocked without a human; everything else still waits."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from conftest import ATTACKER, at, connect, event
 
@@ -151,3 +153,17 @@ def test_new_scan_after_unblock_is_still_detected(auto):
     auto.delete(f"/api/rules/{auto.get('/api/rules').json()[0]['id']}")
     again = web(auto, count=3, paths=["/.env", "/.git/HEAD", "/wp-login.php"])
     assert again is not None and again["status"] == "blocked" and len(auto.get("/api/incidents").json()) == 2
+
+
+def window_end(seconds_ahead):
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds_ahead)).replace(microsecond=0).isoformat()
+
+
+def test_unblock_with_bridge_window_end_timestamps(auto):
+    # From the review of #48: the bridge stamps HTTP_REQUEST totals with the END of its 10 s window (up to 10 s ahead),
+    # so a time floor taken from the server clock still re-counted the old scan.
+    incident = web(auto, count=12, not_found=12, paths=["/.env", "/.git/config", "/wp-admin/setup.php"], timestamp=window_end(8))
+    assert incident["status"] == "blocked"
+    auto.post("/api/demo/traffic", json={"source_ip": ATTACKER})  # 403 -> verified
+    auto.delete(f"/api/rules/{auto.get('/api/rules').json()[0]['id']}")
+    assert web(auto, count=1, timestamp=window_end(8)) is None

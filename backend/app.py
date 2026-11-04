@@ -282,6 +282,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if to not in TRANSITIONS.get(current, set()):
             raise HTTPException(409, f"incident cannot move from {current} to {to}")
         con.execute("UPDATE incidents SET status=?, updated_at=? WHERE id=?", (to, utcnow(), incident_id))
+        if to in TERMINAL:
+            mark_counted(con, incident_id)
         audit(con, actor, "status_changed", incident_id, {"from": current, "to": to, "reason": reason})
 
     async def broadcast(stage: str, payload: dict):
@@ -305,13 +307,16 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         return {**row, "analysis": json.loads(row["analysis"]) if row["analysis"] else None,
                 "analysis_meta": json.loads(row["analysis_meta"]) if row["analysis_meta"] else None}
 
-    def handled_until(con, ip: str):
-        """kind -> when this IP's latest closed incident of that kind ended (verified, rejected or closed)."""
-        placeholders = ",".join("?" * len(TERMINAL))
-        rows = con.execute(f"SELECT kind, MAX(updated_at) t FROM incidents WHERE source_ip=? AND status IN ({placeholders}) GROUP BY kind",
-                           (ip, *TERMINAL)).fetchall()
-        ended = {row["kind"]: row["t"] for row in rows}
-        return ended.get
+    def mark_counted(con, incident_id: int) -> None:
+        """A finished incident owns every event its source IP sent so far; detection will not count them again."""
+        con.execute("UPDATE incidents SET closed_event_id=(SELECT COALESCE(MAX(e.id), 0) FROM events e WHERE e.source_ip=incidents.source_ip) WHERE id=?",
+                    (incident_id,))
+
+    def counted_until(con, ip: str):
+        """kind -> newest event id already owned by a finished incident of that kind from this IP."""
+        rows = con.execute("SELECT kind, MAX(closed_event_id) n FROM incidents WHERE source_ip=? AND closed_event_id IS NOT NULL GROUP BY kind",
+                           (ip,)).fetchall()
+        return {row["kind"]: row["n"] for row in rows}.get
 
     def upsert_incident(con, match: Match, event: dict) -> dict:
         rule, ip = match.rule, event["source_ip"]
@@ -321,6 +326,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                             WHERE p.incident_id=i.id AND r.expires_at>?)""", (ip, rule.kind, utcnow())).fetchall()
         for old in expired:
             con.execute("UPDATE incidents SET status='closed', updated_at=? WHERE id=?", (utcnow(), old['id']))
+            mark_counted(con, old['id'])
             log(con, old['id'], 'closed', 'Previous block expired; a new detection opens a separate incident')
             audit(con, 'detection', 'status_changed', old['id'], {'from':'blocked','to':'closed','reason':'block expired before new detection'})
         placeholders = ",".join("?" * len(TERMINAL))
@@ -359,7 +365,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         incident = None
         with store.tx() as con:
             cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
-            for match in ruleset.evaluate(con, record, handled_until(con, record["source_ip"])):
+            for match in ruleset.evaluate(con, record, counted_until(con, record["source_ip"])):
                 incident = upsert_incident(con, match, record)
             # A pending proposal can become auto-approvable later, e.g. a MEDIUM flood growing to CRITICAL.
             auto_blocked = bool(incident) and auto_approve(con, incident["id"], note_limit=False)

@@ -96,7 +96,7 @@ bridge ส่ง **ยอดรวมต่อ IP ต่อช่วง 10 ว�
 - ≥3 เท่าของเกณฑ์ → `CRITICAL`
 - brute force ที่เข้าได้ในที่สุด = **2 incident** จาก IP เดียวกัน: `*_BRUTE_FORCE` (ตอน failed ครั้งที่ 5) + `SUSPICIOUS_LOGIN` (ตอน success) · UI แสดงแยกกัน อนุมัติบล็อกอันไหนก็บล็อก IP เดียวกัน
 - incident ที่ยังเปิดของ (IP, kind) เดิมจะถูกอัปเดต `event_count` · incident ที่จบแล้ว (`verified | rejected | closed`) ไม่ถูกใช้ซ้ำ → เปิดใหม่
-- event ที่เกิดก่อน incident ล่าสุดของ (IP, kind) เดียวกันจบ (`updated_at` ของ incident ที่ `verified | rejected | closed`) ไม่ถูกนับซ้ำ: ปลดบล็อกแล้ว request ถัดไปจาก IP เดิมจะไม่ทำให้กฎนับ event ชุดเดิมจนเปิด incident ใหม่ ต้องมี event ใหม่ถึงเกณฑ์เอง
+- event ที่ incident ของ (IP, kind) เดียวกันจบไปแล้วเป็นเจ้าของ ไม่ถูกนับซ้ำ: เมื่อ incident เข้า `verified | rejected | closed` ระบบเก็บ `incidents.closed_event_id` = id ของ event ล่าสุดของ IP ณ ตอนนั้น (schema v5) และการนับเกณฑ์ครั้งต่อไปนับเฉพาะ event ที่ id ใหม่กว่า · ใช้ id ไม่ใช่เวลา เพราะ bridge ใส่เวลาของ `HTTP_REQUEST` เป็นท้ายหน้าต่าง 10 วิ · ปลดบล็อกแล้ว request ถัดไปจาก IP เดิมจะไม่เปิด incident ใหม่จาก event ชุดเดิม ต้องมี event ใหม่ถึงเกณฑ์เอง
 
 ## Incident
 

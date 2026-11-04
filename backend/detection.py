@@ -85,25 +85,24 @@ class RuleSet:
         self.rules = [_parse(path) for path in files]
         self.version = hashlib.sha256(b"".join(path.read_bytes() for path in files)).hexdigest()[:12]
 
-    def evaluate(self, con: sqlite3.Connection, event: dict, handled_until=None) -> list[Match]:
+    def evaluate(self, con: sqlite3.Connection, event: dict, counted_until=None) -> list[Match]:
         """Count matching events for the event's source IP in the window ending at the event's own time.
 
-        handled_until(kind) -> timestamp or None: events before it already belong to a closed incident of that
-        kind and are not counted again (otherwise one scan re-opens and re-blocks right after an admin unblocks)."""
+        counted_until(kind) -> event id or None: events up to that id already belong to a finished incident of that
+        kind and are not counted again (otherwise one scan re-opens and re-blocks right after an admin unblocks).
+        An id, not a time: the bridge stamps HTTP_REQUEST totals with the end of its window, up to 10 s ahead."""
         matches = []
         end = datetime.fromisoformat(event["timestamp"])
         for rule in self.rules:
             if any(str(event.get(key)) != value for key, value in rule.selection.items()):
                 continue
             start = (end - rule.window).isoformat(timespec="seconds")
-            floor = handled_until(rule.kind) if handled_until else None
-            if floor and floor > start:
-                start = floor
+            after_id = (counted_until(rule.kind) if counted_until else None) or 0
             if rule.correlation == "failures_before":
                 # The matching event is the success; count the failures on the same channel that led up to it.
                 count = con.execute(
-                    "SELECT COUNT(*) FROM events WHERE source_ip=? AND event_type=? AND outcome='failed' AND timestamp>=? AND timestamp<=?",
-                    (event["source_ip"], event["event_type"], start, event["timestamp"]),
+                    "SELECT COUNT(*) FROM events WHERE source_ip=? AND event_type=? AND outcome='failed' AND timestamp>=? AND timestamp<=? AND id>?",
+                    (event["source_ip"], event["event_type"], start, event["timestamp"], after_id),
                 ).fetchone()[0]
             else:
                 where = " AND ".join(f"{key}=?" for key in rule.selection)
@@ -111,8 +110,8 @@ class RuleSet:
                 measure = {"value_count": "COUNT(DISTINCT destination_port)",
                            "event_sum": f"COALESCE(SUM({rule.field}), 0)"}.get(rule.correlation, "COUNT(*)")
                 count = con.execute(
-                    f"SELECT {measure} FROM events WHERE source_ip=? AND {where} AND timestamp>=? AND timestamp<=?",
-                    (event["source_ip"], *rule.selection.values(), start, event["timestamp"]),
+                    f"SELECT {measure} FROM events WHERE source_ip=? AND {where} AND timestamp>=? AND timestamp<=? AND id>?",
+                    (event["source_ip"], *rule.selection.values(), start, event["timestamp"], after_id),
                 ).fetchone()[0]
             if count >= rule.threshold:
                 matches.append(Match(rule, count))
