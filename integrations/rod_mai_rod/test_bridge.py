@@ -38,8 +38,11 @@ class BridgeTests(unittest.TestCase):
             active_ips([{"source_ip": "1.2.3.4\nrespond * 200", "expires_at": rows[0]["expires_at"]}], now)
 
 
-def access_line(path, status=200, ip="192.0.2.7", ts=1793443873.5, host="site.example.test", method="GET"):
-    return json.dumps({"ts": ts, "status": status, "request": {"host": host, "remote_ip": ip, "method": method, "uri": path}}).encode() + b"\n"
+def access_line(path, status=200, ip="192.0.2.7", ts=1793443873.5, host="site.example.test", method="GET", fetch_site=None):
+    request = {"host": host, "remote_ip": ip, "method": method, "uri": path}
+    if fetch_site:
+        request["headers"] = {"Sec-Fetch-Site": [fetch_site]}
+    return json.dumps({"ts": ts, "status": status, "request": request}).encode() + b"\n"
 
 
 class RequestTotalsTest(unittest.TestCase):
@@ -72,6 +75,24 @@ class RequestTotalsTest(unittest.TestCase):
         [row] = rows
         self.assertEqual((row["count"], row["not_found"], row["honeypot"]), (5, 4, True))
         self.assertEqual(row["paths"], ["/admin-backup.zip", "/.env", "/wp-login.php"])
+
+    def test_cross_site_hits_are_counted_but_never_sent_as_decoy_or_scanner_paths(self):
+        # <img src="our-site/backup.sql"> on another site: the visitor's browser asks for it with Sec-Fetch-Site: cross-site.
+        lines = [access_line("/admin-backup.zip", 404, fetch_site="cross-site"), access_line("/.env", 404, fetch_site="cross-site"),
+                 access_line("/.git/config", 404, fetch_site="cross-site"), access_line("/wp-admin/", 404, fetch_site="cross-site")]
+        [row] = self.totals(*lines)
+        self.assertEqual((row["count"], row["not_found"], row["honeypot"], row["paths"]), (4, 4, False, []))
+
+    def test_same_site_and_plain_http_redirect_hits_are_not_sent_either(self):
+        # *.sslip.io is not a public suffix, so another sslip.io page is "same-site"; HTTP requests carry no Sec-Fetch-*.
+        lines = [access_line("/admin-backup.zip", 404, fetch_site="same-site"), access_line("/.env", 308),
+                 access_line("/backup.sql", 308), access_line("/.git/config", 301)]
+        [row] = self.totals(*lines)
+        self.assertEqual((row["count"], row["not_found"], row["honeypot"], row["paths"]), (4, 1, False, []))
+
+    def test_same_origin_and_scanner_requests_still_count_as_decoy_hits(self):
+        rows = self.totals(access_line("/admin-backup.zip", 404, fetch_site="same-origin"), access_line("/backup.sql", 404, ip="192.0.2.8"))
+        self.assertEqual([(r["honeypot"], r["paths"]) for r in rows], [(True, ["/admin-backup.zip"]), (True, ["/backup.sql"])])
 
     def test_paths_are_capped_and_cleaned(self):
         rows = self.totals(*[access_line(f"/p{n}" + "a" * 200 + "\x1b", 404) for n in range(8)])
