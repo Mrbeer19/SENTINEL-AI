@@ -191,6 +191,54 @@ class LiveTests(unittest.TestCase):
             self.assertEqual(sleep.call_args_list, [unittest.mock.call(5), unittest.mock.call(5)])
             self.assertTrue(any(c.args[2] == 'unblocked_verified' for c in self.journal.record.call_args_list))
 
+    def test_cross_site_case_sends_browser_headers_and_expects_no_block(self):
+        with patch.object(live, 'http_status', return_value=200) as request:
+            self.test.run_case('8')
+            request.assert_called_once_with(self.test.url + 'backup.sql', headers=live.CROSS_SITE_HEADERS)
+        self.assertEqual(live.CROSS_SITE_HEADERS['Sec-Fetch-Site'], 'cross-site')
+        with patch.object(live, 'http_status', return_value=200), patch.object(live.time, 'monotonic', side_effect=[0, 0, 0, 50]), patch.object(live.time, 'sleep'):
+            self.assertTrue(self.test.expect_no_block('8'))
+        self.assertEqual(self.journal.record.call_args.args[2], 'not_blocked_ok')
+        with patch.object(live, 'http_status', return_value=403), patch.object(live.time, 'monotonic', return_value=0):
+            self.assertFalse(self.test.expect_no_block('8'))
+        self.assertEqual(self.journal.record.call_args.args[2], 'blocked_unexpected')
+
+    def test_cross_site_request_shape(self):
+        self.network.stop()
+        try:
+            with patch.object(live, 'opener') as build:
+                build.return_value.open.return_value.__enter__.return_value.status = 200
+                self.assertEqual(live.http_status('https://example.test/backup.sql', headers=live.CROSS_SITE_HEADERS), 200)
+                request = build.return_value.open.call_args.args[0]
+                self.assertEqual(request.get_method(), 'GET')
+                self.assertEqual(request.get_header('Sec-fetch-site'), 'cross-site')
+        finally:
+            self.network.start()
+
+    def test_menu_case_8_never_asks_for_approval(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), patch('builtins.input', side_effect=['8', 'y', '0']), patch.object(self.test, 'ready', return_value=True), \
+                patch.object(self.test, 'run_case', return_value=True), patch.object(self.test, 'expect_no_block', return_value=True) as no_block, \
+                patch.object(self.test, 'wait_status') as wait:
+            live.menu(self.test)
+        no_block.assert_called_once_with('8')
+        wait.assert_not_called()
+        self.assertNotIn('กดอนุมัติ', out.getvalue())
+
+    def test_auto_cases_say_no_approval_needed_and_wait_for_expiry(self):
+        for case, auto in [('1', True), ('2', True), ('3', False)]:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), patch('builtins.input', side_effect=[case, 'y', '0']), patch.object(self.test, 'ready', return_value=True), \
+                    patch.object(self.test, 'run_case', return_value=True), patch.object(self.test, 'wait_status', return_value=False) as wait:
+                live.menu(self.test)
+            self.assertEqual('ระบบบล็อกเอง' in out.getvalue(), auto, case)
+            wait.assert_called_once()
+        with patch('builtins.input', side_effect=['1', 'y', '0']), patch.object(self.test, 'ready', return_value=True), \
+                patch.object(self.test, 'run_case', return_value=True), patch.object(self.test, 'evidence'), \
+                patch.object(self.test, 'wait_status', return_value=True) as wait:
+            live.menu(self.test)
+        self.assertEqual(wait.call_args.kwargs['limit'], 720)
+
     def test_flood_limits_worker_count_and_pacing(self):
         executor = live.concurrent.futures.ThreadPoolExecutor
         with patch.object(live.concurrent.futures, 'ThreadPoolExecutor', wraps=executor) as pool, patch.object(live, 'http_status', return_value=200), patch.object(live.time, 'monotonic', return_value=0), patch.object(live.time, 'sleep') as sleep:

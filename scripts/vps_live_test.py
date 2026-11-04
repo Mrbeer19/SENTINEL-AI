@@ -17,7 +17,13 @@ LOGIN_PATH = '/api/v1/auth/login'  # rod-mai-rod login API; the bridge counts it
 LABELS = ('Honeypot — HONEYPOT (กฎ ไม่ผ่าน AI)', 'Web scan — WEB_SCAN (กฎ ไม่ผ่าน AI)',
           'HTTP flood — HTTP_FLOOD (กฎ ไม่ผ่าน AI)', 'SSH เดารหัส — SSH_BRUTE_FORCE (AI / 3D)',
           'Port scan — PORT_SCAN (AI / 3D)', 'Connection flood — TRAFFIC_ANOMALY (AI / 3D) · ยิงเป็นข้อสุดท้าย',
-          'ล็อกอินเว็บผิดซ้ำ (รอดไม่รอด) — HTTP_AUTH_BRUTE_FORCE (AI / 3D)')
+          'ล็อกอินเว็บผิดซ้ำ (รอดไม่รอด) — HTTP_AUTH_BRUTE_FORCE (AI / 3D)',
+          'Honeypot ผ่านเว็บอื่น (<img>) — ต้องไม่บล็อก · ยิงก่อนข้อ 1')
+# SENTINEL_AUTO_APPROVE=1 blocks these without a human (honeypot, scanner paths); the others wait for an admin.
+AUTO_CASES = ('1', '2')
+# What a browser sends when another site's <img> loads our URL. A page cannot change these headers.
+CROSS_SITE_HEADERS = {'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Dest': 'image'}
+NO_BLOCK_WAIT_S = 45  # bridge windows are 10 s; a honeypot block normally shows within a few seconds
 
 
 def validate_ip(value):
@@ -60,10 +66,12 @@ def opener():
     return urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def http_status(url, data=None):
+def http_status(url, data=None, headers=None):
     try:
-        if data is None:
+        if data is None and not headers:
             target = url
+        elif data is None:
+            target = urllib.request.Request(url, headers=headers)
         else:
             target = urllib.request.Request(url, data=data, method='POST',
                                             headers={'Content-Type': 'application/json'})
@@ -117,8 +125,8 @@ class LiveTest:
         print(status_text(result), flush=True)
         return result
 
-    def wait_status(self, expected, case, started=None):
-        deadline = time.monotonic() + 600
+    def wait_status(self, expected, case, started=None, limit=600):
+        deadline = time.monotonic() + limit
         while time.monotonic() < deadline:
             if self.check(case) == expected:
                 if expected == 403:
@@ -127,7 +135,7 @@ class LiveTest:
                     self.journal.record(case, self.url, 'blocked', elapsed_seconds=elapsed)
                 return True
             time.sleep(min(5, max(0, deadline - time.monotonic())))
-        print('ครบ 10 นาที กลับเมนูโดยยังไม่ยืนยันผล')
+        print('ครบ {} นาที กลับเมนูโดยยังไม่ยืนยันผล'.format(limit // 60))
         self.journal.record(case, self.url, 'wait_timeout', expected=expected)
         return False
 
@@ -140,9 +148,9 @@ class LiveTest:
             print('ต้องได้ HTTP 200 ก่อนเริ่ม กรุณาตรวจเว็บและการเชื่อมต่อ')
         return result == 200
 
-    def send_http(self, case, path, count):
+    def send_http(self, case, path, count, headers=None):
         url = self.url.rstrip('/') + path
-        result = http_status(url)
+        result = http_status(url, headers=headers)
         self.report(case, url, result, count)
         return result
 
@@ -200,9 +208,24 @@ class LiveTest:
         self.report('7', url, result, count)
         return result
 
+    def expect_no_block(self, case):
+        """Case 8 passes when the site still answers 200 for NO_BLOCK_WAIT_S seconds."""
+        deadline = time.monotonic() + NO_BLOCK_WAIT_S
+        while time.monotonic() < deadline:
+            if self.check(case) == 403:
+                print('\n*** ผิดคาด: โดนบล็อกจาก request แบบ cross-site — ตรวจว่า bridge บน VPS เป็นเวอร์ชัน #41 ***\n')
+                self.journal.record(case, self.url, 'blocked_unexpected')
+                return False
+            time.sleep(min(5, max(0, deadline - time.monotonic())))
+        print('\n*** ผ่าน: {} วินาทีแล้วยังได้ 200 — <img> จากเว็บอื่นทำให้คนจริงโดนบล็อกไม่ได้ ***\n'.format(NO_BLOCK_WAIT_S))
+        self.journal.record(case, self.url, 'not_blocked_ok', waited_seconds=NO_BLOCK_WAIT_S)
+        return True
+
     def run_case(self, case, module=None):
         if case == '1':
             self.send_http(case, '/backup.sql', 1)
+        elif case == '8':
+            self.send_http(case, '/backup.sql', 1, headers=CROSS_SITE_HEADERS)
         elif case == '2':
             for index, path in enumerate(scan_paths(), 1):
                 self.send_http(case, path, index)
@@ -276,10 +299,10 @@ def menu(test):
     while True:
         try:
             print('\n' + '\n'.join('{}: {}'.format(i, v) for i, v in enumerate(LABELS, 1)))
-            case = input('เลือก 1–7 หรือ 0 เพื่อออก: ').strip()
+            case = input('เลือก 1–8 หรือ 0 เพื่อออก: ').strip()
             if case == '0':
                 return
-            if case not in ('1', '2', '3', '4', '5', '6', '7'):
+            if case not in ('1', '2', '3', '4', '5', '6', '7', '8'):
                 continue
             if case == '7':
                 try:
@@ -308,6 +331,8 @@ def menu(test):
                       'TCP connect แล้วปิด 110 ครั้ง ~50 วินาที → ' + test.ip + ':22'),
                 '7': ('POST {} ด้วยบัญชีสุ่มที่ไม่มีจริง รหัสผิด 6 ครั้ง ห่าง ~1.5 วินาที → https://{}'
                       .format(LOGIN_PATH, getattr(test, 'login_site', ''))),
+                '8': ('GET /backup.sql 1 ครั้ง พร้อม header แบบที่เบราว์เซอร์ส่งเมื่อเว็บอื่นแปะ <img> '
+                      '(Sec-Fetch-Site: cross-site) แล้วเช็กว่า {} วินาทียังได้ 200 → {}'.format(NO_BLOCK_WAIT_S, test.url)),
             }
             print(descriptions[case])
             confirmed = input('ยืนยันว่ามีสิทธิ์ทดสอบเป้าหมายนี้ และเริ่มยิง? [y/n]: ').strip().lower() == 'y'
@@ -317,11 +342,22 @@ def menu(test):
             started = time.monotonic()
             if not test.run_case(case, module):
                 continue
-            print('ไปที่ dashboard → Approvals แล้วกดอนุมัติ (Ctrl+C ยกเลิกรอและกลับเมนู)')
+            if case == '8':
+                test.expect_no_block(case)
+                continue
+            auto = case in AUTO_CASES
+            if auto:
+                print('ข้อนี้ระบบบล็อกเอง (auto-approve) ไม่ต้องกดอนุมัติ ถ้านานเกิน 1 นาทียังไม่ 403 ให้ดู dashboard → Approvals '
+                      'ถ้ามีรายการรออนุมัติแปลว่า SENTINEL_AUTO_APPROVE ปิดอยู่ กดอนุมัติเองได้ (Ctrl+C ยกเลิกรอ)')
+            else:
+                print('ไปที่ dashboard → Approvals แล้วกดอนุมัติ (Ctrl+C ยกเลิกรอและกลับเมนู)')
             if not test.wait_status(403, case, started):
                 continue
-            print('ไปที่ dashboard → Protection แล้วกดปลดบล็อก')
-            if test.wait_status(200, case):
+            if auto:
+                print('ผู้อนุมัติใน dashboard ต้องเป็น system (auto) · ปลดบล็อกที่ dashboard → Protection หรือรอหมดอายุเอง 10 นาที')
+            else:
+                print('ไปที่ dashboard → Protection แล้วกดปลดบล็อก')
+            if test.wait_status(200, case, limit=720 if auto else 600):
                 test.evidence()
         except KeyboardInterrupt:
             print('\nยกเลิกและกลับเมนู')
