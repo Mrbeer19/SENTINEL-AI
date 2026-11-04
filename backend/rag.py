@@ -107,10 +107,12 @@ def evidence(con, incident: dict) -> dict:
     # Timestamps are ISO strings with +00:00; compare like with like (SQLite datetime() drops the "T" and offset).
     since = (datetime.fromisoformat(incident["created_at"]) - timedelta(seconds=EVIDENCE_WINDOW_S)).isoformat(timespec="seconds")
     types = KIND_EVENTS.get(incident["kind"], ("HTTP_REQUEST", "HTTP_AUTH", "SSH_AUTH", "CONNECTION"))
+    # A finished incident owns events up to closed_event_id (#48); later attacks of the same kind belong to the next one.
+    upper, bound = ("AND id <= ? ", (incident["closed_event_id"],)) if incident.get("closed_event_id") is not None else ("", ())
     rows = con.execute(
         "SELECT event_type, outcome, destination_port, request_count, not_found, paths FROM events "
-        f"WHERE source_ip=? AND timestamp >= ? AND event_type IN ({','.join('?' * len(types))}) ORDER BY id DESC LIMIT 400",
-        (incident["source_ip"], since, *types),
+        f"WHERE source_ip=? AND timestamp >= ? AND event_type IN ({','.join('?' * len(types))}) {upper}ORDER BY id DESC LIMIT 400",
+        (incident["source_ip"], since, *types, *bound),
     ).fetchall()
     paths, ports = [], set()
     totals = {"failed_logins": 0, "success_logins": 0, "requests": 0, "not_found": 0}

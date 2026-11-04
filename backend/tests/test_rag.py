@@ -152,3 +152,16 @@ def test_evidence_of_one_incident_ignores_the_next_attack(make_app):
 
 def test_every_detected_kind_has_its_own_event_types():
     assert set(rag.KIND_EVENTS) == KINDS
+
+
+def test_a_finished_incident_does_not_show_the_next_attack_of_the_same_kind(make_app):
+    # After #48 a finished incident owns events up to closed_event_id; the next brute force is a new incident.
+    c = connect(make_app(SENTINEL_RAG="1"))
+    for _ in range(5):
+        first = c.post("/api/events", json=event()).json()["incident"]
+    proposal = c.post(f"/api/incidents/{first['id']}/analyze").json()["proposal"]
+    c.post(f"/api/proposals/{proposal['id']}/reject", json={"reviewer": "admin"})
+    for _ in range(3):
+        c.post("/api/events", json=event())
+    facts = c.post(f"/api/incidents/{first['id']}/ask", json={"question": "what"}).json()["evidence"]
+    assert facts["failed_logins"] == 5
