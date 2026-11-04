@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError, model_validator
 
-from backend import logparse, policy, soc
+from backend import logparse, policy, rag, soc
 from backend.admin_auth import AdminAuth, COOKIE
 from backend.agent import Agent
 from backend.config import ROOT, load_settings, same_model
@@ -78,6 +78,10 @@ class EventIn(BaseModel):
         elif self.count or self.not_found or self.paths or self.honeypot:
             raise ValueError("count, not_found, paths and honeypot are only for HTTP_REQUEST")
         return self
+
+
+class AskIn(BaseModel):
+    question: Literal["what", "risk", "response"]
 
 
 class DecisionIn(BaseModel):
@@ -151,6 +155,9 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
     auth = AdminAuth(db_path)
     ruleset = RuleSet(settings.rules_dir)
     agent = Agent(settings, store)
+    kb = rag.load_kb() if settings.rag else []
+    rag_cache: dict[tuple, dict] = {}
+    rag_lock = asyncio.Lock()  # one GPU: answers are generated one at a time
     async def automatic_analysis():
         while True:
             # Reconcile events written by the legacy collector backend sharing this DB.
@@ -411,6 +418,35 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         except (httpx.HTTPError, ValueError):
             pass
         return {"status": "ok", "version": API_VERSION, "model": settings.model, "model_ready": model_ready, "ai_mode": "ollama" if model_ready else "rule_fallback"}
+
+    @api.get("/api/rag")
+    def rag_status():
+        return {"enabled": settings.rag, "questions": rag.QUESTIONS if settings.rag else {}}
+
+    @api.post("/api/incidents/{incident_id}/ask")
+    async def ask(incident_id: int, body: AskIn):
+        """'Ask me': explains the incident from backend/kb. Reads only; never proposes, approves or unblocks."""
+        if not settings.rag:
+            raise HTTPException(404, "Ask me is off (SENTINEL_RAG=0)")
+        incident = store.one("SELECT * FROM incidents WHERE id=?", (incident_id,))
+        if not incident:
+            raise HTTPException(404, "incident not found")
+        key = (incident_id, body.question, incident["status"], incident["event_count"])
+        if key in rag_cache:
+            return {**rag_cache[key], "cached": True}
+        sources = rag.retrieve(kb, incident, body.question)
+        with store.tx() as con:
+            facts = rag.evidence(con, incident)
+        async with rag_lock:
+            try:
+                answer, generated = await rag.generate(settings, settings.rag_model, rag.build_messages(body.question, facts, sources)), True
+            except (httpx.HTTPError, KeyError, ValueError):
+                answer, generated = rag.extractive_answer(sources), False
+        result = {"incident_id": incident_id, "question": body.question, "question_text": rag.QUESTIONS[body.question],
+                  "answer": answer, "generated": generated, "model": settings.rag_model if generated else None,
+                  "sources": [rag.source_view(d) for d in sources], "evidence": facts}
+        rag_cache[key] = result
+        return {**result, "cached": False}
 
     @api.post("/api/events", status_code=201)
     async def add_event(event: EventIn):
