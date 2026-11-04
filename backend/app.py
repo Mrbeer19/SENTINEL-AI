@@ -578,6 +578,25 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         apply_block(con, {**dict(proposal), "action": policy.AUTO_ACTION, "duration_seconds": seconds}, policy.AUTO_APPROVER)
         return True
 
+    @api.post("/api/proposals/{proposal_id}/acknowledge")
+    async def acknowledge(proposal_id: int, decision: DecisionIn):
+        """An admin confirms they saw a block the rule approved without a human; the dashboard alert stays until then."""
+        proposal = store.one("SELECT * FROM proposals WHERE id=?", (proposal_id,))
+        if not proposal:
+            raise HTTPException(404, "proposal not found")
+        if proposal["status"] != "approved" or proposal["reviewer"] != policy.AUTO_APPROVER:
+            raise HTTPException(409, "only automatic blocks need an acknowledgement")
+        with store.tx() as con:
+            changed = con.execute("UPDATE proposals SET acknowledged_by=?, acknowledged_at=? WHERE id=? AND acknowledged_at IS NULL",
+                                  (decision.reviewer, utcnow(), proposal_id))
+            if changed.rowcount != 1:
+                raise HTTPException(409, "already acknowledged")
+            log(con, proposal["incident_id"], "acknowledged", f"{decision.reviewer} acknowledged the automatic block")
+            audit(con, decision.reviewer, "auto_block_acknowledged", proposal["incident_id"], {"proposal_id": proposal_id, "target_ip": proposal["target_ip"] or proposal["source_ip"]})
+        result = get_incident(proposal["incident_id"])
+        await broadcast("approval", result)
+        return result
+
     @api.post("/api/proposals/{proposal_id}/reject")
     async def reject(proposal_id: int, decision: DecisionIn):
         proposal = pending_proposal(proposal_id)

@@ -1891,3 +1891,37 @@ textarea {
   border-radius: 6px;
   font-size: 13px;
 }
+
+/* Automatic blocks wait here until an admin acknowledges them (AutoBlockAlerts.jsx). */
+.autoBlockAlerts {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--glass-line));
+  border-radius: 16px;
+  background: var(--glass-strong);
+  color: var(--ink);
+}
+.autoBlockAlerts > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+.autoBlockAlert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.autoBlockAlert small {
+  color: var(--muted);
+}
+.autoBlockAlert a {
+  color: var(--accent);
+}
