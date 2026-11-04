@@ -18,6 +18,8 @@ import {
   channelOfKind,
   sortIncidents,
   ruleLifetime,
+  expiresText,
+  NO_EXPIRY_TEXT,
   statusLabels,
   targetIp,
   time,
@@ -1114,7 +1116,7 @@ export function Rules({ ctx, id }) {
             {
               key: "expires_at",
               label: "EXPIRES",
-              render: (r) => date(r.expires_at),
+              render: (r) => expiresText(r),
             },
             {
               key: "proof",
@@ -1146,7 +1148,7 @@ export function Rules({ ctx, id }) {
                 </div>
                 <div>
                   <dt>หมดอายุ</dt>
-                  <dd>{date(selected.expires_at)}</dd>
+                  <dd>{expiresText(selected)}</dd>
                 </div>
               </dl>
               {activeRule(selected, ctx.now) && (
@@ -1210,6 +1212,13 @@ export function Rules({ ctx, id }) {
 export function RuleCountdown({ rule, now }) {
   const lifetime = ruleLifetime(rule, now);
   if (!lifetime) return null;
+  if (lifetime.noExpiry)
+    return (
+      <div className="countdown">
+        <small>TIME REMAINING</small>
+        <strong>{NO_EXPIRY_TEXT}</strong>
+      </div>
+    );
   const minutes = Math.floor(lifetime.seconds / 60),
     seconds = lifetime.seconds % 60;
   return (

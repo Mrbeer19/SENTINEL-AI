@@ -8,6 +8,8 @@ import {
   isPublic,
   sortIncidents,
   ruleLifetime,
+  expiresText,
+  duration,
   date,
   attentionQueue,
 } from "../src/lib.js";
@@ -35,6 +37,14 @@ test("rule lifetime follows server timestamps and never invents a percentage", (
   assert.equal(ruleLifetime(rule, Date.parse("2026-10-31T11:59:00Z")).percent, 100);
   assert.equal(ruleLifetime({ ...rule, created_at: null }, Date.parse("2026-10-31T12:05:00Z")).percent, null);
   assert.equal(ruleLifetime({ expires_at: "invalid" }, Date.now()), null);
+});
+test("rules without expiry (SENTINEL_MANUAL_UNBLOCK=1) say until unblocked, not a countdown of years", () => {
+  const rule = { created_at: "2026-11-04T10:00:00+00:00", expires_at: "9999-12-31T23:59:59+00:00" };
+  assert.deepEqual(ruleLifetime(rule, Date.parse("2026-11-04T10:05:00Z")), { noExpiry: true });
+  assert.equal(expiresText(rule), "จนกว่าจะปลดบล็อก");
+  assert.equal(expiresText({ expires_at: "2026-11-04T10:10:00+00:00" }), date("2026-11-04T10:10:00+00:00"));
+  assert.equal(duration(0), "จนกว่าจะปลดบล็อก");
+  assert.equal(duration(600), "10 นาที");
 });
 test("verification requires a denied request within the correct source and rule lifetime", () => {
   const r = {
