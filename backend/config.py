@@ -48,6 +48,7 @@ class Settings:
     allowed_hosts: frozenset[str]
     local_peers: frozenset[str]
     manual_unblock: bool = False
+    auto_approve: bool = False
 
 
 def load_settings() -> Settings:
@@ -72,4 +73,6 @@ def load_settings() -> Settings:
         local_peers=LOCAL_PEERS | parse_ips(os.getenv("SENTINEL_LAN_HOST", "")),
         # Approved blocks stay until an admin unblocks them on the dashboard (no automatic expiry).
         manual_unblock=os.getenv("SENTINEL_MANUAL_UNBLOCK", "0") == "1",
+        # Honeypot, scanner paths and CRITICAL floods are blocked for 600 s without a human (policy.AUTO_RULES).
+        auto_approve=os.getenv("SENTINEL_AUTO_APPROVE", "0") == "1",
     )

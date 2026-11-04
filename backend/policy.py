@@ -11,6 +11,22 @@ DURATION_SECONDS = {"TEMP_BLOCK_IP": 600, "BLOCK_IP": 3600}
 D3FEND_TECHNIQUE = "D3-ITF"  # MITRE D3FEND Inbound Traffic Filtering
 # duration_seconds 0 means the rule has no expiry; an admin removes it from the dashboard.
 NO_EXPIRY = "9999-12-31T23:59:59+00:00"
+# SENTINEL_AUTO_APPROVE=1: these detections are blocked without waiting for a human. The rule decides, never the model:
+# the model reads attacker-controlled logs and still proposes blocks on harmless cases (v5/v6 bench).
+AUTO_APPROVER = "system (auto)"
+AUTO_ACTION = "TEMP_BLOCK_IP"
+AUTO_LIMIT_PER_HOUR = 10  # beyond this, proposals wait for a human again
+AUTO_RULES = {
+    "sentinel-web-honeypot": "ANY",  # decoy paths a real visitor has no link to
+    "sentinel-web-scan-paths": "ANY",  # /.env, /.git, /wp-admin ... only scanners ask for these
+    "sentinel-http-flood": "CRITICAL",  # a flood cannot wait; a MEDIUM one still goes to a human
+}
+
+
+def auto_eligible(incident: dict) -> bool:
+    """True when the incident's detection rule may be blocked without a human (SENTINEL_AUTO_APPROVE=1)."""
+    needed = AUTO_RULES.get(incident.get("rule_id"))
+    return needed == "ANY" or (needed is not None and incident["severity"] == needed)
 
 
 def expires_at(duration_seconds: int) -> str:

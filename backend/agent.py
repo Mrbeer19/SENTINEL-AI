@@ -170,7 +170,7 @@ def load_prompt(path: Path, builtin: str) -> tuple[str, str]:
         return builtin, f"builtin:{path.stem}"
 
 
-def rule_fallback(incident: dict, evidence_count: int, extra_evidence: list[str] | None = None) -> Analysis:
+def rule_fallback(incident: dict, evidence_count: int, extra_evidence: list[str] | None = None, auto: bool = False) -> Analysis:
     rule_only = incident["kind"] in RULE_ONLY_KINDS
     return Analysis(
         threat_type=incident["kind"] if incident["kind"] in THREAT_TYPES + RULE_ONLY_KINDS else "UNKNOWN",
@@ -179,7 +179,8 @@ def rule_fallback(incident: dict, evidence_count: int, extra_evidence: list[str]
         evidence=[f"Rule {incident.get('rule_id') or incident['kind']} matched {incident['event_count']} events from {incident['source_ip']}",
                   f"{evidence_count} recent events inspected without the model", *(extra_evidence or [])][:10],
         recommended_action="TEMP_BLOCK_IP",
-        explanation_th=("ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลยังไม่ได้ฝึกกับการโจมตีเว็บประเภทนี้) ต้องให้คนตรวจก่อนอนุมัติ" if rule_only else
+        explanation_th=("ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล กฎนี้อนุมัติบล็อกชั่วคราวได้เองโดยไม่รอคน ผู้ดูแลตรวจย้อนหลังและปลดบล็อกได้" if auto else
+                        "ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลยังไม่ได้ฝึกกับการโจมตีเว็บประเภทนี้) ต้องให้คนตรวจก่อนอนุมัติ" if rule_only else
                         "ผลนี้มาจากกฎตรวจจับ ไม่ใช่โมเดล (โมเดลใช้งานไม่ได้หรือผลไม่ผ่านการตรวจ) ต้องให้คนตรวจก่อนอนุมัติ"),
     )
 
@@ -407,7 +408,7 @@ class Agent:
             paths += [path for path in json.loads(row["paths"]) if path not in paths]
         extra = [f"{totals['requests']} requests, {totals['not_found']} not found, {totals['scan_paths']} scanner paths, {totals['honeypot']} decoy hits"]
         extra += [f"Requested path (untrusted): {path}" for path in paths[:5]]
-        analysis = rule_fallback(incident, totals["events"], extra)
+        analysis = rule_fallback(incident, totals["events"], extra, auto=self.settings.auto_approve and policy.auto_eligible(incident))
         await self._trace(notify, incident["id"], "rule_fallback", "invoke_agent", "rule_fallback", "fallback", "fallback", started,
                           {"reason": f"{incident['kind']} is analysed by its detection rule, not the model"}, analysis.model_dump())
         return analysis

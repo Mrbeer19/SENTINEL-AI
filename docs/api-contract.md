@@ -198,6 +198,8 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 - `POST /api/proposals/{id}/reject` → incident detail · ไม่สร้างกฎ · `rejected`
 - ตัดสินซ้ำ 409 · policy ไม่ผ่านตอนอนุมัติ 400
 
+**อนุมัติอัตโนมัติ (`SENTINEL_AUTO_APPROVE=1`, ค่าเริ่มต้น 0):** กฎ `sentinel-web-honeypot`, `sentinel-web-scan-paths` และ `sentinel-http-flood` ที่เป็น `CRITICAL` อนุมัติเองทันทีตอน event เข้า (`POST /api/events` ตอบกลับมาเป็น `blocked` เลย ไม่ต่อคิว worker; 3 กฎนี้เป็น rule-only โมเดลไม่ได้อ่าน จึงห้ามบล็อกไม่ได้) · `reviewer = "system (auto)"` (ใน proposal และ actor ของ audit) · ใช้ `TEMP_BLOCK_IP` 600 วิเสมอ แม้ตั้ง `SENTINEL_MANUAL_UNBLOCK=1` · ผ่าน policy ข้อ 1–3 เหมือนเดิม · เกิน 10 IP ต่อชั่วโมงจะกลับไปรอคน · proposal ที่รออยู่จะอนุมัติเองเมื่อ incident กลายเป็นเข้าเงื่อนไขทีหลัง (เช่น flood MEDIUM → CRITICAL) · ชนิดอื่นรอคนกดเหมือนเดิม · ผู้ตัดสินคือกฎ ไม่ใช่โมเดล
+
 ## Firewall และ verification
 
 - `GET /api/rules` → array มี `active` · `DELETE /api/rules/{id}` ปิดกฎ (incident `blocked` → `closed`)
