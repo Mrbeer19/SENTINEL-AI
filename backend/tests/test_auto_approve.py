@@ -26,6 +26,7 @@ def auto(make_app):
 
 
 def test_off_by_default_honeypot_waits_for_a_human(client):
+    assert honeypot(client)["status"] == "detected"
     result = analyze(client, honeypot(client))
     assert result["status"] == "awaiting_approval" and result["proposal"]["status"] == "pending"
 
@@ -36,7 +37,10 @@ def test_off_by_default_honeypot_waits_for_a_human(client):
     {"count": 900},  # 3 × the 300 threshold → CRITICAL
 ])
 def test_auto_rules_block_without_a_human(auto, extra):
-    result = analyze(auto, web(auto, **extra))
+    incident = web(auto, **extra)
+    assert incident["status"] == "blocked"  # blocked during ingest, without waiting for the analysis worker
+    result = auto.get(f"/api/incidents/{incident['id']}").json()
+    assert result["analysis_mode"] == "rule_fallback" and "ต้องให้คนตรวจ" not in result["analysis"]["explanation_th"]
     proposal = result["proposal"]
     assert result["status"] == "blocked" and proposal["status"] == "approved"
     assert proposal["reviewer"] == policy.AUTO_APPROVER and proposal["action"] == "TEMP_BLOCK_IP" and proposal["duration_seconds"] == 600

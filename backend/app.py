@@ -359,6 +359,11 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             await broadcast("incident", incident)
         if auto_blocked:
             await broadcast("approval", get_incident(incident["id"]))
+        # Auto-approve kinds are rule-only (no model call), so analyse and block now instead of waiting in the worker queue.
+        if incident and incident["status"] == "detected" and settings.auto_approve and policy.auto_eligible(incident):
+            with suppress(HTTPException):  # 409: the background worker claimed it first
+                await analyze(incident["id"])
+            incident = format_incident(store.one("SELECT * FROM incidents WHERE id=?", (incident["id"],)))
         return {"event": result, "incident": incident}
 
     geo_cache = {}
