@@ -89,7 +89,7 @@ def event(line: bytes, offset: int):
 
 
 def request(line: bytes):
-    """(ip, window end, path, status) for a request worth counting, else None."""
+    """(ip, window end, path, status, cross_site) for a request worth counting, else None."""
     try:
         row = json.loads(line)
         req = row["request"]
@@ -100,19 +100,27 @@ def request(line: bytes):
         if status == 403 or STATIC.search(path.lower()):
             return None  # 403 = already blocked by SENTINEL (reported as a denial)
         end = (int(float(row["ts"])) // WINDOW_S + 1) * WINDOW_S
-        return str(ipaddress.ip_address(req["remote_ip"])), end, path, status
+        # A browser sends Sec-Fetch-Site and a page cannot change it: "cross-site" means another site made this
+        # visitor's browser load the URL (e.g. <img src="our-site/.env">), so the visitor did not choose the path.
+        cross_site = "cross-site" in (req.get("headers") or {}).get("Sec-Fetch-Site", [])
+        return str(ipaddress.ip_address(req["remote_ip"])), end, path, status, cross_site
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
 
 
 def add_request(totals: dict, record) -> None:
-    ip, end, path, status = record
+    ip, end, path, status, cross_site = record
     item = totals.setdefault((ip, end), {"ip": ip, "window_end": end, "count": 0, "not_found": 0, "paths": [], "honeypot": False})
     item["count"] += 1
-    decoy = path.lower() in HONEYPOT_PATHS
-    item["honeypot"] |= decoy
     if status == 404:
         item["not_found"] += 1
+    if cross_site:
+        # Still counted (flood, many 404s go to a human), but the path is not sent: decoy and scanner-path hits are
+        # blocked without a human, and that must not be triggerable through someone else's browser. A scanner that
+        # fakes this header only loses the automatic block; its 404s still raise a WEB_SCAN incident.
+        return
+    decoy = path.lower() in HONEYPOT_PATHS
+    item["honeypot"] |= decoy
     # Only decoy and not-found paths are kept (never query strings), decoys first: normal browsing stays private.
     clean = "".join(ch for ch in path if ch.isprintable())[:PATH_MAX]
     if (decoy or status == 404) and clean not in item["paths"]:
