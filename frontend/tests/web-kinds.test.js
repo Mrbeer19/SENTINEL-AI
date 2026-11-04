@@ -284,3 +284,10 @@ test("trace log table retains HTTP request fields and escapes untrusted paths", 
   assert.equal(ui.formatEventPaths([]), "—");
   assert.equal(ui.formatEventPaths(payload), payload.join("\n"));
 });
+
+test("a status badge only animates when its status changes, not on first render", () => {
+  const first = html(ui.Badge, { value: "blocked" });
+  assert.match(first, /class="tag [^"]*"/);
+  assert.doesNotMatch(first, /changed/);
+  assert.match(first, /data-status="blocked"/);
+});

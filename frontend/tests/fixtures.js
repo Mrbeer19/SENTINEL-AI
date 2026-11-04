@@ -189,6 +189,13 @@ window.fetch = async (input, options = {}) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+    if (options.method === "POST" && path === "/api/proposals/2/acknowledge" && scenario === "auto-blocked") {
+      autoAcknowledged = true;
+      return new Response(JSON.stringify({ id: 2 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     if (options.method === "DELETE" && /^\/api\/rules\/[12]$/.test(path)) {
       disabledRules.add(Number(path.split("/").at(-1)));
       return new Response('{"ok":true}', {
@@ -239,6 +246,18 @@ window.fetch = async (input, options = {}) => {
       trace: [],
     }),
   );
+  if (scenario === "auto-blocked") {
+    Object.assign(second, { kind: "HONEYPOT", severity: "HIGH", status: "blocked", rule_id: "sentinel-web-honeypot" });
+    second.proposal = {
+      ...second.proposal,
+      status: "approved",
+      reviewer: "system (auto)",
+      action: "TEMP_BLOCK_IP",
+      duration_seconds: 600,
+      acknowledged_by: autoAcknowledged ? "QA admin" : null,
+      acknowledged_at: autoAcknowledged ? new Date(fixtureNow).toISOString() : null,
+    };
+  }
   const incidents = scenario === "empty" ? [] : [r, second, ...extras];
   const events =
     scenario === "empty"
@@ -409,8 +428,10 @@ window.WebSocket = class FixtureSocket {
   }
 };
 
+let autoAcknowledged = false;
 export function setScenario(value) {
   scenario = value;
+  autoAcknowledged = false;
   webKind = isRuleOnly(value) ? value : null;
   disabledRules = new Set();
   sockets.forEach((s) => s.onmessage?.({ data: "{}" }));
@@ -423,6 +444,7 @@ export const scenarios = [
   "planner",
   "blocked",
   "verified",
+  "auto-blocked",
   "rejected",
   "fallback",
   "no-action",
