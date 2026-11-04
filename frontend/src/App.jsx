@@ -7,6 +7,7 @@ import SentinelLogo, { SentinelMark } from "./SentinelLogo.jsx";
 import Mascot, { ConnectionLoader, PageSkeleton, RailBuddy } from "./Mascot.jsx";
 import { NetworkBackdrop, TiltStage } from "./LoginScene.jsx";
 import { RefreshMotion, useNavIndicator } from "./motion.jsx";
+import AutoBlockAlerts from "./AutoBlockAlerts.jsx";
 import {
   Approvals,
   Incident,
@@ -289,7 +290,11 @@ export function Workspace({
           body: method === "DELETE" ? undefined : body,
         });
         setToast({
-          message: path.endsWith("/approve") ? "บล็อก IP สำเร็จ" : "บันทึกการดำเนินการแล้ว",
+          message: path.endsWith("/approve")
+            ? "บล็อก IP สำเร็จ"
+            : path.endsWith("/acknowledge")
+              ? "รับทราบการบล็อกอัตโนมัติแล้ว"
+              : "บันทึกการดำเนินการแล้ว",
           type: "good",
           approved: path.endsWith("/approve"),
         });
@@ -517,6 +522,7 @@ export function Workspace({
             </button>
           </div>
         )}
+        {!live.loading && live.data.health && <AutoBlockAlerts ctx={ctx} />}
         <div key={route.page} className="pageContent">
           {live.loading ? (
             <PageSkeleton />

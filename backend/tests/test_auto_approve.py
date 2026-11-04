@@ -113,3 +113,23 @@ def test_pending_404_scan_is_auto_blocked_when_scanner_paths_follow(auto):
 def test_404_scan_keeps_its_rule_when_auto_approve_is_off(client):
     incident = web(client, count=10, not_found=10, paths=["/.env", "/.git/config", "/wp-admin/setup.php"])
     assert incident["status"] == "detected" and incident["rule_id"] == "sentinel-web-scan-not-found"
+
+
+def test_admin_acknowledges_an_automatic_block_once(auto):
+    result = analyze(auto, honeypot(auto))
+    proposal = result["proposal"]
+    assert proposal["acknowledged_at"] is None
+    acked = auto.post(f"/api/proposals/{proposal['id']}/acknowledge", json={"reviewer": "admin"}).json()
+    assert acked["proposal"]["acknowledged_by"] == "admin" and acked["proposal"]["acknowledged_at"]
+    assert any(step["stage"] == "acknowledged" for step in acked["timeline"])
+    assert any(e["actor"] == "admin" and e["action"] == "auto_block_acknowledged" for e in auto.get("/api/audit").json())
+    assert auto.post(f"/api/proposals/{proposal['id']}/acknowledge", json={"reviewer": "admin"}).status_code == 409
+    assert auto.get("/api/audit/verify").json()["valid"] is True
+
+
+def test_only_automatic_blocks_can_be_acknowledged(auto):
+    pending = analyze(auto, web(auto, count=300))["proposal"]
+    assert auto.post(f"/api/proposals/{pending['id']}/acknowledge", json={"reviewer": "admin"}).status_code == 409
+    human = auto.post(f"/api/proposals/{pending['id']}/approve", json={"reviewer": "admin"}).json()["proposal"]
+    assert auto.post(f"/api/proposals/{human['id']}/acknowledge", json={"reviewer": "admin"}).status_code == 409
+    assert auto.post("/api/proposals/9999/acknowledge", json={"reviewer": "admin"}).status_code == 404
