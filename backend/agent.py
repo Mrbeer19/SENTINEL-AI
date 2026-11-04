@@ -233,7 +233,10 @@ class Agent:
                 return "error", {"error": f"{key} must be a non-empty string"}
         src = incident["source_ip"]
         ip = args.get("ip_address")
-        since = (datetime.fromisoformat(incident["created_at"]) - timedelta(seconds=ACTIVITY_WINDOW_S)).isoformat(timespec="seconds")
+        # Anchor on the source's latest event when the incident opened, not the wall clock: a bridge catching up on a
+        # backlog stores older timestamps than the incident's created_at.
+        anchor = self.store.one("SELECT MAX(timestamp) t FROM events WHERE source_ip=? AND timestamp<=?", (src, incident["created_at"]))["t"]
+        since = (datetime.fromisoformat(anchor or incident["created_at"]) - timedelta(seconds=ACTIVITY_WINDOW_S)).isoformat(timespec="seconds")
         if name == "get_incident_logs":
             if args["incident_id"].strip().upper() not in {incident_ref(incident["id"]), str(incident["id"])}:
                 return "error", {"error": "incident not found"}

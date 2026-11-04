@@ -112,6 +112,17 @@ def test_tools_only_see_the_incident_window(tmp_path):
     assert {r["type"] for r in logs["untrusted_log_records"]} == {"CONNECTION"}
 
 
+def test_window_follows_event_time_when_the_bridge_catches_up(tmp_path):
+    # Bridge restarted after 10 minutes: the incident opens now, its events carry the older log timestamps.
+    db = tmp_path / "backlog.db"
+    client = connect(create_app(db))
+    for _ in range(5):
+        incident = client.post("/api/events", json=event(timestamp=at(600)))
+    incident = incident.json()["incident"]
+    _, activity = Agent(load_settings(), Store(db)).run_tool(incident, "get_ip_activity", {"ip_address": ATTACKER})
+    assert activity["failed_logins"] == 5
+
+
 def test_ip_activity_refuses_other_ips(tools):
     assert run(tools, "get_ip_activity", ip_address=OTHER)[0] == "error"
 

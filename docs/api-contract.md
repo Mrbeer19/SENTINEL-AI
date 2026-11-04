@@ -165,8 +165,8 @@ blocked → closed (ปลดกฎก่อน verify)
 
 | tool | args | คืน |
 |---|---|---|
-| `get_incident_logs` | `incident_id` (`INC-0001`) | `{incident_id, untrusted_log_records[≤40], returned}` · username ตัดเหลือ 64 · เฉพาะ event ตั้งแต่ 75 วินาทีก่อนเปิด incident |
-| `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched · นับเฉพาะ event ตั้งแต่ 75 วินาทีก่อนเปิด incident (`ACTIVITY_WINDOW_S`) ไม่รวมประวัติก่อนหน้าของ IP |
+| `get_incident_logs` | `incident_id` (`INC-0001`) | `{incident_id, untrusted_log_records[≤40], returned}` · username ตัดเหลือ 64 · เฉพาะ event ตั้งแต่ 75 วินาทีก่อน event ล่าสุดของ IP ณ เวลาที่เปิด incident |
+| `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched · นับเฉพาะ event ตั้งแต่ 75 วินาทีก่อน event ล่าสุดของ IP ณ เวลาที่เปิด incident (`ACTIVITY_WINDOW_S`) ไม่รวมประวัติก่อนหน้าของ IP |
 | `get_related_incidents` | `ip_address` | incident อื่นของ IP นี้ ≤10 |
 | `get_firewall_status` | `ip_address` | `{ip, status: ALLOWED/BLOCKED, protected}` |
 
