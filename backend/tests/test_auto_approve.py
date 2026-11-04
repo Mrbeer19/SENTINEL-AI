@@ -1,7 +1,7 @@
 """SENTINEL_AUTO_APPROVE=1: honeypot, scanner paths and CRITICAL floods are blocked without a human; everything else still waits."""
 
 import pytest
-from conftest import ATTACKER, connect, event
+from conftest import ATTACKER, at, connect, event
 
 from backend import policy
 
@@ -133,3 +133,21 @@ def test_only_automatic_blocks_can_be_acknowledged(auto):
     human = auto.post(f"/api/proposals/{pending['id']}/approve", json={"reviewer": "admin"}).json()["proposal"]
     assert auto.post(f"/api/proposals/{human['id']}/acknowledge", json={"reviewer": "admin"}).status_code == 409
     assert auto.post("/api/proposals/9999/acknowledge", json={"reviewer": "admin"}).status_code == 404
+
+
+def test_unblocked_scan_is_not_counted_again(auto):
+    # Rehearsal: scan → auto block → admin unblocks → the next ordinary request re-counted the old paths and re-blocked.
+    incident = web(auto, count=12, not_found=12, paths=["/.env", "/.git/config", "/wp-admin/setup.php"], timestamp=at(30))
+    assert incident["status"] == "blocked"
+    rule = auto.get("/api/rules").json()[0]
+    assert auto.delete(f"/api/rules/{rule['id']}").status_code == 200
+    assert web(auto, count=1) is None
+    assert auto.post("/api/demo/traffic", json={"source_ip": ATTACKER}).status_code == 200
+    assert len(auto.get("/api/incidents").json()) == 1
+
+
+def test_new_scan_after_unblock_is_still_detected(auto):
+    web(auto, count=12, not_found=12, paths=["/.env", "/.git/config", "/wp-admin/setup.php"], timestamp=at(30))
+    auto.delete(f"/api/rules/{auto.get('/api/rules').json()[0]['id']}")
+    again = web(auto, count=3, paths=["/.env", "/.git/HEAD", "/wp-login.php"])
+    assert again is not None and again["status"] == "blocked" and len(auto.get("/api/incidents").json()) == 2

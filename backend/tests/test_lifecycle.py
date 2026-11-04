@@ -4,7 +4,7 @@ import json
 import sqlite3
 
 import pytest
-from conftest import ATTACKER, analysis, blocked_incident, connect, simulate
+from conftest import ATTACKER, analysis, at, blocked_incident, connect, event, simulate
 
 from backend.app import TERMINAL, TRANSITIONS
 
@@ -240,3 +240,16 @@ def test_reset_keeps_history(client):
     events = len(client.get("/api/events").json())
     client.post("/api/demo/reset")
     assert len(client.get("/api/events").json()) == events and len(client.get("/api/incidents").json()) == 1
+
+
+def test_one_more_failure_after_unblock_does_not_reopen_the_old_attack(client):
+    # The six failures already led to a block; after the admin unblocks, one new failure is not a new brute force.
+    for _ in range(6):
+        incident = client.post("/api/events", json=event(event_type="SSH_AUTH", timestamp=at(30))).json()["incident"]
+    proposal = analyze(client, incident["id"]).json()["proposal"]
+    client.post(f"/api/proposals/{proposal['id']}/approve", json=REVIEW)
+    client.delete(f"/api/rules/{client.get('/api/rules').json()[0]['id']}")
+    assert client.post("/api/events", json=event(event_type="SSH_AUTH")).json()["incident"] is None
+    for _ in range(4):
+        reopened = client.post("/api/events", json=event(event_type="SSH_AUTH")).json()["incident"]
+    assert reopened is not None and reopened["id"] != incident["id"] and reopened["event_count"] == 5

@@ -85,14 +85,20 @@ class RuleSet:
         self.rules = [_parse(path) for path in files]
         self.version = hashlib.sha256(b"".join(path.read_bytes() for path in files)).hexdigest()[:12]
 
-    def evaluate(self, con: sqlite3.Connection, event: dict) -> list[Match]:
-        """Count matching events for the event's source IP in the window ending at the event's own time."""
+    def evaluate(self, con: sqlite3.Connection, event: dict, handled_until=None) -> list[Match]:
+        """Count matching events for the event's source IP in the window ending at the event's own time.
+
+        handled_until(kind) -> timestamp or None: events before it already belong to a closed incident of that
+        kind and are not counted again (otherwise one scan re-opens and re-blocks right after an admin unblocks)."""
         matches = []
         end = datetime.fromisoformat(event["timestamp"])
         for rule in self.rules:
             if any(str(event.get(key)) != value for key, value in rule.selection.items()):
                 continue
             start = (end - rule.window).isoformat(timespec="seconds")
+            floor = handled_until(rule.kind) if handled_until else None
+            if floor and floor > start:
+                start = floor
             if rule.correlation == "failures_before":
                 # The matching event is the success; count the failures on the same channel that led up to it.
                 count = con.execute(

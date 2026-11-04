@@ -305,6 +305,14 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         return {**row, "analysis": json.loads(row["analysis"]) if row["analysis"] else None,
                 "analysis_meta": json.loads(row["analysis_meta"]) if row["analysis_meta"] else None}
 
+    def handled_until(con, ip: str):
+        """kind -> when this IP's latest closed incident of that kind ended (verified, rejected or closed)."""
+        placeholders = ",".join("?" * len(TERMINAL))
+        rows = con.execute(f"SELECT kind, MAX(updated_at) t FROM incidents WHERE source_ip=? AND status IN ({placeholders}) GROUP BY kind",
+                           (ip, *TERMINAL)).fetchall()
+        ended = {row["kind"]: row["t"] for row in rows}
+        return ended.get
+
     def upsert_incident(con, match: Match, event: dict) -> dict:
         rule, ip = match.rule, event["source_ip"]
         # A previously approved block must not absorb future attacks after expiry.
@@ -351,7 +359,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         incident = None
         with store.tx() as con:
             cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
-            for match in ruleset.evaluate(con, record):
+            for match in ruleset.evaluate(con, record, handled_until(con, record["source_ip"])):
                 incident = upsert_incident(con, match, record)
             # A pending proposal can become auto-approvable later, e.g. a MEDIUM flood growing to CRITICAL.
             auto_blocked = bool(incident) and auto_approve(con, incident["id"], note_limit=False)
