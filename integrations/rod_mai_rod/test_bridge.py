@@ -83,6 +83,13 @@ class RequestTotalsTest(unittest.TestCase):
         [row] = self.totals(*lines)
         self.assertEqual((row["count"], row["not_found"], row["honeypot"], row["paths"]), (4, 4, False, []))
 
+    def test_same_site_and_plain_http_redirect_hits_are_not_sent_either(self):
+        # *.sslip.io is not a public suffix, so another sslip.io page is "same-site"; HTTP requests carry no Sec-Fetch-*.
+        lines = [access_line("/admin-backup.zip", 404, fetch_site="same-site"), access_line("/.env", 308),
+                 access_line("/backup.sql", 308), access_line("/.git/config", 301)]
+        [row] = self.totals(*lines)
+        self.assertEqual((row["count"], row["not_found"], row["honeypot"], row["paths"]), (4, 1, False, []))
+
     def test_same_origin_and_scanner_requests_still_count_as_decoy_hits(self):
         rows = self.totals(access_line("/admin-backup.zip", 404, fetch_site="same-origin"), access_line("/backup.sql", 404, ip="192.0.2.8"))
         self.assertEqual([(r["honeypot"], r["paths"]) for r in rows], [(True, ["/admin-backup.zip"]), (True, ["/backup.sql"])])
