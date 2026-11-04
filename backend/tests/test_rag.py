@@ -136,3 +136,19 @@ def test_response_answer_includes_what_sentinel_can_and_cannot_block(ask_app):
     incident = brute_force(ask_app)
     result = ask_app.post(f"/api/incidents/{incident['id']}/ask", json={"question": "response"}).json()
     assert "sentinel-blocking-scope" in {s["id"] for s in result["sources"]}
+
+
+def test_evidence_of_one_incident_ignores_the_next_attack(make_app):
+    # Review on #51: a login test then a web scan from the same IP showed the scan paths on the login incident.
+    c = connect(make_app(SENTINEL_RAG="1"))
+    for _ in range(5):
+        login = c.post("/api/events", json=event()).json()["incident"]
+    c.post("/api/events", json={"source_ip": ATTACKER, "event_type": "HTTP_REQUEST", "window_s": 10,
+                                 "count": 12, "not_found": 12, "paths": ["/.env", "/.git/config", "/wp-admin/setup.php"]})
+    facts = c.post(f"/api/incidents/{login['id']}/ask", json={"question": "what"}).json()["evidence"]
+    assert "paths_untrusted" not in facts and "requests" not in facts
+    assert facts["failed_logins"] == 5
+
+
+def test_every_detected_kind_has_its_own_event_types():
+    assert set(rag.KIND_EVENTS) == KINDS
