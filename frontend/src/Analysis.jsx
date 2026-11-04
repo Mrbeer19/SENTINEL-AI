@@ -15,7 +15,7 @@ export default function Analysis({ report }) {
   if (!a)
     return (
       <>
-        <RuleOnlyNotice kind={report.kind} />
+        <RuleOnlyNotice kind={report.kind} proposal={report.proposal} />
         <Empty>
           {ruleOnly
             ? "ยังไม่มีผลตรวจจากกฎเฉพาะทาง"
@@ -26,7 +26,7 @@ export default function Analysis({ report }) {
   const fallback = isFallback(report);
   return (
     <div className="verdict">
-      <RuleOnlyNotice kind={report.kind} />
+      <RuleOnlyNotice kind={report.kind} proposal={report.proposal} />
       <FallbackNotice report={report} />
       <div className="verdictHead">
         <div>

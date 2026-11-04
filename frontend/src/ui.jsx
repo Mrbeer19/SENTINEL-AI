@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { analysisOf, statusLabels, tone } from "./lib.js";
+import { analysisOf, duration, statusLabels, tone } from "./lib.js";
 import { useRowSignals } from "./motion.jsx";
 const TYPE_KEYS = Object.freeze({
   HTTP_AUTH_BRUTE_FORCE: "http-brute",
@@ -54,12 +54,23 @@ export function FallbackNotice({ report }) {
     </div>
   ) : null;
 }
-export function RuleOnlyNotice({ kind }) {
-  return isRuleOnly(kind) ? (
+// Reviewer the backend records when SENTINEL_AUTO_APPROVE=1 blocks without a human (backend/policy.py AUTO_APPROVER).
+export const AUTO_APPROVER = "system (auto)";
+export const isAutoApproved = (proposal) => proposal?.reviewer === AUTO_APPROVER;
+function ruleOnlyStatus(proposal) {
+  if (isAutoApproved(proposal))
+    return `ระบบอนุมัติบล็อกชั่วคราวเอง ${duration(proposal.duration_seconds)} (system (auto)) · แอดมินตรวจย้อนหลังและปลดบล็อกได้`;
+  if (proposal?.status === "pending") return "รอแอดมินอนุมัติ";
+  return null;
+}
+export function RuleOnlyNotice({ kind, proposal }) {
+  if (!isRuleOnly(kind)) return null;
+  const status = ruleOnlyStatus(proposal);
+  return (
     <div className="notice ruleOnlyNotice" role="status">
-      ภัยเว็บตรวจด้วยกฎเฉพาะทาง · ยังต้องให้แอดมินอนุมัติ
+      ภัยเว็บตรวจด้วยกฎเฉพาะทาง{status ? ` · ${status}` : ""}
     </div>
-  ) : null;
+  );
 }
 export function formatEventPaths(value) {
   if (value == null || value === "") return "—";

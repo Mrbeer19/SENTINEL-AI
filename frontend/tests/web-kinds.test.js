@@ -180,7 +180,15 @@ test("intentional rule kinds have a normal notice even with a legacy fallback mo
     );
     const notice = html(ui.RuleOnlyNotice, { kind });
     assert.match(notice, /notice ruleOnlyNotice/);
-    assert.match(notice, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง · ยังต้องให้แอดมินอนุมัติ/);
+    assert.match(notice, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง/);
+    assert.doesNotMatch(notice, /อนุมัติ/); // no proposal yet: say nothing about approval
+    const pending = html(ui.RuleOnlyNotice, { kind, proposal: { status: "pending", reviewer: null } });
+    assert.match(pending, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง · รอแอดมินอนุมัติ/);
+    const auto = html(ui.RuleOnlyNotice, { kind, proposal: { status: "approved", reviewer: "system (auto)", duration_seconds: 600 } });
+    assert.match(auto, /ระบบอนุมัติบล็อกชั่วคราวเอง 10 นาที \(system \(auto\)\)/);
+    assert.doesNotMatch(auto, /รอแอดมิน/);
+    const human = html(ui.RuleOnlyNotice, { kind, proposal: { status: "approved", reviewer: "admin" } });
+    assert.doesNotMatch(human, /system \(auto\)|รอแอดมิน/);
     assert.doesNotMatch(notice, /rule fallback|banner warn/);
     const analysis = {
       confidence: null,
