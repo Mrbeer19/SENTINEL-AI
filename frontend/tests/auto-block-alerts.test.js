@@ -13,7 +13,7 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false },
 });
 after(() => server.close());
-const { default: AutoBlockAlerts, unacknowledgedAutoBlocks } = await server.ssrLoadModule("/src/AutoBlockAlerts.jsx");
+const { default: AutoBlockAlerts, unacknowledgedAutoBlocks, acknowledgeCall } = await server.ssrLoadModule("/src/AutoBlockAlerts.jsx");
 
 const auto = { id: 7, incident_id: 12, target_ip: "198.51.100.9", status: "approved", reviewer: "system (auto)", duration_seconds: 600, created_at: "2026-11-04T12:00:00Z", acknowledged_at: null };
 const ctx = (proposals, extra = {}) => ({
@@ -48,19 +48,12 @@ test("the alert names the IP, duration, incident and offers an acknowledge butto
 });
 
 test("acknowledge posts the admin name to the acknowledge endpoint", () => {
-  const calls = [];
-  const c = ctx([auto], { act: (path, opts) => calls.push([path, opts]) });
-  const element = AutoBlockAlerts({ ctx: c });
-  const findButton = (node) => {
-    if (!node || typeof node !== "object") return null;
-    if (node.type === "button") return node;
-    const kids = [].concat(node.props?.children ?? []);
-    for (const k of kids.flat()) {
-      const found = findButton(k);
-      if (found) return found;
-    }
-    return null;
-  };
-  findButton(element).props.onClick();
-  assert.deepEqual(calls, [["/api/proposals/7/acknowledge", { body: { reviewer: "admin" } }]]);
+  assert.deepEqual(acknowledgeCall(auto, "admin"), ["/api/proposals/7/acknowledge", { body: { reviewer: "admin" } }]);
+});
+
+test("rows carry a stagger index for the enter motion", () => {
+  const out = html(ctx([auto, { ...auto, id: 11 }]));
+  assert.match(out, /--alert-index:0/);
+  assert.match(out, /--alert-index:1/);
+  assert.doesNotMatch(out, /leaving/);
 });

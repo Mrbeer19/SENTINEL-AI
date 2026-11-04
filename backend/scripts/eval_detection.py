@@ -22,6 +22,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 os.environ.setdefault("SENTINEL_DISABLE_OLLAMA", "1")
+# The SOC API needs an admin; this offline replay uses a throwaway key (never a deployment key).
+os.environ.setdefault("SENTINEL_ADMIN_KEY", "eval-detection-local")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -53,7 +55,7 @@ def to_event(log: dict, category: str) -> dict:
 
 
 def replay(case: dict, workdir: Path) -> list[str]:
-    client = TestClient(create_app(workdir / f"{case['id']}.db"))
+    client = TestClient(create_app(workdir / f"{case['id']}.db"), base_url="http://127.0.0.1", headers={"X-Admin-Key": os.environ["SENTINEL_ADMIN_KEY"]})
     for log in sorted(case["logs"], key=lambda item: item["t"]):
         response = client.post("/api/events", json=to_event(log, case["category"]))
         if response.status_code != 201:

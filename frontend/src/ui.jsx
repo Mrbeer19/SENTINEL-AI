@@ -109,8 +109,11 @@ export function Icon({ name, size = 18 }) {
   );
 }
 export function Badge({ value, children, color }) {
+  // Animate only a real change seen on screen (e.g. blocked → verified), never the first render of a list.
+  const first = useRef(value),
+    changed = value !== first.current;
   return (
-    <span className={`tag ${color || tone(value)}`} data-status={value}>
+    <span key={value} className={`tag ${color || tone(value)}${changed ? " changed" : ""}`} data-status={value}>
       <i />
       {children || statusLabels[value] || value || "—"}
     </span>
