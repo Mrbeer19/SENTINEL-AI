@@ -95,3 +95,21 @@ def test_hourly_limit_falls_back_to_a_human(auto):
     assert any("limit" in step["detail"] for step in last["timeline"])
     approved = auto.post(f"/api/proposals/{last['proposal']['id']}/approve", json={"reviewer": "teacher"}).json()
     assert approved["status"] == "blocked"
+
+
+def test_scan_whose_paths_also_404_is_still_auto_blocked(auto):
+    # A real scanner gets 404 on /.env: the 404 rule matches first and opens the WEB_SCAN incident.
+    incident = web(auto, count=10, not_found=10, paths=["/.env", "/.git/config", "/wp-admin/setup.php"])
+    assert incident["rule_id"] == "sentinel-web-scan-paths" and incident["status"] == "blocked"
+
+
+def test_pending_404_scan_is_auto_blocked_when_scanner_paths_follow(auto):
+    result = analyze(auto, web(auto, count=10, not_found=10))
+    assert result["rule_id"] == "sentinel-web-scan-not-found" and result["proposal"]["status"] == "pending"
+    incident = web(auto, count=3, paths=["/.env", "/.git/config", "/wp-admin/setup.php"])
+    assert incident["id"] == result["id"] and incident["status"] == "blocked"
+
+
+def test_404_scan_keeps_its_rule_when_auto_approve_is_off(client):
+    incident = web(client, count=10, not_found=10, paths=["/.env", "/.git/config", "/wp-admin/setup.php"])
+    assert incident["status"] == "detected"
