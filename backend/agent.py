@@ -15,6 +15,7 @@ import hashlib
 import json
 import re
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Awaitable, Callable, Literal, TypedDict
 
@@ -37,6 +38,9 @@ ACTIONS = ("NO_ACTION", "MONITOR", "INVESTIGATE", "TEMP_BLOCK_IP", "BLOCK_IP")
 MAX_TOOL_CALLS = 6
 MAX_ROUNDS = 4
 LOG_LIMIT = 40
+# Tools only see the incident's own activity: the 60 s rule window plus 15 s for the bridge's 10 s batches.
+# Without it, earlier tests from the same IP (a login case before a port scan) leaked into the analysis.
+ACTIVITY_WINDOW_S = 75
 USERNAME_LIMIT = 64
 
 FALLBACK_PROMPT = (
@@ -229,10 +233,14 @@ class Agent:
                 return "error", {"error": f"{key} must be a non-empty string"}
         src = incident["source_ip"]
         ip = args.get("ip_address")
+        # Anchor on the source's latest event when the incident opened, not the wall clock: a bridge catching up on a
+        # backlog stores older timestamps than the incident's created_at.
+        anchor = self.store.one("SELECT MAX(timestamp) t FROM events WHERE source_ip=? AND timestamp<=?", (src, incident["created_at"]))["t"]
+        since = (datetime.fromisoformat(anchor or incident["created_at"]) - timedelta(seconds=ACTIVITY_WINDOW_S)).isoformat(timespec="seconds")
         if name == "get_incident_logs":
             if args["incident_id"].strip().upper() not in {incident_ref(incident["id"]), str(incident["id"])}:
                 return "error", {"error": "incident not found"}
-            records = self.store.rows(f"SELECT timestamp,source_ip,event_type,outcome,destination_port,username FROM events WHERE source_ip=? AND {MODEL_EVENTS_SQL} ORDER BY id DESC LIMIT ?", (src, LOG_LIMIT))
+            records = self.store.rows(f"SELECT timestamp,source_ip,event_type,outcome,destination_port,username FROM events WHERE source_ip=? AND timestamp>=? AND {MODEL_EVENTS_SQL} ORDER BY id DESC LIMIT ?", (src, since, LOG_LIMIT))
             logs = [{"t": r["timestamp"], "src": r["source_ip"], "type": r["event_type"], "outcome": r["outcome"],
                      **({"port": r["destination_port"]} if r["destination_port"] else {}),
                      **({"user": r["username"][:USERNAME_LIMIT]} if r["username"] else {})} for r in reversed(records)]
@@ -242,8 +250,8 @@ class Agent:
                 return "error", {"ip": ip, "error": "no records for this IP in the incident scope"}
             stats = self.store.one(
                 "SELECT MIN(timestamp) first_seen, MAX(timestamp) last_seen, COUNT(*) total_events,"
-                f" SUM(outcome='failed') failed_logins, SUM(outcome='success') success_logins FROM events WHERE source_ip=? AND {MODEL_EVENTS_SQL}", (src,))
-            ports = [r["destination_port"] for r in self.store.rows("SELECT DISTINCT destination_port FROM events WHERE source_ip=? AND destination_port IS NOT NULL ORDER BY destination_port LIMIT 20", (src,))]
+                f" SUM(outcome='failed') failed_logins, SUM(outcome='success') success_logins FROM events WHERE source_ip=? AND timestamp>=? AND {MODEL_EVENTS_SQL}", (src, since))
+            ports = [r["destination_port"] for r in self.store.rows("SELECT DISTINCT destination_port FROM events WHERE source_ip=? AND timestamp>=? AND destination_port IS NOT NULL ORDER BY destination_port LIMIT 20", (src, since))]
             return "ok", {"ip": src, **stats, "ports_touched": ports}
         if name == "get_related_incidents":
             if ip != src:
