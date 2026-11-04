@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { analysisOf, statusLabels, tone } from "./lib.js";
+import { analysisOf, duration, statusLabels, tone } from "./lib.js";
 import { useRowSignals } from "./motion.jsx";
 const TYPE_KEYS = Object.freeze({
   HTTP_AUTH_BRUTE_FORCE: "http-brute",
@@ -59,7 +59,7 @@ export const AUTO_APPROVER = "system (auto)";
 export const isAutoApproved = (proposal) => proposal?.reviewer === AUTO_APPROVER;
 function ruleOnlyStatus(proposal) {
   if (isAutoApproved(proposal))
-    return "ระบบอนุมัติบล็อกชั่วคราวเอง 10 นาที (system (auto)) · แอดมินตรวจย้อนหลังและปลดบล็อกได้";
+    return `ระบบอนุมัติบล็อกชั่วคราวเอง ${duration(proposal.duration_seconds)} (system (auto)) · แอดมินตรวจย้อนหลังและปลดบล็อกได้`;
   if (proposal?.status === "pending") return "รอแอดมินอนุมัติ";
   return null;
 }

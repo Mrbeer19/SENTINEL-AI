@@ -466,7 +466,7 @@ export function Workspace({
         <span className="railFoot">
           <Icon name="shield" size={18} />
           <b>Human approved</b>
-          <small>ผู้ดูแลยืนยันก่อนตอบสนอง</small>
+          <small>ผู้ดูแลยืนยันก่อนตอบสนอง · ยกเว้นกฎที่บล็อกเองชั่วคราว</small>
         </span>
         <RailBuddy
           incidents={live.data.incidents}
@@ -545,7 +545,7 @@ export function Workspace({
           <span>
             {fixture
               ? "ข้อมูลสังเคราะห์ · ไม่เชื่อมระบบจริง"
-              : "Human approved response · App-level protection"}
+              : "Human approved response · rule auto-block for decoy, scanner paths, critical flood · App-level protection"}
           </span>
         </footer>
       </main>
