@@ -322,7 +322,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             con.execute("UPDATE incidents SET event_count=?, severity=?, updated_at=? WHERE id=?", (match.count, severity, utcnow(), current["id"]))
             # Two rules share a kind (WEB_SCAN): a real scan gets 404s on /.env first, so the incident opens under the 404 rule.
             # When the auto-approve rule matches later, the incident moves to it so the scan is still blocked without a human.
-            if match.rule.id != current["rule_id"] and policy.auto_eligible({"rule_id": match.rule.id, "severity": severity}) and not policy.auto_eligible(dict(current)):
+            if settings.auto_approve and match.rule.id != current["rule_id"] and policy.auto_eligible({"rule_id": match.rule.id, "severity": severity}) and not policy.auto_eligible(dict(current)):
                 con.execute("UPDATE incidents SET rule_id=?, attack_technique=? WHERE id=?", (match.rule.id, match.rule.attack_technique, current["id"]))
                 log(con, current["id"], "detected", f"Rule {match.rule.id} also matched; incident moved from {current['rule_id']}")
             return dict(con.execute("SELECT * FROM incidents WHERE id=?", (current["id"],)).fetchone())

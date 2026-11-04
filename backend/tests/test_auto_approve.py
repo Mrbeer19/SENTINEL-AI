@@ -112,4 +112,4 @@ def test_pending_404_scan_is_auto_blocked_when_scanner_paths_follow(auto):
 
 def test_404_scan_keeps_its_rule_when_auto_approve_is_off(client):
     incident = web(client, count=10, not_found=10, paths=["/.env", "/.git/config", "/wp-admin/setup.php"])
-    assert incident["status"] == "detected"
+    assert incident["status"] == "detected" and incident["rule_id"] == "sentinel-web-scan-not-found"
