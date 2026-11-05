@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 5
 GENESIS_HASH = "0" * 64
 
 BASE_SCHEMA = """
@@ -35,6 +35,14 @@ V2_COLUMNS = {
 # v3: HTTP_REQUEST events are per-IP totals of a short window sent by the web log bridge.
 V3_COLUMNS = {
     "events": {"request_count": "INTEGER", "not_found": "INTEGER", "scan_paths": "INTEGER", "paths": "TEXT"},
+}
+# v4: an admin acknowledges each block the rule approved without a human (SENTINEL_AUTO_APPROVE=1).
+V4_COLUMNS = {
+    "proposals": {"acknowledged_by": "TEXT", "acknowledged_at": "TEXT"},
+}
+# v5: the newest event id of the source IP when the incident finished; detection never counts those events again.
+V5_COLUMNS = {
+    "incidents": {"closed_event_id": "INTEGER"},
 }
 
 
@@ -87,7 +95,7 @@ class Store:
         return found[0] if found else None
 
     def _migrate(self, con: sqlite3.Connection) -> None:
-        for table, columns in (*V2_COLUMNS.items(), *V3_COLUMNS.items()):
+        for table, columns in (*V2_COLUMNS.items(), *V3_COLUMNS.items(), *V4_COLUMNS.items(), *V5_COLUMNS.items()):
             existing = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
             for name, decl in columns.items():
                 if name not in existing:

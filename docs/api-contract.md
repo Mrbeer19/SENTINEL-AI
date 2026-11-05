@@ -96,6 +96,7 @@ bridge ส่ง **ยอดรวมต่อ IP ต่อช่วง 10 ว�
 - ≥3 เท่าของเกณฑ์ → `CRITICAL`
 - brute force ที่เข้าได้ในที่สุด = **2 incident** จาก IP เดียวกัน: `*_BRUTE_FORCE` (ตอน failed ครั้งที่ 5) + `SUSPICIOUS_LOGIN` (ตอน success) · UI แสดงแยกกัน อนุมัติบล็อกอันไหนก็บล็อก IP เดียวกัน
 - incident ที่ยังเปิดของ (IP, kind) เดิมจะถูกอัปเดต `event_count` · incident ที่จบแล้ว (`verified | rejected | closed`) ไม่ถูกใช้ซ้ำ → เปิดใหม่
+- event ที่ incident ของ (IP, kind) เดียวกันจบไปแล้วเป็นเจ้าของ ไม่ถูกนับซ้ำ: เมื่อ incident เข้า `verified | rejected | closed` ระบบเก็บ `incidents.closed_event_id` = id ของ event ล่าสุดของ IP ณ ตอนนั้น (schema v5) และการนับเกณฑ์ครั้งต่อไปนับเฉพาะ event ที่ id ใหม่กว่า · ใช้ id ไม่ใช่เวลา เพราะ bridge ใส่เวลาของ `HTTP_REQUEST` เป็นท้ายหน้าต่าง 10 วิ · ปลดบล็อกแล้ว request ถัดไปจาก IP เดิมจะไม่เปิด incident ใหม่จาก event ชุดเดิม ต้องมี event ใหม่ถึงเกณฑ์เอง
 
 ## Incident
 
@@ -165,8 +166,8 @@ blocked → closed (ปลดกฎก่อน verify)
 
 | tool | args | คืน |
 |---|---|---|
-| `get_incident_logs` | `incident_id` (`INC-0001`) | `{incident_id, untrusted_log_records[≤40], returned}` · username ตัดเหลือ 64 |
-| `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched |
+| `get_incident_logs` | `incident_id` (`INC-0001`) | `{incident_id, untrusted_log_records[≤40], returned}` · username ตัดเหลือ 64 · เฉพาะ event ตั้งแต่ 75 วินาทีก่อน event ล่าสุดของ IP ณ เวลาที่เปิด incident |
+| `get_ip_activity` | `ip_address` (ต้องเป็น source ของ incident) | first/last seen, total, failed/success logins, ports_touched · นับเฉพาะ event ตั้งแต่ 75 วินาทีก่อน event ล่าสุดของ IP ณ เวลาที่เปิด incident (`ACTIVITY_WINDOW_S`) ไม่รวมประวัติก่อนหน้าของ IP |
 | `get_related_incidents` | `ip_address` | incident อื่นของ IP นี้ ≤10 |
 | `get_firewall_status` | `ip_address` | `{ip, status: ALLOWED/BLOCKED, protected}` |
 
@@ -196,7 +197,12 @@ Policy (`backend/policy.py`) ตรวจตอนสร้างและตอ
 - `GET /api/proposals`
 - `POST /api/proposals/{id}/approve` body `{ "reviewer": "SOC operator" }` → incident detail · สร้างกฎ · `blocked`
 - `POST /api/proposals/{id}/reject` → incident detail · ไม่สร้างกฎ · `rejected`
+- `POST /api/proposals/{id}/acknowledge` body `{reviewer}` → incident detail · ใช้กับ proposal ที่ `reviewer = "system (auto)"` เท่านั้น บันทึก `acknowledged_by` / `acknowledged_at` ลง proposal, timeline `acknowledged` และ audit `auto_block_acknowledged` · รับทราบซ้ำหรือไม่ใช่การบล็อกอัตโนมัติ 409 · dashboard แสดงแจ้งเตือนค้างจนกว่าจะรับทราบ
+- `GET /api/rag` → `{enabled, generate, questions}` · `SENTINEL_RAG=0` (ค่าเริ่มต้น) → `{enabled: false, generate: false, questions: {}}`
+- `POST /api/incidents/{id}/ask` body `{question: "what" | "risk" | "response"}` → `{incident_id, question, question_text, answer, generated, model, sources[{id, title, refs[]}], evidence, cached}` · ปิดสวิตช์ 404 · คำถามอื่น 422 · **อ่านอย่างเดียว** ไม่สร้าง/แก้ proposal กฎ หรือ audit · เอกสารเลือกจาก `backend/kb/*.md` ตามชนิดภัย (ด้านที่ถาม → rule_id) สูงสุด 3 ชิ้น · หลักฐานที่ส่งโมเดลมีแค่ค่าที่ระบบวัดเอง (rule_id, จำนวนครั้ง, พอร์ต, path ≤ 5 ตัด query, ผลการบล็อก) ไม่มี username · คำตอบคือเนื้อหาเอกสาร KB ตรง ๆ (`generated: false`) ตัวเลข/หลักฐานในแผงมาจาก `evidence` (DB) เท่านั้น · `SENTINEL_RAG_GENERATE=1` ให้โมเดลเรียบเรียงได้: มี incident `analyzing` อยู่ → 409, timeout 20 วิ, ถ้าคำตอบมีตัวเลขที่ไม่อยู่ในหลักฐานหรือเอกสาร → ใช้เอกสารแทน · cache ต่อ (incident, คำถาม, สถานะ, event_count)
 - ตัดสินซ้ำ 409 · policy ไม่ผ่านตอนอนุมัติ 400
+
+**อนุมัติอัตโนมัติ (`SENTINEL_AUTO_APPROVE=1`, ค่าเริ่มต้น 0):** กฎ `sentinel-web-honeypot`, `sentinel-web-scan-paths` และ `sentinel-http-flood` ที่เป็น `CRITICAL` อนุมัติเองทันทีตอน event เข้า (`POST /api/events` ตอบกลับมาเป็น `blocked` เลย ไม่ต่อคิว worker; 3 กฎนี้เป็น rule-only โมเดลไม่ได้อ่าน จึงห้ามบล็อกไม่ได้) · `reviewer = "system (auto)"` (ใน proposal และ actor ของ audit) · ใช้ `TEMP_BLOCK_IP` 600 วิเสมอ แม้ตั้ง `SENTINEL_MANUAL_UNBLOCK=1` · ผ่าน policy ข้อ 1–3 เหมือนเดิม · เกิน 10 IP ต่อชั่วโมงจะกลับไปรอคน · proposal ที่รออยู่จะอนุมัติเองเมื่อ incident กลายเป็นเข้าเงื่อนไขทีหลัง (เช่น flood MEDIUM → CRITICAL) · ชนิดอื่นรอคนกดเหมือนเดิม · ผู้ตัดสินคือกฎ ไม่ใช่โมเดล
 
 ## Firewall และ verification
 

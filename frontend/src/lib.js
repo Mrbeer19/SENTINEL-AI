@@ -55,8 +55,13 @@ export function attentionQueue(incidents = [], proposals = [], rules = [], event
   const at = (x) => Date.parse(x.incident?.created_at || x.proposal?.created_at) || 0;
   return items.sort((a, b) => rank(b) - rank(a) || at(b) - at(a));
 }
+// SENTINEL_MANUAL_UNBLOCK=1 stores rules without expiry as year 9999 (backend policy.NO_EXPIRY).
+export const NO_EXPIRY_TEXT = "จนกว่าจะปลดบล็อก";
+export const hasNoExpiry = (rule) => String(rule?.expires_at || "").startsWith("9999-");
+export const expiresText = (rule) => (hasNoExpiry(rule) ? NO_EXPIRY_TEXT : date(rule?.expires_at));
 export function ruleLifetime(rule, now) {
   const end = Date.parse(rule.expires_at), start = Date.parse(rule.created_at);
+  if (hasNoExpiry(rule)) return { noExpiry: true };
   if (!Number.isFinite(end) || !Number.isFinite(now)) return null;
   const remaining = Math.max(0, end - now);
   return {
@@ -119,7 +124,7 @@ export const activeRule = (r, now = Date.now()) =>
 export const isOpenIncident = (i) =>
   !["blocked", "verified", "rejected", "closed"].includes(i.status);
 export const duration = (s) =>
-  s ? `${Math.round(s / 60)} นาที` : "จนกว่าจะปลดบล็อก";
+  s ? `${Math.round(s / 60)} นาที` : NO_EXPIRY_TEXT;
 export const action = (v) =>
   ({
     TEMP_BLOCK_IP: "บล็อก IP ชั่วคราว",

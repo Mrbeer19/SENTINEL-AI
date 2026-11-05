@@ -167,6 +167,26 @@
 @media (min-width: 851px) {
   .nRail > a { padding-left: 14px; }
 }
+/* Auto-block alerts (AutoBlockAlerts.jsx): the panel drops in, rows follow one step apart,
+   an acknowledged row fades out before it is removed. */
+.autoBlockAlerts { animation: alertEnter var(--dur-state) var(--ease-out) both; }
+.autoBlockAlert {
+  animation: alertEnter var(--dur-state) var(--ease-out) both;
+  animation-delay: calc(var(--alert-index, 0) * var(--panel-step));
+  transition: opacity var(--dur-state) var(--ease-in), transform var(--dur-state) var(--ease-in);
+}
+.autoBlockAlert.leaving { opacity: 0; transform: translateX(12px); }
+.autoBlockAlerts > header svg { animation: reviewBreathe var(--dur-breathe) var(--ease-out) infinite; }
+@keyframes alertEnter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* A status badge that changes while on screen remounts (Badge key + .changed), so each step of
+   detected → awaiting approval → blocked → verified → closed is seen once. */
+.tag.changed { animation: statusSwap var(--dur-state) var(--ease-out) both; }
+.tag.changed[data-status="blocked"],
+.tag.changed[data-status="verified"] { animation: statusSwap var(--dur-state) var(--ease-out) both, statusSignal var(--dur-signal) var(--ease-out) var(--dur-state) 1; }
+@keyframes statusSwap { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes statusSignal { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+
 @media (prefers-reduced-motion: reduce) {
   .nShell *,
   .nShell *::before,

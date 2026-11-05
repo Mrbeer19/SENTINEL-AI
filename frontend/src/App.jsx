@@ -7,6 +7,8 @@ import SentinelLogo, { SentinelMark } from "./SentinelLogo.jsx";
 import Mascot, { ConnectionLoader, PageSkeleton, RailBuddy } from "./Mascot.jsx";
 import { NetworkBackdrop, TiltStage } from "./LoginScene.jsx";
 import { RefreshMotion, useNavIndicator } from "./motion.jsx";
+import AutoBlockAlerts from "./AutoBlockAlerts.jsx";
+import AskPanel from "./AskPanel.jsx";
 import {
   Approvals,
   Incident,
@@ -240,10 +242,22 @@ export function Workspace({
         return true;
       }
     }),
+    [askEnabled, setAskEnabled] = useState(false),
+    [askOpen, setAskOpen] = useState(false),
+    [askThinking, setAskThinking] = useState(false),
     lock = useRef(false),
     toastTimer = useRef(null),
     routeTransition = useRef(null),
     routeRef = useRef(route);
+  useEffect(() => {
+    let alive = true;
+    request("/api/rag", { accept: [404] })
+      .then(({ data }) => alive && setAskEnabled(Boolean(data?.enabled)))
+      .catch(() => alive && setAskEnabled(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
   useEffect(() => {
     const change = () => {
       const nextRoute = routeOf();
@@ -289,7 +303,11 @@ export function Workspace({
           body: method === "DELETE" ? undefined : body,
         });
         setToast({
-          message: path.endsWith("/approve") ? "บล็อก IP สำเร็จ" : "บันทึกการดำเนินการแล้ว",
+          message: path.endsWith("/approve")
+            ? "บล็อก IP สำเร็จ"
+            : path.endsWith("/acknowledge")
+              ? "รับทราบการบล็อกอัตโนมัติแล้ว"
+              : "บันทึกการดำเนินการแล้ว",
           type: "good",
           approved: path.endsWith("/approve"),
         });
@@ -330,7 +348,7 @@ export function Workspace({
     location.hash = `/incidents`;
   };
   return (
-    <div className="nShell">
+    <div className="nShell" data-ask-open={askOpen || undefined}>
       <a
         className="skipLink"
         href="#workspace"
@@ -466,12 +484,14 @@ export function Workspace({
         <span className="railFoot">
           <Icon name="shield" size={18} />
           <b>Human approved</b>
-          <small>ผู้ดูแลยืนยันก่อนตอบสนอง</small>
+          <small>ผู้ดูแลยืนยันก่อนตอบสนอง · ยกเว้นกฎที่บล็อกเองชั่วคราว</small>
         </span>
         <RailBuddy
           incidents={live.data.incidents}
           proposals={live.data.proposals}
           offline={Boolean(live.error)}
+          onAsk={askEnabled ? () => setAskOpen(true) : undefined}
+          thinking={askThinking}
         />
       </nav>
       <main id="workspace" tabIndex="-1">
@@ -517,6 +537,7 @@ export function Workspace({
             </button>
           </div>
         )}
+        {!live.loading && live.data.health && <AutoBlockAlerts ctx={ctx} />}
         <div key={route.page} className="pageContent">
           {live.loading ? (
             <PageSkeleton />
@@ -545,10 +566,26 @@ export function Workspace({
           <span>
             {fixture
               ? "ข้อมูลสังเคราะห์ · ไม่เชื่อมระบบจริง"
-              : "Human approved response · App-level protection"}
+              : "Human approved response · rule auto-block for decoy, scanner paths, critical flood · App-level protection"}
           </span>
         </footer>
       </main>
+      {askEnabled && (
+        <AskPanel
+          open={askOpen}
+          onClose={() => setAskOpen(false)}
+          incidents={live.data.incidents}
+          route={route}
+          user={user}
+          onThinking={setAskThinking}
+        />
+      )}
+      {askEnabled && !askOpen && (
+        <button type="button" className="askLauncher" onClick={() => setAskOpen(true)} aria-label="เปิด Ask me ถามเรื่อง incident">
+          <span className="askLauncherDot" aria-hidden="true" />
+          Ask me
+        </button>
+      )}
       {(busy || toast) && (
         <div className={`toast ${toast?.type || ""} ${!busy && toast?.approved ? "mascotToast" : ""}`} role="status">
           {!busy && toast?.approved ? <Mascot size={72} mood="happy" /> : <Icon

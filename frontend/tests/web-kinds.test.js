@@ -180,7 +180,15 @@ test("intentional rule kinds have a normal notice even with a legacy fallback mo
     );
     const notice = html(ui.RuleOnlyNotice, { kind });
     assert.match(notice, /notice ruleOnlyNotice/);
-    assert.match(notice, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง · ยังต้องให้แอดมินอนุมัติ/);
+    assert.match(notice, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง/);
+    assert.doesNotMatch(notice, /อนุมัติ/); // no proposal yet: say nothing about approval
+    const pending = html(ui.RuleOnlyNotice, { kind, proposal: { status: "pending", reviewer: null } });
+    assert.match(pending, /ภัยเว็บตรวจด้วยกฎเฉพาะทาง · รอแอดมินอนุมัติ/);
+    const auto = html(ui.RuleOnlyNotice, { kind, proposal: { status: "approved", reviewer: "system (auto)", duration_seconds: 600 } });
+    assert.match(auto, /ระบบอนุมัติบล็อกชั่วคราวเอง 10 นาที \(system \(auto\)\)/);
+    assert.doesNotMatch(auto, /รอแอดมิน/);
+    const human = html(ui.RuleOnlyNotice, { kind, proposal: { status: "approved", reviewer: "admin" } });
+    assert.doesNotMatch(human, /system \(auto\)|รอแอดมิน/);
     assert.doesNotMatch(notice, /rule fallback|banner warn/);
     const analysis = {
       confidence: null,
@@ -275,4 +283,11 @@ test("trace log table retains HTTP request fields and escapes untrusted paths", 
   assert.equal(ui.formatEventPaths("not valid json"), "not valid json");
   assert.equal(ui.formatEventPaths([]), "—");
   assert.equal(ui.formatEventPaths(payload), payload.join("\n"));
+});
+
+test("a status badge only animates when its status changes, not on first render", () => {
+  const first = html(ui.Badge, { value: "blocked" });
+  assert.match(first, /class="tag [^"]*"/);
+  assert.doesNotMatch(first, /changed/);
+  assert.match(first, /data-status="blocked"/);
 });

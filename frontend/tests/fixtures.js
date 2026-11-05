@@ -189,6 +189,20 @@ window.fetch = async (input, options = {}) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+    if (options.method === "POST" && /^\/api\/incidents\/\d+\/ask$/.test(path)) {
+      const question = JSON.parse(options.body || "{}").question;
+      return new Response(JSON.stringify(askFixture(Number(path.split("/")[3]), question)), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (options.method === "POST" && path === "/api/proposals/2/acknowledge" && scenario === "auto-blocked") {
+      autoAcknowledged = true;
+      return new Response(JSON.stringify({ id: 2 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     if (options.method === "DELETE" && /^\/api\/rules\/[12]$/.test(path)) {
       disabledRules.add(Number(path.split("/").at(-1)));
       return new Response('{"ok":true}', {
@@ -239,6 +253,18 @@ window.fetch = async (input, options = {}) => {
       trace: [],
     }),
   );
+  if (scenario === "auto-blocked") {
+    Object.assign(second, { kind: "HONEYPOT", severity: "HIGH", status: "blocked", rule_id: "sentinel-web-honeypot" });
+    second.proposal = {
+      ...second.proposal,
+      status: "approved",
+      reviewer: "system (auto)",
+      action: "TEMP_BLOCK_IP",
+      duration_seconds: 600,
+      acknowledged_by: autoAcknowledged ? "QA admin" : null,
+      acknowledged_at: autoAcknowledged ? new Date(fixtureNow).toISOString() : null,
+    };
+  }
   const incidents = scenario === "empty" ? [] : [r, second, ...extras];
   const events =
     scenario === "empty"
@@ -391,6 +417,8 @@ window.fetch = async (input, options = {}) => {
                 ? traffic
                 : path === "/api/rules"
                   ? rules
+                  : path === "/api/rag"
+                    ? { enabled: true, generate: false, questions: {} }
                   : path === "/api/audit/verify"
                     ? { valid: true, count: 0 }
                     : [];
@@ -409,8 +437,37 @@ window.WebSocket = class FixtureSocket {
   }
 };
 
+// Ask me: same shape as backend/rag.py, KB text only (generated: false).
+function askFixture(incidentId, question) {
+  const notes = {
+    what: [
+      "การเดารหัสผ่านคือการส่งคำขอเข้าสู่ระบบซ้ำ ๆ ด้วยรหัสผ่านต่าง ๆ จนกว่าจะเข้าได้",
+      "SENTINEL ดูผลจาก HTTP status ของ endpoint login กฎ `sentinel-http-auth-bruteforce` เปิด incident เมื่อไม่สำเร็จตั้งแต่ 5 ครั้งใน 60 วินาที",
+    ].join("\n\n"),
+    risk: [
+      "ถ้าบัญชีใช้รหัสผ่านอ่อน ผู้โจมตีอาจเข้าได้",
+      "ต้องระวังการบล็อกผิด ผู้ใช้หลายคนอาจใช้ IP เดียวกัน (CGNAT)",
+    ].join("\n\n"),
+    response: [
+      "1. ดูจำนวนครั้งและช่วงเวลา",
+      "2. ดูว่ามีการเข้าสู่ระบบสำเร็จตามมาหรือไม่",
+      "3. จำกัดจำนวนครั้งต่อบัญชีและเปิดการยืนยันตัวตนสองขั้น",
+    ].join("\n"),
+  };
+  return {
+    incident_id: incidentId, question, question_text: question, answer: notes[question] || notes.what,
+    generated: false, model: null, cached: false,
+    sources: [
+      { id: `http-auth-${question}`, title: "การเดารหัสผ่านหน้าเว็บ", refs: ["ATT&CK T1110.001 Password Guessing", "OWASP A07:2021 Identification and Authentication Failures"] },
+      ...(question === "response" ? [{ id: "sentinel-blocking-scope", title: "SENTINEL บล็อกอะไรได้และไม่ได้", refs: ["D3FEND D3-ITF Inbound Traffic Filtering"] }] : []),
+    ],
+    evidence: { kind: "HTTP_AUTH_BRUTE_FORCE", event_count: 6, failed_logins: 6, block: { status: "pending_admin" } },
+  };
+}
+let autoAcknowledged = false;
 export function setScenario(value) {
   scenario = value;
+  autoAcknowledged = false;
   webKind = isRuleOnly(value) ? value : null;
   disabledRules = new Set();
   sockets.forEach((s) => s.onmessage?.({ data: "{}" }));
@@ -423,6 +480,7 @@ export const scenarios = [
   "planner",
   "blocked",
   "verified",
+  "auto-blocked",
   "rejected",
   "fallback",
   "no-action",

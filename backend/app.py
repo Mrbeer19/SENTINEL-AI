@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationError, model_validator
 
-from backend import logparse, policy, soc
+from backend import logparse, policy, rag, soc
 from backend.admin_auth import AdminAuth, COOKIE
 from backend.agent import Agent
 from backend.config import ROOT, load_settings, same_model
@@ -282,6 +282,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if to not in TRANSITIONS.get(current, set()):
             raise HTTPException(409, f"incident cannot move from {current} to {to}")
         con.execute("UPDATE incidents SET status=?, updated_at=? WHERE id=?", (to, utcnow(), incident_id))
+        if to in TERMINAL:
+            mark_counted(con, incident_id)
         audit(con, actor, "status_changed", incident_id, {"from": current, "to": to, "reason": reason})
 
     async def broadcast(stage: str, payload: dict):
@@ -305,6 +307,17 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         return {**row, "analysis": json.loads(row["analysis"]) if row["analysis"] else None,
                 "analysis_meta": json.loads(row["analysis_meta"]) if row["analysis_meta"] else None}
 
+    def mark_counted(con, incident_id: int) -> None:
+        """A finished incident owns every event its source IP sent so far; detection will not count them again."""
+        con.execute("UPDATE incidents SET closed_event_id=(SELECT COALESCE(MAX(e.id), 0) FROM events e WHERE e.source_ip=incidents.source_ip) WHERE id=?",
+                    (incident_id,))
+
+    def counted_until(con, ip: str):
+        """kind -> newest event id already owned by a finished incident of that kind from this IP."""
+        rows = con.execute("SELECT kind, MAX(closed_event_id) n FROM incidents WHERE source_ip=? AND closed_event_id IS NOT NULL GROUP BY kind",
+                           (ip,)).fetchall()
+        return {row["kind"]: row["n"] for row in rows}.get
+
     def upsert_incident(con, match: Match, event: dict) -> dict:
         rule, ip = match.rule, event["source_ip"]
         # A previously approved block must not absorb future attacks after expiry.
@@ -313,6 +326,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                             WHERE p.incident_id=i.id AND r.expires_at>?)""", (ip, rule.kind, utcnow())).fetchall()
         for old in expired:
             con.execute("UPDATE incidents SET status='closed', updated_at=? WHERE id=?", (utcnow(), old['id']))
+            mark_counted(con, old['id'])
             log(con, old['id'], 'closed', 'Previous block expired; a new detection opens a separate incident')
             audit(con, 'detection', 'status_changed', old['id'], {'from':'blocked','to':'closed','reason':'block expired before new detection'})
         placeholders = ",".join("?" * len(TERMINAL))
@@ -320,6 +334,11 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         if current:
             severity = "CRITICAL" if match.severity == "CRITICAL" else current["severity"]
             con.execute("UPDATE incidents SET event_count=?, severity=?, updated_at=? WHERE id=?", (match.count, severity, utcnow(), current["id"]))
+            # Two rules share a kind (WEB_SCAN): a real scan gets 404s on /.env first, so the incident opens under the 404 rule.
+            # When the auto-approve rule matches later, the incident moves to it so the scan is still blocked without a human.
+            if settings.auto_approve and match.rule.id != current["rule_id"] and policy.auto_eligible({"rule_id": match.rule.id, "severity": severity}) and not policy.auto_eligible(dict(current)):
+                con.execute("UPDATE incidents SET rule_id=?, attack_technique=? WHERE id=?", (match.rule.id, match.rule.attack_technique, current["id"]))
+                log(con, current["id"], "detected", f"Rule {match.rule.id} also matched; incident moved from {current['rule_id']}")
             return dict(con.execute("SELECT * FROM incidents WHERE id=?", (current["id"],)).fetchone())
         cur = con.execute(
             "INSERT INTO incidents(kind,source_ip,status,severity,event_count,created_at,rule_id,attack_technique,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -346,13 +365,24 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
         incident = None
         with store.tx() as con:
             cur = con.execute(f"INSERT INTO events({','.join(record)}) VALUES({','.join('?' * len(record))})", tuple(record.values()))
-            for match in ruleset.evaluate(con, record):
+            for match in ruleset.evaluate(con, record, counted_until(con, record["source_ip"])):
                 incident = upsert_incident(con, match, record)
+            # A pending proposal can become auto-approvable later, e.g. a MEDIUM flood growing to CRITICAL.
+            auto_blocked = bool(incident) and auto_approve(con, incident["id"], note_limit=False)
+            if auto_blocked:
+                incident = dict(con.execute("SELECT * FROM incidents WHERE id=?", (incident["id"],)).fetchone())
             result = dict(con.execute("SELECT * FROM events WHERE id=?", (cur.lastrowid,)).fetchone())
         await broadcast("event", result)
         if incident:
             incident = format_incident(incident)
             await broadcast("incident", incident)
+        if auto_blocked:
+            await broadcast("approval", get_incident(incident["id"]))
+        # Auto-approve kinds are rule-only (no model call), so analyse and block now instead of waiting in the worker queue.
+        if incident and incident["status"] == "detected" and settings.auto_approve and policy.auto_eligible(incident):
+            with suppress(HTTPException):  # 409: the background worker claimed it first
+                await analyze(incident["id"])
+            incident = format_incident(store.one("SELECT * FROM incidents WHERE id=?", (incident["id"],)))
         return {"event": result, "incident": incident}
 
     geo_cache = {}
@@ -491,6 +521,7 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                     log(con, incident_id, "proposal", f"{decision.action} {decision.target_ip} {policy.duration_text(decision.duration_seconds)} ({source}); pending human approval")
                     audit(con, "policy", "proposal_created", incident_id, {"action": decision.action, "target_ip": decision.target_ip, "source": source, "notes": decision.notes})
                     transition(con, incident_id, "awaiting_approval", "policy", "block proposal passed policy")
+                    auto_approve(con, incident_id)
                 else:
                     log(con, incident_id, "policy", "; ".join(decision.notes))
                     audit(con, "policy", "proposal_rejected", incident_id, {"action": action, "notes": decision.notes})
@@ -525,12 +556,57 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
             changed = con.execute("UPDATE proposals SET status='approved',reviewer=? WHERE id=? AND status='pending'", (decision.reviewer, proposal_id))
             if changed.rowcount != 1:
                 raise HTTPException(409, "proposal already decided")
-            expires = policy.expires_at(proposal["duration_seconds"])
-            con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal_id, proposal["target_ip"], expires, utcnow()))
-            transition(con, proposal["incident_id"], "blocked", decision.reviewer, "proposal approved")
-            log(con, proposal["incident_id"], "approved", f"{decision.reviewer} approved {proposal['action']}")
-            log(con, proposal["incident_id"], "firewall", f"App-level rule active until {expires}")
-            audit(con, decision.reviewer, "rule_applied", proposal["incident_id"], {"proposal_id": proposal_id, "target_ip": proposal["target_ip"], "expires_at": expires, "d3fend": policy.D3FEND_TECHNIQUE})
+            apply_block(con, proposal, decision.reviewer)
+        result = get_incident(proposal["incident_id"])
+        await broadcast("approval", result)
+        return result
+
+    def apply_block(con, proposal: dict, reviewer: str) -> None:
+        expires = policy.expires_at(proposal["duration_seconds"])
+        con.execute("INSERT INTO rules(proposal_id,source_ip,expires_at,created_at) VALUES(?,?,?,?)", (proposal["id"], proposal["target_ip"], expires, utcnow()))
+        transition(con, proposal["incident_id"], "blocked", reviewer, "proposal approved")
+        log(con, proposal["incident_id"], "approved", f"{reviewer} approved {proposal['action']}")
+        log(con, proposal["incident_id"], "firewall", f"App-level rule active until {expires}")
+        audit(con, reviewer, "rule_applied", proposal["incident_id"], {"proposal_id": proposal["id"], "target_ip": proposal["target_ip"], "expires_at": expires, "d3fend": policy.D3FEND_TECHNIQUE})
+
+    def auto_approve(con, incident_id: int, note_limit: bool = True) -> bool:
+        """SENTINEL_AUTO_APPROVE=1: approve the pending proposal when policy.AUTO_RULES allows it. Returns True if blocked."""
+        if not settings.auto_approve:
+            return False
+        incident = dict(con.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone())
+        proposal = con.execute("SELECT * FROM proposals WHERE incident_id=? AND status='pending'", (incident_id,)).fetchone()
+        if not proposal or incident["status"] != "awaiting_approval" or not policy.auto_eligible(incident):
+            return False
+        since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(timespec="seconds")
+        recent = con.execute("SELECT COUNT(*) FROM proposals p JOIN rules r ON r.proposal_id=p.id WHERE p.reviewer=? AND r.created_at>?",
+                             (policy.AUTO_APPROVER, since)).fetchone()[0]
+        if recent >= policy.AUTO_LIMIT_PER_HOUR:
+            if note_limit:
+                log(con, incident_id, "policy", f"Auto-approve limit ({policy.AUTO_LIMIT_PER_HOUR} per hour) reached; pending human approval")
+            return False
+        if not policy.evaluate(policy.AUTO_ACTION, proposal["target_ip"], incident, settings.protected_ips).allowed:
+            return False
+        seconds = policy.DURATION_SECONDS[policy.AUTO_ACTION]  # never permanent, even with SENTINEL_MANUAL_UNBLOCK
+        con.execute("UPDATE proposals SET status='approved',reviewer=?,action=?,duration_seconds=? WHERE id=?",
+                    (policy.AUTO_APPROVER, policy.AUTO_ACTION, seconds, proposal["id"]))
+        apply_block(con, {**dict(proposal), "action": policy.AUTO_ACTION, "duration_seconds": seconds}, policy.AUTO_APPROVER)
+        return True
+
+    @api.post("/api/proposals/{proposal_id}/acknowledge")
+    async def acknowledge(proposal_id: int, decision: DecisionIn):
+        """An admin confirms they saw a block the rule approved without a human; the dashboard alert stays until then."""
+        proposal = store.one("SELECT * FROM proposals WHERE id=?", (proposal_id,))
+        if not proposal:
+            raise HTTPException(404, "proposal not found")
+        if proposal["status"] != "approved" or proposal["reviewer"] != policy.AUTO_APPROVER:
+            raise HTTPException(409, "only automatic blocks need an acknowledgement")
+        with store.tx() as con:
+            changed = con.execute("UPDATE proposals SET acknowledged_by=?, acknowledged_at=? WHERE id=? AND acknowledged_at IS NULL",
+                                  (decision.reviewer, utcnow(), proposal_id))
+            if changed.rowcount != 1:
+                raise HTTPException(409, "already acknowledged")
+            log(con, proposal["incident_id"], "acknowledged", f"{decision.reviewer} acknowledged the automatic block")
+            audit(con, decision.reviewer, "auto_block_acknowledged", proposal["incident_id"], {"proposal_id": proposal_id, "target_ip": proposal["target_ip"] or proposal["source_ip"]})
         result = get_incident(proposal["incident_id"])
         await broadcast("approval", result)
         return result
@@ -742,6 +818,8 @@ def create_app(db_path: str | Path = DEFAULT_DB) -> FastAPI:
                     break
         except WebSocketDisconnect:
             sockets.discard(socket)
+
+    api.include_router(rag.make_router(settings, store))  # 'Ask me': read-only, off unless SENTINEL_RAG=1
 
     dashboard = ROOT.parent / "frontend" / "dist"
     if dashboard.exists():

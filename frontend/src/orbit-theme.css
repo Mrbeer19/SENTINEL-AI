@@ -257,6 +257,13 @@ textarea {
   background: var(--glass-soft);
   border-color: var(--glass-line);
 }
+/* The open list of a native <select> is drawn by the browser, not over the glass: without a solid
+   background Windows draws white rows with the theme's light text (unreadable in dark mode). */
+select option,
+select optgroup {
+  background: var(--surface);
+  color: var(--ink);
+}
 .agentLab .labCanvas,
 .labViewport,
 .dataScroll th {
@@ -1884,3 +1891,257 @@ textarea {
   border-radius: 6px;
   font-size: 13px;
 }
+
+/* Automatic blocks wait here until an admin acknowledges them (AutoBlockAlerts.jsx). */
+.autoBlockAlerts {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--glass-line));
+  border-radius: 16px;
+  background: var(--glass-strong);
+  color: var(--ink);
+}
+.autoBlockAlerts > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+.autoBlockAlert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.autoBlockAlert small {
+  color: var(--muted);
+}
+.autoBlockAlert a {
+  color: var(--accent);
+}
+
+/* Ask me (AskPanel.jsx): a third shell column like a side drawer; the workspace narrows instead of being covered. */
+.nShell[data-ask-open],
+.nShell[data-ask-open]:is(*) {
+  --ask-w: clamp(320px, 28vw, 400px);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--ask-w);
+}
+.askPanel {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  position: sticky;
+  top: 16px;
+  height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-card);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  box-shadow: var(--glass-shadow);
+  color: var(--text);
+  animation: askIn var(--dur-state) var(--ease-out) both;
+}
+@keyframes askIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+.askHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px 16px;
+  border-bottom: 1px solid var(--glass-line);
+}
+.askAvatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+.askTitle { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.askTitle b { font-size: 14px; }
+.askTitle small { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 11px; }
+.askDot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.askClose {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass-soft);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out);
+}
+.askClose:hover { background: var(--accent-soft); }
+.askBody {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+.askHello { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 18px 6px 6px; }
+.askOrb {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 45%, transparent), var(--accent-soft) 60%, transparent 72%);
+  animation: askOrbBreathe var(--dur-breathe) var(--ease-out) infinite;
+}
+@keyframes askOrbBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.askHello h2 { margin: 4px 0 0; font-size: 18px; }
+.askHello p { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.7; max-width: 30ch; }
+.askTurn { display: grid; gap: 8px; }
+.askBubble {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  animation: askBubbleIn var(--dur-state) var(--ease-out) both;
+}
+@keyframes askBubbleIn { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.askMine {
+  justify-self: end;
+  display: grid;
+  gap: 2px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-bottom-right-radius: 6px;
+}
+.askMine small { opacity: 0.75; font-size: 10.5px; }
+.askReply {
+  justify-self: start;
+  background: var(--surface);
+  border: 1px solid var(--glass-line);
+  border-bottom-left-radius: 6px;
+}
+.askReply p { margin: 0 0 8px; }
+.askReply ul, .askReply ol { margin: 0 0 8px; padding-left: 18px; }
+.askReply code { font-family: var(--font-mono); font-size: 11.5px; padding: 0 4px; border-radius: 6px; background: var(--accent-soft); }
+.askLabel {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.askError { color: var(--critical-text, var(--text)); }
+.askEvidence { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.askEvidence span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: var(--glass-soft);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.askSources { border-top: 1px dashed var(--glass-line); padding-top: 6px; }
+.askSources summary { cursor: pointer; color: var(--text-dim); font-size: 11px; }
+.askSources ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.askSources li { display: grid; gap: 3px; font-size: 11.5px; }
+.askSources li span { display: flex; flex-wrap: wrap; gap: 4px; }
+.askSources li i {
+  font-style: normal;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+.askTyping { display: flex; gap: 4px; padding: 12px 14px; }
+.askTyping i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: askDots var(--dur-signal) var(--ease-out) infinite alternate;
+}
+.askTyping i:nth-child(2) { animation-delay: var(--panel-step); }
+.askTyping i:nth-child(3) { animation-delay: calc(var(--panel-step) * 2); }
+@keyframes askDots { from { opacity: 0.3; transform: translateY(0); } to { opacity: 1; transform: translateY(-3px); } }
+.askFoot { display: grid; gap: 10px; padding: 12px 14px 14px; border-top: 1px solid var(--glass-line); }
+.askContext { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+.askContext select { flex: 1; min-width: 0; font-size: 11.5px; padding: 6px 8px; border: 1px solid var(--glass-line); color: var(--text); }
+.askChips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.askChips button {
+  padding: 10px 12px;
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-hover) var(--ease-out), transform var(--dur-press) var(--ease-out);
+}
+.askChips button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.askChips button:hover:not(:disabled) { border-color: var(--accent); }
+.askChips button:active:not(:disabled) { transform: scale(0.98); }
+.askChips button:disabled { opacity: 0.5; cursor: default; }
+.askFoot > small, .askNone { margin: 0; color: var(--text-dim); font-size: 10.5px; text-align: center; }
+.askLauncher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+  animation: askIn var(--dur-state) var(--ease-out) both;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+.askLauncher:active { transform: scale(0.97); }
+.askLauncherDot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, var(--lavender), var(--accent));
+}
+.railBuddy[data-thinking] .buddyBob { animation-duration: var(--dur-signal); }
+@media (max-width: 850px) {
+  .askPanel {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 60;
+    height: min(78dvh, 640px);
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    animation-name: askSheetIn;
+  }
+  @keyframes askSheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .askLauncher { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); right: 16px; }
+}
+/* Borders that stay visible on the white surfaces of the light theme too. */
+.askReply,
+.askEvidence span,
+.askChips button,
+.askContext select { border-color: color-mix(in srgb, var(--text) 14%, transparent); }
+.askClose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
