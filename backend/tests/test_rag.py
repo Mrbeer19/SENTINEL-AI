@@ -1,7 +1,7 @@
 """'Ask me' (backend/rag.py): answers come from backend/kb, the switch is off by default, and nothing is decided."""
 
 import pytest
-from conftest import ATTACKER, connect, event
+from conftest import ATTACKER, at, connect, event
 
 from backend import rag
 
@@ -165,3 +165,24 @@ def test_a_finished_incident_does_not_show_the_next_attack_of_the_same_kind(make
         c.post("/api/events", json=event())
     facts = c.post(f"/api/incidents/{first['id']}/ask", json={"question": "what"}).json()["evidence"]
     assert facts["failed_logins"] == 5
+
+
+def test_an_incident_finished_before_closed_event_id_stops_at_the_time_it_finished(make_app, tmp_path):
+    # INC-0003 on the VPS closed before #48 (closed_event_id NULL) and showed 94 later SSH logins from the same IP.
+    c = connect(make_app(SENTINEL_RAG="1"))
+    for _ in range(5):
+        first = c.post("/api/events", json=event(timestamp=at(5))).json()["incident"]
+    proposal = c.post(f"/api/incidents/{first['id']}/analyze").json()["proposal"]
+    c.post(f"/api/proposals/{proposal['id']}/reject", json={"reviewer": "admin"})
+    import sqlite3
+    with sqlite3.connect(next(tmp_path.rglob("*.db"))) as con:
+        con.execute("UPDATE incidents SET closed_event_id=NULL WHERE id=?", (first["id"],))
+    for _ in range(3):
+        c.post("/api/events", json=event(outcome="success", timestamp=at(-30)))
+    facts = c.post(f"/api/incidents/{first['id']}/ask", json={"question": "what"}).json()["evidence"]
+    assert facts["failed_logins"] == 5 and "success_logins" not in facts
+
+
+def test_finished_statuses_match_the_app():
+    from backend import app
+    assert rag.FINISHED == app.TERMINAL
