@@ -1,0 +1,20 @@
+name: Discord notify
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, review_requested, closed]
+  pull_request_review:
+    types: [submitted]
+permissions:
+  contents: read
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # Only the notify script is checked out (base branch); PR code is never run here.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - run: node .github/scripts/discord-notify.js pr
+        env:
+          DISCORD_WEBHOOK_PR: ${{ secrets.DISCORD_WEBHOOK_PR }}
+          DISCORD_WEBHOOK_MERGE: ${{ secrets.DISCORD_WEBHOOK_MERGE }}
