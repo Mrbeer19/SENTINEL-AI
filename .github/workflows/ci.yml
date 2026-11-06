@@ -27,3 +27,17 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+  discord:
+    # One message per PR run, plus pushes to dev/main; plain branch pushes are covered by their PR.
+    needs: [backend, frontend]
+    if: always() && (github.event_name == 'pull_request' || github.ref_name == 'dev' || github.ref_name == 'main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - run: node .github/scripts/discord-notify.js ci
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          DISCORD_WEBHOOK_CI: ${{ secrets.DISCORD_WEBHOOK_CI }}
