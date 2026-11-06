@@ -10,9 +10,11 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      # Only the notify script is checked out (base branch); PR code is never run here.
+      # Only the notify script from the base commit is checked out; PR code is never run here.
+      # pull_request_review would default to the PR merge ref, so the ref is pinned.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: .github/scripts
       - run: node .github/scripts/discord-notify.js pr
         env:
