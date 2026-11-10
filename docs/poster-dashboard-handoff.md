@@ -38,3 +38,15 @@ Backend/API contracts, authentication, policy and enforcement code were not chan
 - Globe positions are approximate and are not created for private/documentation IPs. Globe marker count is bounded; Sources retains all loaded records.
 - The embedded browser viewport override did not actually change its viewport in this environment. Responsive styles and overflow handling are included, but an actual mobile-device acceptance check remains recommended.
 - The model itself, external collectors, VPS configuration and enforcement on the real protected site were not changed or retested by this frontend migration.
+
+## VPS deployment — 10 November 2026
+
+- Live URL: https://sentinel.179-197-254-226.sslip.io/
+- Frontend revision: `2f7d9ff8b4e0934fefe2d1ce650806321913d0a8`.
+- Deployed on the existing Hostinger VPS using Docker Compose project `sentinel`, service `api`. The new static build was layered onto the exact running backend image, preserving backend code/dependencies, environment, volume and container restrictions. Caddy and other stacks were unchanged.
+- Image: `sentinel-api:poster-2f7d9ff` (also tagged `sentinel-api:local`). Release files: `/opt/sentinel-ai/releases/poster-2f7d9ff/`.
+- Rollback image: `sentinel-api:rollback-poster-20261110`. To restore from `/opt/sentinel-ai/deploy/vps`: `docker image tag sentinel-api:rollback-poster-20261110 sentinel-api:local` then `docker compose up -d --no-build --no-deps --force-recreate api`.
+- Verification: HTTPS serves the new HTML, application script, lazy globe chunk and Earth texture; deployed sign-in renders without browser console errors. Authenticated read-only backend probes returned 200 for health, incidents, proposals and rules. Unauthenticated incidents remained 401. Bridge and sensor were active; all three other active website URLs returned 200 after deployment.
+- Container snapshot after startup: 70.8 MiB / 384 MiB RAM, 0.20% CPU (point-in-time measurement).
+- Model status at verification: `rule_fallback`, `model_ready=false`. The frontend deployment did not start or change the workstation model tunnel.
+- A brief 502 occurred while the API container restarted; checks passed once startup completed. Production browser sign-in with the admin password and mobile-device acceptance were not performed.
