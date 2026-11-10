@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { request } from "./api.js";
-import Mascot from "./Mascot.jsx";
 import { Icon } from "./ui.jsx";
 import { duration, incidentId, isOpenIncident, kind } from "./lib.js";
 
@@ -102,7 +101,7 @@ export default function AskPanel({ open, onClose, incidents, route, user, onThin
   return (
     <aside className="askPanel" aria-label="Ask me · ถามเรื่อง incident" data-thinking={busy ? "true" : undefined}>
       <header className="askHead">
-        <span className="askAvatar" aria-hidden="true"><Mascot pose={busy ? "pilot" : "laptop"} size={36} loading="eager" /></span>
+        <span className="askAvatar" aria-hidden="true"><Icon name="shield" size={30}/></span>
         <span className="askTitle">
           <b>Ask me</b>
           <small><i className="askDot" aria-hidden="true" />คลังความรู้ในเครื่อง · ไม่ส่งข้อมูลออกนอกระบบ</small>
@@ -114,7 +113,7 @@ export default function AskPanel({ open, onClose, incidents, route, user, onThin
       <div className="askBody">
         {!thread.length && (
           <div className="askHello">
-            <span className="askOrb" aria-hidden="true"><Mascot pose={busy ? "pilot" : "laptop"} size={88} loading="eager" /></span>
+            <span className="askOrb" aria-hidden="true"><Icon name="shield" size={30}/></span>
             <h2>สวัสดี {user || "ผู้ดูแล"}</h2>
             <p>ถามเรื่อง incident ที่เลือกได้ คำตอบมาจากคลังความรู้ของ SENTINEL พร้อมแหล่งอ้างอิง Ask me ไม่สั่งบล็อกหรือปลดบล็อก</p>
           </div>

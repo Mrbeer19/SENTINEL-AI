@@ -284,7 +284,7 @@ export function Table({
   const viewport = useRef(null);
   const [arrivals, finishArrival] = useRowSignals(rows, keyField, liveRows);
   const signature = rows.map((r) => r[keyField]).join("|");
-  useEffect(() => setPage(1), [signature]);
+
   const pages = Math.max(1, Math.ceil(rows.length / 20)),
     current = Math.min(page, pages),
     visible = paginate ? rows.slice((current - 1) * 20, current * 20) : rows;

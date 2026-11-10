@@ -1,4 +1,7 @@
 export const kinds = {
+  HTTP_FLOOD: "HTTP Flood",
+  WEB_SCAN: "Web Scan",
+  HONEYPOT: "Honeypot",
   HTTP_AUTH_BRUTE_FORCE: "HTTP Brute Force",
   SSH_BRUTE_FORCE: "SSH Brute Force",
   PORT_SCAN: "Port Scan",

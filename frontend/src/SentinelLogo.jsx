@@ -1,58 +1,49 @@
 import React from "react";
-
 export function SentinelMark() {
   return (
-    <svg className="sentinelMark" viewBox="0 0 64 66" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="3">
-        <circle cx="32" cy="33" r="17" />
-        <ellipse cx="32" cy="33" rx="28" ry="10" transform="rotate(-32 32 33)" />
-      </g>
-      <path d="m29 20 10 1-12 14 9 1-13 13 5-13-7-1z" fill="currentColor" />
-      <circle cx="54" cy="20" r="3.5" fill="currentColor" />
+    <svg className="sentinelMark" viewBox="0 0 80 48" aria-hidden="true">
+      <ellipse
+        cx="38"
+        cy="24"
+        rx="34"
+        ry="12"
+        transform="rotate(-22 38 24)"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+      />
+      <circle cx="65" cy="14" r="5" fill="var(--accent)" />
     </svg>
   );
 }
-
 export default function SentinelLogo() {
   return (
     <svg
       className="sentinelLogo"
-      viewBox="0 0 270 66"
+      viewBox="0 0 310 55"
       role="img"
-      aria-label="Sentinel AI"
+      aria-label="SENTINEL / AI"
     >
-      <g fill="none" stroke="var(--accent)" strokeWidth="2.5">
-        <circle cx="32" cy="32" r="17" />
-        <ellipse
-          cx="32"
-          cy="32"
-          rx="28"
-          ry="10"
-          transform="rotate(-32 32 32)"
-        />
-      </g>
-      <path d="m29 19 10 1-12 14 9 1-13 13 5-13-7-1z" fill="var(--accent)" />
-      <circle cx="54" cy="19" r="3.5" fill="var(--accent)" />
+      <ellipse
+        cx="38"
+        cy="27"
+        rx="34"
+        ry="11"
+        transform="rotate(-22 38 27)"
+        fill="none"
+        stroke="#e3eaf0"
+        strokeWidth="3"
+      />
+      <circle cx="65" cy="17" r="5" fill="var(--accent)" />
       <text
-        x="73"
-        y="34"
-        fill="var(--text)"
-        fontFamily="var(--font-ui)"
-        fontWeight="600"
-        fontSize="25"
-        letterSpacing="1"
+        x="87"
+        y="36"
+        fill="var(--ink)"
+        fontFamily="Arial,sans-serif"
+        fontSize="27"
+        fontWeight="700"
       >
-        SENTINEL<tspan fill="var(--accent)"> AI</tspan>
-      </text>
-      <text
-        x="74"
-        y="50"
-        fill="var(--text-dim)"
-        fontFamily="var(--font-mono)"
-        fontSize="8"
-        letterSpacing="2.1"
-      >
-        SECURITY OPERATIONS
+        SENTINEL / AI
       </text>
     </svg>
   );

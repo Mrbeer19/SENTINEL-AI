@@ -1,77 +1,47 @@
-# SENTINEL AI — Dashboard (Mission Control)
+# SENTINEL — Poster dashboard
 
-หน้าผู้ดูแลของ SENTINEL ธีม Mission Control: พื้น graphite โทนอุ่น สีส้มเฉพาะจุดสั่งงาน และสีสถานะแยกจากสีแบรนด์
+Front-end ใหม่ใช้ดีไซน์ Sentinel Poster: พื้นดำ graphite, ตัวอักษรเงิน, หัวเรื่องทึบ/เส้นขอบ, ปุ่ม lime และแผงกระจก ใช้ React และข้อมูลจาก Backend เดิม ทุกหน้าสร้างจาก DOM ไม่มี screenshot ของหน้าเว็บวางเป็น UI
 
-## เปิดใช้งานในเครื่อง
-
-จากรากโครงการ:
+## Run locally
 
 ```powershell
+# Start the existing backend separately on its configured port.
 cd frontend
-npm install
+npm ci
+$env:SENTINEL_API_TARGET = 'http://127.0.0.1:8001'
 npm run dev
 ```
 
-- หน้าจริง: `http://127.0.0.1:5173/` — ใช้ระบบแอดมินและ backend เดิม
-- พรีวิวสังเคราะห์: `http://127.0.0.1:5173/tests/preview.html?scenario=pending#/overview`
-- ตรวจภัยเว็บ: เปลี่ยน scenario เป็น `HTTP_FLOOD`, `WEB_SCAN` หรือ `HONEYPOT` แล้วเปิด `#/incident/1` หรือ `#/trace/1`
-
-Dev server ใช้ localhost พอร์ต 5173 ส่วน API และ WebSocket ผ่าน proxy ไป backend ที่ `127.0.0.1:8001` (เปลี่ยนด้วย `SENTINEL_API_TARGET`) พรีวิวและข้อมูลสังเคราะห์ใช้ได้เฉพาะ development และไม่อยู่ใน production build
-
-## สิ่งที่คงเดิม
-
-ใช้ API, routes, session แอดมิน, การอนุมัติ/ปฏิเสธ และข้อมูลจาก backend เดิม ไม่มีการเปลี่ยนรหัสผ่านหรือเพิ่มสิทธิ์ ส่วน Mission Control เปลี่ยนเฉพาะการแสดงผล ฟอนต์ สี กรอบ และผังภาพ
-
-`npm run build` สร้าง `dist/` ให้ backend เสิร์ฟหน้าเว็บ ค่า environment อ่านจาก `.env.local` ในโฟลเดอร์นี้ เช่น `VITE_PROTECTED_SITE_IP` ไม่คัดลอกค่าจริงลง source ทั้งนี้ตัวแปร Vite ยังมองเห็นได้จาก browser bundle
-
-## ระบบภาพ
-
-- `src/mission-control.css` เป็นแหล่ง token กลางสำหรับสีและฟอนต์ รวมธีมสว่างโทนอุ่นเพื่อคงปุ่มสลับธีมเดิม
-- ใช้ IBM Plex Sans / IBM Plex Sans Thai สำหรับ UI และ JetBrains Mono สำหรับข้อมูลตัวเลข เวลา IP และรหัส
-- โลโก้ SVG ตัวเดียวใช้ร่วมกันทั้งหน้าล็อกอินและ dashboard
-- ไม่มี gradient, glow, glass หรือเงาฟุ้ง ใช้เส้นขอบ 1px และมุม 4px
-- ลูกบอล Agent flow 3D เดิมยังอยู่ สถานะเสร็จเป็นสี data, ขั้นปัจจุบันเป็นสี review และขั้นถัดไปเป็นสี text-dim
-- สถานะ Agent ยึด trace ที่บันทึกจริง การอนุมัติไม่เท่ากับ verified และ Replay ไม่ส่งคำสั่งใหม่
-
-## Network explorer
-
-- MAP: เกิน 12 IP รวมเป็นไม่เกิน 3 กลุ่มตามสถานะ กดเจาะดูไม่เกิน 10 IP ต่อชุด
-- SOURCES: ตารางค้นหาและแบ่งหน้า 20 รายการ ใช้ IP เป็น identity ร่วมกับแผนผังและแผนที่
-- WORLD: แผนที่โลกสองมิติ เลื่อน/ซูมได้ พิกัดตรงกันรวมหมุดแล้วเจาะราย IP
-- กรอบ Network Map สูงคงที่ 640px บนจอใหญ่ และ 600px บนมือถือ ไม่เปลี่ยนขนาดเมื่อสลับมุมมองหรือเลือก IP เนื้อหาที่เกินเลื่อนภายในกรอบ
-- แผนผัง MAP วางจุดตามขนาดพื้นที่จริงเพื่อใช้ความกว้างของกรอบ โดยไม่ยืดวงกลมหรือบิดรูปทรง
-- อ่าน `/api/geoip/{ip}` จาก backend เดิม โหลดเฉพาะชุดที่แสดงไม่เกิน 10 IP พร้อมกันไม่เกิน 2 lookup และแชร์แคช 24 ชั่วโมงกับรายละเอียดต้นทาง
-- IP ภายใน/เอกสาร ผล lookup ล้มเหลว พิกัดผิดช่วง หรือ IP ที่ตอบกลับไม่ตรง จะไม่สร้างหมุดสุ่ม
-- ตัวเลขอิงเฉพาะข้อมูลที่ API โหลดมา ไม่ใช่จำนวน IP ทุกช่วงเวลาในฐานข้อมูล
-- `scenario=many-sources`: 2,500 IP สังเคราะห์; `scenario=geo-locations`: public address ตัวอย่างกับพิกัดสาธิตที่กำหนดไว้ ไม่ใช่ผล lookup จริง
-
-## ภัยเว็บที่ตรวจด้วยกฎ
-
-- HONEYPOT: HTTP_REQUEST แรกที่ outcome เป็น honeypot
-- HTTP_FLOOD: รวม request_count ภายใน 60 วินาทีอย่างน้อย 300 คำขอ
-- WEB_SCAN: ภายใน 60 วินาที รวม not_found อย่างน้อย 10 หรือรวม scan_paths อย่างน้อย 3
-- แถวที่ถึงเกณฑ์มีข้อความกำกับ ตารางแสดง request_count, not_found และ paths เป็นข้อความธรรมดาที่ escape แล้ว
-- ทั้งสามชนิดใช้ป้ายกฎเฉพาะทาง ไม่กล่าวว่าโมเดลล่ม ส่วนชนิดอื่นที่เป็น rule_fallback ยังเตือนสีเหลือง
-- ยังไม่เพิ่ม mapping ชื่อชนิดหรือหลักฐานของสามชนิดนี้ เพื่อรองรับการรวม mapping จาก dev ภายหลัง
-
-## ตรวจสอบ
+`SENTINEL_API_TARGET` controls the Vite proxy for both `/api` and `/ws`; its default is `http://127.0.0.1:8001`. Use the port of the backend actually running. Production builds use same-origin `/api` and `/ws` and the existing cookie session. No admin credentials belong in Vite variables.
 
 ```powershell
-npm test
 npm run build
+npm test
 ```
 
-ชุดทดสอบครอบคลุม trace, packet replay, การยืนยันผลบล็อก, GeoIP, การรวมกลุ่มต้นทาง, เกณฑ์ภัยเว็บ และการ escape paths ส่วน browser QA ใช้ fixture แยกจากระบบจริง จึงไม่ทดแทนการตรวจ end-to-end กับ backend ที่เปิดใช้งานจริง
+The production output is `frontend/dist/`. Backend deployment and enforcement are unchanged.
 
-3D โหลดเป็น async chunk เมื่อเปิด Agent workspace และมีรายการขั้นตอนสำหรับใช้งานเมื่อ WebGL ไม่พร้อม ขนาด chunk ของ engine 3D ยังมีคำเตือนจาก build; ไม่เปลี่ยน engine ในงานธีมนี้
+## Pages and data
 
-## แก้ตามผลรีวิว UI (31 ตุลาคม 2026)
+- Login: `/api/auth/session`, `/api/auth/login`, `/api/auth/logout`; no demo password bypass.
+- Overview: existing summary/source/attention data, a persistent interactive globe, the original selected-source and decision panels, and a compact activity strip. Extra records remain in the Sources/Network tabs or their own pages.
+- Sources: real timeline/table, IP/channel/time filters, shared selection and incident links. Sources without coordinates remain readable.
+- Network: a new observed-relationship diagram; solid Web links and dashed SSH/Ports links; selecting a node opens the source inspector. Animation pause and paged node sets are available.
+- Incidents: search, severity/type/channel/status filters and sorting; each row keeps its own incident ID. Filters are stored in the hash query.
+- Incident detail: report-derived evidence, stored-event counts, timeline/audit, proposal and verification. The graph describes counts per stored event, not an invented requests-per-second rate.
+- Investigation: specialized-rule evidence or recorded agent trace, a read-only history replay, and the existing analyze endpoint where appropriate.
+- Approvals: pending/history, reviewer from session, confirm before POST, and server-confirmed status. Automatic rule decisions remain distinguishable from human decisions.
+- Protection: active/history, server-based expiry/manual-unblock display, confirmation before DELETE, and actual denied-request evidence.
+- Reports: case-specific HTML paper, A4 print rules and complete JSON export for the chosen incident.
 
-- Workspace ใช้ margin 0 auto และเติมพื้นหลังเต็ม grid row; หัวหน้าเริ่มตรงกันทุก route
-- Sidebar desktop เป็น sticky เต็มความสูง viewport พร้อมเว้นตำแหน่ง header; มือถือคงเมนูด้านล่าง
-- วันที่ใช้ en-GB / ค.ศ.; Incidents เรียงความรุนแรงก่อน แล้วเรียงเวลาใหม่ไปเก่า โดยไม่เปลี่ยนลำดับประวัติต้นทาง
-- Activity severity กว้าง 92px เท่ากันและตัวอักษร 12px; ข้อความหลักฐานและเลขลำดับ 13px
-- ปุ่มอนุมัติไม่ตัดคำ; PORT ซ่อนเมื่อชุดข้อมูลไม่มีพอร์ต แต่ยังแสดงหลักฐานสแกนพอร์ตที่มีค่า
-- Protection แสดงเวลา mm:ss และสัดส่วนเวลาคงเหลือตาม created_at/expires_at จริง ไม่มี timer ใหม่; ปุ่มปลดบล็อกแบบรองยังผ่าน confirmation เดิม
-- Agent Flow เพิ่มลูกศรและจุดวิ่งตามเส้นทางที่มี trace แล้ว ใช้สีแยกเสร็จ/ปัจจุบัน ไม่สร้างสถานะหรือข้อเสนอใหม่ ปรับแสงวัตถุและขอบกล้องให้อ่านป้ายสุดท้ายได้
-- Overview เปลี่ยน co-pilot เป็นสัญลักษณ์ shield ของ UI ชุดเดียวกัน โดยเก็บภาพมาสคอตต้นฉบับไว้สำหรับส่วนอื่น
+## Globe and performance
+
+`PosterGlobe.jsx` owns a single scene while navigating. `posterGlobeScene.js` loads asynchronously, caps rendering at 30 fps, sizes the buffer to the visible viewport (maximum width 1400), renders on demand after movement settles, and stops while hidden or on Approvals. Unmount disposes geometry/materials/textures and the WebGL context. There are no baked globe images behind it.
+
+Coordinates come only from the existing `resolveGeo` cache/queue: two simultaneous lookups, positive cache 24 hours, private/documentation addresses skipped. At most 24 source markers are plotted; co-located sources share a selectable cluster. The source lists retain the complete loaded set. The globe and list share IP identity. Zooming in hides surrounding Overview content while keeping navigation and globe controls; zoom out or reset restores it.
+
+## Development preview
+
+`http://127.0.0.1:5173/tests/preview.html?scenario=geo-locations#/overview` uses the existing development-only fixture interceptor. `pending`, `HTTP_FLOOD`, `WEB_SCAN`, `HONEYPOT`, `many-sources` and the other existing scenarios are available. Fixtures are not a production data fallback.
+
+`src/poster-theme.css` is the active product theme. The earlier product/mission/orbit theme files and earlier page components are not imported by the application entry point. Shared API, validation and rendering primitives retain their original contracts.

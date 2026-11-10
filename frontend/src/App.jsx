@@ -1,29 +1,35 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { request, useLiveData } from "./api.js";
 import { Icon } from "./ui.jsx";
-import { date, time } from "./lib.js";
-import SentinelLogo, { SentinelMark } from "./SentinelLogo.jsx";
-import Mascot, { ConnectionLoader, PageSkeleton, RailBuddy } from "./Mascot.jsx";
-import { NetworkBackdrop, TiltStage } from "./LoginScene.jsx";
-import { RefreshMotion, useNavIndicator } from "./motion.jsx";
+import { date, time, sourcesOf, kind, incidentId } from "./lib.js";
+import PosterGlobe from "./PosterGlobe.jsx";
+import PosterOverview from "./PosterOverview.jsx";
+import SentinelLogo from "./SentinelLogo.jsx";
+import { ConnectionLoader, PageSkeleton } from "./PosterLoading.jsx";
+import { RefreshMotion } from "./motion.jsx";
 import AutoBlockAlerts from "./AutoBlockAlerts.jsx";
 import AskPanel from "./AskPanel.jsx";
 import {
   Approvals,
+  ApprovalWave,
   Incident,
   Incidents,
-  Overview,
   Reports,
   Rules,
   Trace,
   titles,
-} from "./Pages.jsx";
+} from "./PosterPages.jsx";
 
 export function useTheme() {
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem("sentinel-observatory-theme") || "dark";
+      return "dark";
     } catch {
       return "dark";
     }
@@ -104,7 +110,12 @@ export default function App() {
       setError("ออกจากระบบไม่สำเร็จ ลองอีกครั้ง");
     }
   };
-  if (session === null) return <div className="authLoader"><ConnectionLoader /></div>;
+  if (session === null)
+    return (
+      <div className="authLoader">
+        <ConnectionLoader />
+      </div>
+    );
   if (session?.authenticated)
     return (
       <Workspace
@@ -117,18 +128,22 @@ export default function App() {
     );
   return (
     <div className="loginPage">
-      <NetworkBackdrop />
-      <button className="themeButton" onClick={toggle} aria-label="สลับธีม">
-        <Icon name={theme === "dark" ? "sun" : "moon"} />
-      </button>
-      <TiltStage>
+      <PosterGlobe page="login" />
+      <a className="posterLoginBrand" href="/">
+        <SentinelLogo />
+      </a>
+      <section className="posterLoginHero">
+        <strong>SECURE</strong>
+        <span>ACCESS</span>
+        <i>/////</i>
+        <p>ศูนย์ควบคุมความปลอดภัย</p>
+      </section>
+      <div className="posterLoginCard">
         <form onSubmit={login} className="loginForm">
           <a href="/" className="brand">
             <SentinelLogo />
           </a>
-          <h2>
-            เข้าสู่<span>ศูนย์ควบคุม</span>
-          </h2>
+          <h2>Sign in</h2>
           <p>ใช้บัญชีแอดมินเดิมของ Sentinel เพื่อเข้าพื้นที่ทำงานความปลอดภัย</p>
           <label className="field">
             ชื่อผู้ใช้
@@ -195,9 +210,11 @@ export default function App() {
             <Icon name="lock" size={12} />
             AUTHORIZED PERSONNEL ONLY
           </span>
-          <small>การยืนยันตัวตนตรวจที่ Backend ไม่ได้บันทึกรหัสในหน้าเว็บ</small>
+          <small>
+            การยืนยันตัวตนตรวจที่ Backend ไม่ได้บันทึกรหัสในหน้าเว็บ
+          </small>
         </form>
-      </TiltStage>
+      </div>
     </div>
   );
 }
@@ -211,13 +228,21 @@ const nav = [
 ];
 function ago(at, now) {
   const s = Math.max(0, Math.round((now - Date.parse(at)) / 1000));
-  return s < 5 ? "เมื่อสักครู่" : s < 60 ? `${s} วินาทีที่แล้ว` : `${Math.round(s / 60)} นาทีที่แล้ว`;
+  return s < 5
+    ? "เมื่อสักครู่"
+    : s < 60
+      ? `${s} วินาทีที่แล้ว`
+      : `${Math.round(s / 60)} นาทีที่แล้ว`;
 }
 function routeOf() {
-  const [p = "overview", id] = location.hash.replace(/^#\/?/, "").split("/");
+  const [p = "overview", id] = location.hash
+    .replace(/^#\/?/, "")
+    .split("?")[0]
+    .split("/");
   return {
     page: titles[p] ? p : "overview",
     id: /^\d+$/.test(id || "") ? Number(id) : null,
+    query: location.hash.split("?")[1] || "",
   };
 }
 export function Workspace({
@@ -231,24 +256,49 @@ export function Workspace({
   const [route, setRoute] = useState(routeOf),
     live = useLiveData(),
     [now, setNow] = useState(Date.now()),
-    [q, setQ] = useState(""),
-    [submittedSearch, setSubmittedSearch] = useState(""),
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(null),
-    [railOpen, setRailOpen] = useState(() => {
-      try {
-        return localStorage.getItem("sentinel-rail") !== "collapsed";
-      } catch {
-        return true;
-      }
-    }),
     [askEnabled, setAskEnabled] = useState(false),
     [askOpen, setAskOpen] = useState(false),
     [askThinking, setAskThinking] = useState(false),
     lock = useRef(false),
     toastTimer = useRef(null),
-    routeTransition = useRef(null),
     routeRef = useRef(route);
+  const globeRef = useRef(null);
+  const [overviewView, setOverviewView] = useState("globe");
+  const [selectedIp, setSelectedIp] = useState(null),
+    [locations, setLocations] = useState({}),
+    [zoomed, setZoomed] = useState(false);
+  const sourceRows = useMemo(
+    () =>
+      sourcesOf(live.data).map((s) => ({
+        ...s,
+        incident: live.data.incidents.find((i) => i.source_ip === s.ip),
+      })),
+    [live.data],
+  );
+  const initialSource = useRef(false);
+  const [globeSourceIps, setGlobeSourceIps] = useState(null);
+  useEffect(() => {
+    if (!initialSource.current && sourceRows.length) {
+      initialSource.current = true;
+      const pending = live.data.proposals.find((p) => p.status === "pending");
+      setSelectedIp(
+        pending?.target_ip ||
+          pending?.source_ip ||
+          live.data.incidents[0]?.source_ip ||
+          sourceRows[0].ip,
+      );
+    } else if (selectedIp && !sourceRows.some((s) => s.ip === selectedIp))
+      setSelectedIp(null);
+  }, [sourceRows, selectedIp]);
+  useEffect(() => {
+    document
+      .querySelectorAll(".fadeOnZoom,.pageHeading,.nFooter")
+      .forEach((node) => {
+        node.inert = zoomed;
+      });
+  }, [zoomed]);
   useEffect(() => {
     let alive = true;
     request("/api/rag", { accept: [404] })
@@ -266,13 +316,7 @@ export function Workspace({
         routeRef.current = nextRoute;
         setRoute(nextRoute);
       };
-      if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        try {
-          routeTransition.current?.skipTransition();
-          routeTransition.current = document.startViewTransition(() => flushSync(go));
-          routeTransition.current.finished.catch(() => {});
-        } catch { go(); }
-      } else go();
+      go();
     };
     window.addEventListener("hashchange", change);
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -282,11 +326,6 @@ export function Workspace({
       clearTimeout(toastTimer.current);
     };
   }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("sentinel-rail", railOpen ? "open" : "collapsed");
-    } catch {}
-  }, [railOpen]);
   useEffect(() => {
     document.querySelector("#workspace")?.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -338,17 +377,47 @@ export function Workspace({
     },
     [live.refresh],
   );
-  const ctx = { ...live, now, user, busy, act, searchQuery: submittedSearch },
+  const ctx = {
+      ...live,
+      now,
+      user,
+      busy,
+      act,
+      searchQuery: "",
+      selectedIp,
+      setSelectedIp,
+      locations,
+      globeRef,
+      routeQuery: route.query,
+      setOverviewView,
+      setGlobeSourceIps,
+    },
     [title, subtitle] = titles[route.page],
     active = route.page === "incident" ? "incidents" : route.page;
-  const navRail = useNavIndicator(active);
-  const search = (e) => {
-    e.preventDefault();
-    setSubmittedSearch(q);
-    location.hash = `/incidents`;
-  };
   return (
-    <div className="nShell" data-ask-open={askOpen || undefined}>
+    <div
+      className="nShell posterShell"
+      data-page={route.page}
+      data-zoomed={zoomed || undefined}
+      data-ask-open={askOpen || undefined}
+    >
+      <PosterGlobe
+        ref={globeRef}
+        page={
+          route.page === "overview" && overviewView !== "globe"
+            ? overviewView
+            : route.page
+        }
+        sources={
+          route.page === "overview" && globeSourceIps
+            ? sourceRows.filter((s) => globeSourceIps.includes(s.ip))
+            : sourceRows
+        }
+        selectedIp={selectedIp}
+        onSelect={setSelectedIp}
+        onZoom={setZoomed}
+        onLocations={setLocations}
+      />
       <a
         className="skipLink"
         href="#workspace"
@@ -359,153 +428,106 @@ export function Workspace({
       >
         ข้ามไปเนื้อหา
       </a>
-      <header className="nHeader">
+      <header className="nHeader posterHeader">
         <a className="brand" href="#/overview">
           <SentinelLogo />
         </a>
-        <span className="headerLabel">SECURITY WORKSPACE</span>
-        <form className="commandSearch" onSubmit={search}>
-          <Icon name="search" size={15} />
-          <input
-            aria-label="ค้นหาเหตุการณ์ทั้งระบบ"
-            placeholder="ค้นหา IP หรือเหตุการณ์…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <kbd>↵</kbd>
-        </form>
-        <details className="connection">
-          <summary data-connected={live.connected && !live.error || undefined}>
-            <i
-              className={`dot ${live.error ? "red" : live.connected ? "" : "amber"}`}
-            />
-            <span>
-              {live.error
-                ? "OFFLINE"
-                : live.connected
-                  ? "CONNECTED"
-                  : "RECONNECTING"}
-            </span>
-            {/* Model status in the same chip: /api/health is re-read with every refresh (at least every 15 s). */}
-            <span className="modelState" aria-label={live.data.health?.model_ready ? "โมเดล AI ออนไลน์" : "โมเดล AI ออฟไลน์"}>
-              <i className={`dot ${!live.data.health ? "amber" : live.data.health.model_ready ? "" : "red"}`} />
-              {!live.data.health ? "AI …" : live.data.health.model_ready ? "AI ONLINE" : "AI OFFLINE"}
-            </span>
-          </summary>
-          <div>
-            <b>สถานะการเชื่อมต่อ</b>
-            <span>
-              {live.error
-                ? "เซิร์ฟเวอร์ไม่พร้อม"
-                : live.connected
-                  ? "เชื่อมต่อระบบแล้ว"
-                  : "กำลังเชื่อมต่อใหม่"}
-            </span>
-            <small>MODEL / {live.data.health?.model || "—"}</small>
-            <small>
-              {live.data.health?.model_ready
-                ? "AI ออนไลน์ · incident ใหม่วิเคราะห์ด้วยโมเดล"
-                : "AI ออฟไลน์ · incident ใหม่ใช้กฎแทน (rule fallback)"}
-            </small>
-            <small>LAST UPDATE / {time(live.updatedAt)}</small>
-          </div>
-        </details>
-        <button
-          className="themeButton"
-          aria-label={
-            theme === "dark" ? "เปลี่ยนเป็นโหมดสว่าง" : "เปลี่ยนเป็นโหมดมืด"
-          }
-          onClick={toggleTheme}
-        >
-          <Icon name={theme === "dark" ? "sun" : "moon"} size={18} />
-        </button>
-        <div className="operator">
-          <span>{user.slice(0, 2).toUpperCase()}</span>
-          <details>
-            <summary>
-              {user}
-              <small>ผู้ดูแลระบบ</small>
-            </summary>
-            <button onClick={onLogout}>
-              <Icon name="logout" size={15} />
-              ออกจากระบบ
-            </button>
-          </details>
-        </div>
-      </header>
-      <nav
-        className="nRail"
-        aria-label="เมนูหลัก"
-        ref={navRail}
-        data-open={railOpen || undefined}
-      >
-        <div className="railBrand">
-          <span className="railMark">
-            <SentinelMark />
-          </span>
-          <span className="railBrandText">
-            <b>Sentinel AI</b>
-            <small>Security workspace</small>
-          </span>
-          <button
-            type="button"
-            className="railToggle"
-            aria-expanded={railOpen}
-            aria-label={railOpen ? "ย่อเมนู" : "ขยายเมนู"}
-            onClick={() => setRailOpen((v) => !v)}
-          >
-            <Icon name="arrow" size={14} />
-          </button>
-        </div>
-        <span className="navIndicator" aria-hidden="true" />
-        <span className="navSectionLabel">WORKSPACE</span>
-        {nav.map(([key, label, icon], i) => (
-          <a
-            key={key}
-            href={`#/${key}`}
-            aria-current={active === key ? "page" : undefined}
-            aria-label={label}
-          >
-            <small>0{i + 1}</small>
-            <Icon name={icon} size={20} />
-            <span>{label}</span>
-            {key === "approvals" &&
-              live.data.proposals.filter((p) => p.status === "pending").length >
-                0 && (
-                <b className="navCount" aria-hidden="true">
+        <nav className="posterMainNav" aria-label="เมนูหลัก">
+          {nav.map(([key, label]) => (
+            <a
+              key={key}
+              href={`#/${key}`}
+              aria-current={active === key ? "page" : undefined}
+            >
+              {key === "trace" ? "AI" : label}
+              {key === "approvals" && (
+                <b>
                   {
                     live.data.proposals.filter((p) => p.status === "pending")
                       .length
                   }
                 </b>
               )}
-          </a>
-        ))}
-        <span className="railFoot">
-          <Icon name="shield" size={18} />
-          <b>Human approved</b>
-          <small>ผู้ดูแลยืนยันก่อนตอบสนอง · ยกเว้นกฎที่บล็อกเองชั่วคราว</small>
-        </span>
-        <RailBuddy
-          incidents={live.data.incidents}
-          proposals={live.data.proposals}
-          offline={Boolean(live.error)}
-          onAsk={askEnabled ? () => setAskOpen(true) : undefined}
-          thinking={askThinking}
-        />
-      </nav>
+            </a>
+          ))}
+        </nav>
+        <div className="posterHeaderStatus">
+          <span className="posterPill">
+            <i
+              className={`dot ${live.error ? "red" : live.connected ? "" : "amber"}`}
+            />
+            {live.error
+              ? "Offline"
+              : live.connected
+                ? "Connected"
+                : "Reconnecting"}
+          </span>
+          <span className="posterPill">
+            <i
+              className={`dot ${live.data.health?.model_ready ? "" : "amber"}`}
+            />
+            AI {live.data.health?.model_ready ? "online" : "offline"}
+          </span>
+        </div>
+        <details className="posterAccount">
+          <summary>
+            <Icon name="user" /> {user}⌄
+          </summary>
+          <button className="button" onClick={onLogout}>
+            ออกจากระบบ
+          </button>
+        </details>
+      </header>
       <main id="workspace" tabIndex="-1">
         <div className="pageHeading">
           <div>
             <span className="eyebrow pageBreadcrumb">
               Workspace <span>/</span> {nav.find((n) => n[0] === active)?.[1]}
             </span>
-            <h1>{title}</h1>
+            <h1>
+              <strong>
+                {
+                  {
+                    overview: "SECURITY",
+                    incidents: "SECURITY",
+                    incident:
+                      kind(
+                        live.data.incidents.find((i) => i.id === route.id)
+                          ?.kind,
+                      ) || "INCIDENT",
+                    trace: "RULE / AI",
+                    approvals: "RESPONSE",
+                    rules: "WEB",
+                    reports: "SECURITY",
+                  }[route.page]
+                }
+              </strong>
+              <span>
+                {
+                  {
+                    overview: "OVERVIEW",
+                    incidents: "INCIDENTS",
+                    incident: incidentId(route.id),
+                    trace: "INVESTIGATION",
+                    approvals: "APPROVALS",
+                    rules: "PROTECTION",
+                    reports: "REPORTS",
+                  }[route.page]
+                }
+              </span>
+              <i aria-hidden="true">/////</i>
+            </h1>
             <p>{subtitle}</p>
           </div>
+          {route.page === "approvals" && (
+            <ApprovalWave events={live.data.events} />
+          )}
           <div className="pageActions">
             {live.updatedAt && (
-              <span className="freshness" title={`อัปเดตล่าสุด ${time(live.updatedAt)}`}>
+              <span
+                className="freshness"
+                title={`อัปเดตล่าสุด ${time(live.updatedAt)}`}
+              >
                 <i className="dot" aria-hidden="true" />
                 อัปเดต {ago(live.updatedAt, now)}
               </span>
@@ -523,14 +545,18 @@ export function Workspace({
               onClick={() => live.refresh(true)}
               aria-label="รีเฟรชข้อมูล"
             >
-              <RefreshMotion busy={live.refreshing}><Icon name="refresh" size={14} /></RefreshMotion>
+              <RefreshMotion busy={live.refreshing}>
+                <Icon name="refresh" size={14} />
+              </RefreshMotion>
               {live.refreshing ? "กำลังโหลด" : "รีเฟรช"}
             </button>
           </div>
         </div>
         {(live.error || authError) && (
-          <div role="alert" className={`notice bad ${live.error ? "connectionNotice" : ""}`}>
-            {live.error && <Mascot pose="laptop" size={96} mood="offline" />}
+          <div
+            role="alert"
+            className={`notice bad ${live.error ? "connectionNotice" : ""}`}
+          >
             <span>{authError || "เชื่อมต่อ server ไม่ได้ กำลังลองใหม่"}</span>
             <button className="button" onClick={() => live.refresh(true)}>
               ลองใหม่
@@ -546,7 +572,7 @@ export function Workspace({
               ยังไม่มีข้อมูลที่แสดงได้ กรุณาตรวจการเชื่อมต่อ
             </div>
           ) : route.page === "overview" ? (
-            <Overview ctx={ctx} />
+            <PosterOverview ctx={ctx} />
           ) : route.page === "incidents" ? (
             <Incidents ctx={ctx} />
           ) : route.page === "incident" ? (
@@ -562,7 +588,7 @@ export function Workspace({
           )}
         </div>
         <footer className="nFooter">
-          <span>SENTINEL / OBSERVATORY B</span>
+          <span>SENTINEL / SECURITY WORKSPACE</span>
           <span>
             {fixture
               ? "ข้อมูลสังเคราะห์ · ไม่เชื่อมระบบจริง"
@@ -581,19 +607,31 @@ export function Workspace({
         />
       )}
       {askEnabled && !askOpen && (
-        <button type="button" className="askLauncher" onClick={() => setAskOpen(true)} aria-label="เปิด Ask me ถามเรื่อง incident">
+        <button
+          type="button"
+          className="askLauncher"
+          onClick={() => setAskOpen(true)}
+          aria-label="เปิด Ask me ถามเรื่อง incident"
+        >
           <span className="askLauncherDot" aria-hidden="true" />
           Ask me
         </button>
       )}
       {(busy || toast) && (
-        <div className={`toast ${toast?.type || ""} ${!busy && toast?.approved ? "mascotToast" : ""}`} role="status">
-          {!busy && toast?.approved ? <Mascot size={72} mood="happy" /> : <Icon
-            name={busy ? "clock" : toast.type === "good" ? "check" : "incident"}
-          />}
+        <div
+          className={`toast ${toast?.type || ""} ${!busy && toast?.approved ? "mascotToast" : ""}`}
+          role="status"
+        >
+          <Icon
+            name={
+              busy ? "clock" : toast?.type === "good" ? "check" : "incident"
+            }
+          />
           <span>
             {busy ? "กำลังบันทึก…" : toast.message}
-            {!busy && toast?.approved && <small>เว็บที่ป้องกันจะตอบ 403 กับ IP นี้</small>}
+            {!busy && toast?.approved && (
+              <small>เว็บที่ป้องกันจะตอบ 403 กับ IP นี้</small>
+            )}
             {toast?.detail && (
               <details>
                 <summary>รายละเอียด</summary>

@@ -1,0 +1,7 @@
+Earth surface assets for the Sentinel Poster globe:
+  earth.jpg: https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg
+  earth-normal.jpg: https://threejs.org/examples/textures/planets/earth_normal_2048.jpg
+Source: official three.js example asset collection.
+The surface is converted to graphite/silver in memory; the original local assets are retained.
+Three.js dependency notices are retained in /THIRD-PARTY-3D-NOTICES.txt.
+These textures contain no IP geolocation or security data.
