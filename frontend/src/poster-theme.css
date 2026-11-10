@@ -75,6 +75,15 @@ input,
 select {
   font: inherit;
 }
+/* Native popup menus need opaque colors as well as the closed control. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  color: #f3f5f7;
+  background-color: #202831;
+}
 a {
   color: inherit;
 }
