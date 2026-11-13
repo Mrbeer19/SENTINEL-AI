@@ -246,6 +246,18 @@ button {
 .posterWorld.isHidden canvas {
   pointer-events: none;
 }
+.worldCountry {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #0b1117d9;
+  color: #f3f5f7;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .worldPin {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -2848,6 +2860,7 @@ progress {
 .askBody {
   overflow: auto;
   flex: 1;
+  min-height: 0;
   padding: 20px;
 }
 .askHello {
@@ -2884,18 +2897,28 @@ progress {
 .askFoot {
   padding: 18px;
   border-top: 1px solid var(--line);
+  max-height: 65%;
+  overflow-y: auto;
 }
-.askQuestions {
+.askChips {
   display: grid;
   gap: 8px;
+  margin-bottom: 12px;
 }
-.askQuestions button {
+.askChips button {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   text-align: left;
   background: #1a2833;
   color: white;
+}
+.askChips button:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.askChips button:disabled {
+  opacity: 0.55;
 }
 .askLauncher {
   position: fixed;

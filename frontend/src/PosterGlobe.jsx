@@ -23,7 +23,7 @@ export default forwardRef(function PosterGlobe(
     engine = useRef(null),
     callbacks = useRef({ onZoom, onSelect, onLocations });
   callbacks.current = { onZoom, onSelect, onLocations };
-  const [points, setPoints] = useState([]),
+  const [{ pins, labels }, setPoints] = useState({ pins: [], labels: [] }),
     [locations, setLocations] = useState({}),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState(false),
@@ -117,7 +117,7 @@ export default forwardRef(function PosterGlobe(
   );
   const hidden = page === "approvals";
   const groups = new Map();
-  for (const p of points.filter((p) => p.visible)) {
+  for (const p of pins.filter((p) => p.visible)) {
     const key = `${p.latitude.toFixed(3)}:${p.longitude.toFixed(3)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
@@ -139,6 +139,18 @@ export default forwardRef(function PosterGlobe(
           มุมมอง 3D ไม่พร้อม · เลือกอ่านต้นทางใน Sources ได้
         </div>
       )}
+      {page === "overview" &&
+        !failed &&
+        labels.map(({ name, x, y }) => (
+          <span
+            className="worldCountry"
+            key={name}
+            style={{ left: x, top: y }}
+            aria-hidden="true"
+          >
+            {name}
+          </span>
+        ))}
       {page === "overview" &&
         [...groups.entries()].map(([key, group]) => {
           const p = group[0];

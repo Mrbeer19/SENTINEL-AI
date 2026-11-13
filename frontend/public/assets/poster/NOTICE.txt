@@ -5,3 +5,5 @@ Source: official three.js example asset collection.
 The surface is converted to graphite/silver in memory; the original local assets are retained.
 Three.js dependency notices are retained in /THIRD-PARTY-3D-NOTICES.txt.
 These textures contain no IP geolocation or security data.
+Country label names and positions: Natural Earth, Admin 0 Countries 1:110m, v5.1.2.
+https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/

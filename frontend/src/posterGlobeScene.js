@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import countryLabels from "./countryLabels.json";
 
 const rad = Math.PI / 180;
 const point = (lat, lon, r = 2.42) =>
@@ -7,6 +8,10 @@ const point = (lat, lon, r = 2.42) =>
     r * Math.sin(lat * rad),
     -r * Math.cos(lat * rad) * Math.sin(lon * rad),
   );
+const countries = countryLabels.map(([name, latitude, longitude]) => ({
+  name,
+  position: point(latitude, longitude),
+}));
 const poses = {
   sources: [4.7, -0.8, 1.65, -2.5, 0.2],
   network: [4.7, -0.8, 1.65, -2.7, 0.2],
@@ -119,7 +124,10 @@ export function createPosterGlobe(
     spinning = false,
     dragging = false,
     focusMode = false,
+    showCountries = true,
     markers = [];
+  const local = new THREE.Vector3(),
+    projected = new THREE.Vector3();
   world.position.set(target[0], target[1], 0);
   world.rotation.set(pitch, yaw, 0);
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -163,23 +171,55 @@ export function createPosterGlobe(
     world.rotation.y +=
       (shortest(yaw, world.rotation.y) - world.rotation.y) * ease;
     world.rotation.x += (pitch - world.rotation.x) * ease;
-    const projected = markers.map((item) => {
-      const local = point(item.latitude, item.longitude).applyEuler(
-        world.rotation,
-      );
-      const p = local
-        .clone()
+    function project(position) {
+      local.copy(position).applyEuler(world.rotation);
+      const p = projected
+        .copy(local)
         .multiplyScalar(scale * zoom)
         .add(world.position)
         .project(camera);
       return {
-        ...item,
         x: ((p.x + 1) * size.width) / 2,
         y: ((1 - p.y) * size.height) / 2,
+        depth: local.z,
         visible: local.z > 0.08 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1,
       };
-    });
-    onMarkers(projected);
+    }
+    const pins = markers.map((item) => ({
+      ...item,
+      ...project(point(item.latitude, item.longitude)),
+    }));
+    const labels = [];
+    const occupied = pins
+      .filter((pin) => pin.visible)
+      .map(({ x, y }) => ({ x, y, width: 124 }));
+    if (showCountries) {
+      for (const country of countries) {
+        const { x, y, visible, depth } = project(country.position);
+        const width = country.name.length * 6 + 12;
+        if (
+          !visible ||
+          depth < 0.9 ||
+          x < width / 2 ||
+          x > size.width - width / 2 ||
+          y < 12 ||
+          y > size.height * 0.79
+        )
+          continue;
+        if (
+          occupied.some(
+            (label) =>
+              Math.abs(label.y - y) < 22 &&
+              Math.abs(label.x - x) < (label.width + width) / 2,
+          )
+        )
+          continue;
+        labels.push({ name: country.name, x, y });
+        occupied.push({ x, y, width });
+        if (labels.length === (zoom > 1.09 ? 30 : 18)) break;
+      }
+    }
+    onMarkers({ pins, labels });
     renderer.render(scene, camera);
     renderCount++;
     const moving =
@@ -278,6 +318,7 @@ export function createPosterGlobe(
     },
     pose(page) {
       target = poses[page] || poses.overview;
+      showCountries = page === "overview";
       yaw = shortest(target[3], world.rotation.y);
       pitch = target[4];
       setZoom(1);
