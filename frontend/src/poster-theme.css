@@ -2246,6 +2246,28 @@ progress {
   border-color: var(--accent);
   color: var(--accent);
 }
+.posterRuleTrace > div[data-flowing="true"]:after {
+  height: 2px;
+  background:
+    linear-gradient(90deg, transparent, var(--accent), transparent) 0 0 / 35% 100% no-repeat,
+    #63753b;
+  animation: investigation-flow 1.25s linear infinite;
+}
+.posterRuleTrace > div[data-running="true"] > span,
+.posterRuleTrace > div[data-running="true"] > small {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+@keyframes investigation-flow {
+  from { background-position: -55% 0, 0 0; }
+  to { background-position: 155% 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .posterRuleTrace > div[data-flowing="true"]:after {
+    animation: none;
+    background: var(--accent);
+  }
+}
 .posterRuleTrace strong {
   font-size: 13px;
   font-weight: 500;
@@ -3097,6 +3119,10 @@ progress {
   }
   .posterRuleTrace > div:after {
     display: none;
+  }
+  .posterRuleTrace > div[data-running="true"] > small {
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--accent);
   }
   .posterApprovalLayout {
     grid-template-columns: 1fr;

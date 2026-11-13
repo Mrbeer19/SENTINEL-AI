@@ -31,6 +31,7 @@ import {
   time,
 } from "./lib.js";
 import { thresholdEvent, ruleCriterion } from "./detectionRules.js";
+import { deriveFlow } from "./agentFlowModel.js";
 
 export const titles = {
   overview: ["Security overview", "ภาพรวมความปลอดภัย"],
@@ -594,6 +595,8 @@ export function Trace({ ctx, id }) {
   const rule = isRuleOnly(r.kind),
     a = analysisOf(r),
     threshold = thresholdEvent(r.events || [], r.kind);
+  const agentStages = rule ? [] : deriveFlow(r).states.slice(0, 4);
+  const activeStage = agentStages.indexOf("active");
   const stages = rule
     ? [
         ["Requests observed", !!r.events?.length],
@@ -603,12 +606,9 @@ export function Trace({ ctx, id }) {
       ]
     : [
         ["Observed", true],
-        ["Investigation", trace.some((t) => t.agent === "investigation")],
-        ["Threat analysis", trace.some((t) => t.agent === "threat_analysis")],
-        [
-          "Response planning",
-          trace.some((t) => t.agent === "defense_planning"),
-        ],
+        ["Investigation", agentStages[1] === "done"],
+        ["Threat analysis", agentStages[2] === "done"],
+        ["Response planning", agentStages[3] === "done"],
       ];
   return (
     <section className="posterInvestigation">
@@ -637,12 +637,24 @@ export function Trace({ ctx, id }) {
       </h2>
       <div className="posterRuleTrace">
         {stages.map(([label, done], i) => (
-          <div key={label} data-done={done}>
+          <div
+            key={label}
+            data-done={done}
+            data-running={activeStage === i || undefined}
+            data-flowing={activeStage === i + 1 || undefined}
+            aria-current={activeStage === i ? "step" : undefined}
+          >
             <span>
               {done ? <Icon name="check" /> : String(i + 1).padStart(2, "0")}
             </span>
             <strong>{label}</strong>
-            <small>{done ? "Recorded" : "ยังไม่มีหลักฐานขั้นนี้"}</small>
+            <small>
+              {activeStage === i
+                ? "กำลังวิเคราะห์"
+                : done
+                  ? "Recorded"
+                  : "ยังไม่มีหลักฐานขั้นนี้"}
+            </small>
           </div>
         ))}
       </div>
